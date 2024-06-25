@@ -1,0 +1,5 @@
+ignore:
+  - src/kinfin.py
+  - scripts/*
+  - build/*
+  - setup.py
