@@ -86,11 +86,6 @@ def parse_cluster_file(
 def parse_domains_from_functional_annotations_file(
     functional_annotation_f: str,
     proteinCollection: ProteinCollection,
-    pfam_mapping: bool,
-    ipr_mapping: bool,
-    pfam_mapping_f: str,
-    ipr_mapping_f: str,
-    go_mapping_f: str,
 ) -> None:
     """
     Parse functional annotations from a file and populate ProteinCollection with parsed data.
@@ -155,19 +150,6 @@ def parse_domains_from_functional_annotations_file(
 
     proteinCollection.functional_annotation_parsed = True
 
-    domain_desc_by_id_by_source: Dict[str, Dict[str, str]] = {}
-
-    if pfam_mapping and "Pfam" in proteinCollection.domain_sources:
-        domain_desc_by_id_by_source["Pfam"] = parse_pfam_mapping(pfam_mapping_f=pfam_mapping_f)  # fmt: skip
-
-    if ipr_mapping and "IPR" in proteinCollection.domain_sources:
-        domain_desc_by_id_by_source["IPR"] = parse_ipr_mapping(ipr_mapping_f=ipr_mapping_f)  # fmt: skip
-
-    if go_mapping_f:
-        domain_desc_by_id_by_source["GO"] = parse_go_mapping(go_mapping_f=go_mapping_f)  # fmt: skip
-
-    proteinCollection.domain_desc_by_id_by_source = domain_desc_by_id_by_source
-
 
 # cli
 def build_AloCollection(
@@ -206,19 +188,12 @@ def build_AloCollection(
         )
 
     # Add ALOs from tree if provided
-    tree_ete: Optional[Tree] = None
-    node_idx_by_proteome_ids: Optional[Dict[Any, Any]] = None
-    if tree_f:
-        outgroups: List[str] = []
-        if "OUT" not in attributes:
-            error_msg = "[ERROR] - Please specify one of more outgroup taxa"  # fmt: skip
-            ValueError(error_msg)
-        outgroups = [
-            proteome_id
-            for proteome_id in proteomes
-            if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"
-        ]
-        tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(tree_f, outgroups)
+    tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(
+        tree_f,
+        attributes,
+        level_by_attribute_by_proteome_id,
+        proteomes,
+    )
 
     logger.info("[STATUS] - Building AloCollection ...")
     return AloCollection(
@@ -274,17 +249,12 @@ def build_AloCollection_from_json(
     # Add ALOs from tree if provided
     tree_ete: Optional[Tree] = None
     node_idx_by_proteome_ids: Optional[Dict[Any, Any]] = None
-    if tree_f:
-        outgroups: List[str] = []
-        if "OUT" not in attributes:
-            error_msg = "[ERROR] - Please specify one of more outgroup taxa"  # fmt: skip
-            ValueError(error_msg)
-        outgroups = [
-            proteome_id
-            for proteome_id in proteomes
-            if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"
-        ]
-        tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(tree_f, outgroups)
+    tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(
+        tree_f,
+        attributes,
+        level_by_attribute_by_proteome_id,
+        proteomes,
+    )
 
     logger.info("[STATUS] - Building AloCollection ...")
     return AloCollection(
@@ -295,6 +265,30 @@ def build_AloCollection_from_json(
         node_idx_by_proteome_ids=node_idx_by_proteome_ids,
         tree_ete=tree_ete,
     )
+
+
+def get_protein_list_from_seq_f(sequence_ids_f: str, aloCollection: AloCollection):
+    logger.info(f"[STATUS] - Parsing sequence IDs: {sequence_ids_f} ...")
+    proteins_list: List[Protein] = []
+    for line in yield_file_lines(sequence_ids_f):
+        temp = line.split(": ")
+        sequence_id = temp[0]
+        protein_id = (
+            temp[1]
+            .split(" ")[0]
+            .replace(":", "_")
+            .replace(",", "_")
+            .replace("(", "_")
+            .replace(")", "_")
+        )  # orthofinder replaces characters
+        species_id = sequence_id.split("_")[0]
+        if proteome_id := aloCollection.proteome_id_by_species_id.get(species_id, None):
+            protein = Protein(protein_id, proteome_id, species_id, sequence_id)
+            proteins_list.append(protein)
+        else:
+            error_msg = f"[ERROR] - Offending SequenceID : {line} (unknown species_id {species_id})"
+            raise ValueError(error_msg)
+    return proteins_list
 
 
 # common
@@ -310,30 +304,10 @@ def build_ProteinCollection(
     go_mapping_f: str,
     ipr_mapping_f: str,
 ) -> ProteinCollection:
-    logger.info(f"[STATUS] - Parsing sequence IDs: {sequence_ids_f} ...")
-    proteins_list: List[Protein] = []
-
-    for line in yield_file_lines(sequence_ids_f):
-        temp = line.split(": ")
-        sequence_id = temp[0]
-        protein_id = (
-            temp[1]
-            .split(" ")[0]
-            .replace(":", "_")
-            .replace(",", "_")
-            .replace("(", "_")
-            .replace(")", "_")
-        )  # orthofinder replaces characters
-        species_id = sequence_id.split("_")[0]
-        if proteome_id := aloCollection.proteome_id_by_species_id.get(
-            species_id, None
-        ):
-            protein = Protein(protein_id, proteome_id, species_id, sequence_id)
-            proteins_list.append(protein)
-        else:
-            error_msg = f"[ERROR] - Offending SequenceID : {line} (unknown species_id {species_id})"
-            raise ValueError(error_msg)
-
+    proteins_list = get_protein_list_from_seq_f(
+        sequence_ids_f=sequence_ids_f,
+        aloCollection=aloCollection,
+    )
     proteinCollection = ProteinCollection(proteins_list)
 
     logger.info(f"[STATUS]\t - Proteins found = {proteinCollection.protein_count}")
@@ -356,13 +330,20 @@ def build_ProteinCollection(
     if functional_annotation_f is not None:
         parse_domains_from_functional_annotations_file(
             functional_annotation_f=functional_annotation_f,
-            pfam_mapping=pfam_mapping,
-            ipr_mapping=ipr_mapping,
-            pfam_mapping_f=pfam_mapping_f,
-            go_mapping_f=go_mapping_f,
-            ipr_mapping_f=ipr_mapping_f,
             proteinCollection=proteinCollection,
         )
+        domain_desc_by_id_by_source = {}
+
+        if pfam_mapping and "Pfam" in proteinCollection.domain_sources:
+            domain_desc_by_id_by_source["Pfam"] = parse_pfam_mapping(pfam_mapping_f)
+
+        if ipr_mapping and "IPR" in proteinCollection.domain_sources:
+            domain_desc_by_id_by_source["IPR"] = parse_ipr_mapping(ipr_mapping_f)
+
+        if go_mapping_f:
+            domain_desc_by_id_by_source["GO"] = parse_go_mapping(go_mapping_f)
+
+        proteinCollection.domain_desc_by_id_by_source = domain_desc_by_id_by_source
 
     return proteinCollection
 

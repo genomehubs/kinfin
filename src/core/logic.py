@@ -194,9 +194,11 @@ def add_taxid_attributes(
 
 # cli
 def parse_tree_from_file(
-    tree_f: str,
-    outgroups: List[str],
-) -> tuple[Tree, Dict[frozenset[str], str]]:
+    tree_f: Optional[str],
+    attributes: List[str],
+    level_by_attribute_by_proteome_id: Dict[str, Dict[str,str]],
+    proteomes: Set[str]
+) -> Tuple[Optional[Tree], Optional[Dict[frozenset[str], str]]]:
     """
     Parse a phylogenetic tree from nwk file and set specified outgroups.
 
@@ -208,6 +210,17 @@ def parse_tree_from_file(
         tuple[ete3.Tree, Dict[str, int]]: A tuple containing the parsed phylogenetic tree
             and a dictionary mapping proteome IDs to node indices.
     """
+    if not tree_f:
+        return None, None
+    outgroups: List[str] = []
+    if "OUT" not in attributes:
+        error_msg = "[ERROR] - Please specify one of more outgroup taxa"  # fmt: skip
+        ValueError(error_msg)
+    outgroups = [
+        proteome_id
+        for proteome_id in proteomes
+        if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"
+    ]
     logger.info(f"[STATUS] - Parsing Tree file : {tree_f} ...")
     tree_ete: TreeNode = ete3.Tree(tree_f)
     if len(outgroups) > 1:

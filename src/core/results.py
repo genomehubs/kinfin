@@ -28,12 +28,15 @@ def analyse(input_data: InputData) -> None:
         dataFactory.inputData.plot_format,
         dataFactory.inputData.fontsize,
     )
-    dataFactory.aloCollection.compute_rarefaction_data(
-        repetitions=dataFactory.inputData.repetitions,
+    rarefaction_data = dataFactory.aloCollection.compute_rarefaction_data(
+        repetitions=dataFactory.inputData.repetitions
+    )
+    dataFactory.plot_rarefaction_data(
         dirs=dataFactory.dirs,
         plotsize=dataFactory.inputData.plotsize,
         plot_format=dataFactory.inputData.plot_format,
         fontsize=dataFactory.inputData.fontsize,
+        rarefaction_by_samplesize_by_level_by_attribute=rarefaction_data,
     )
     dataFactory.write_output()
     overall_end = time.time()
