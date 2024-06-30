@@ -113,11 +113,10 @@ class AttributeLevel:
             for ALO_protein_id in ALO_protein_ids_in_cluster:
                 self.protein_ids_by_cluster_type[attribute_cluster_type].append(ALO_protein_id)  # fmt:skip
             self.protein_span_by_cluster_type[attribute_cluster_type].append(ALO_protein_length_stats["sum"])  # fmt:skip
-            if not attribute_cluster_type == "singleton":
-                if ALO_cluster_cardinality:
-                    self.clusters_by_cluster_cardinality_by_cluster_type[
-                        attribute_cluster_type
-                    ][ALO_cluster_cardinality].append(cluster.cluster_id)
+            if attribute_cluster_type != "singleton" and ALO_cluster_cardinality:
+                self.clusters_by_cluster_cardinality_by_cluster_type[
+                    attribute_cluster_type
+                ][ALO_cluster_cardinality].append(cluster.cluster_id)
 
         self.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id] = mwu_pvalue
         self.cluster_mwu_log2_mean_by_cluster_id[cluster.cluster_id] = mwu_log2_mean
@@ -141,10 +140,10 @@ class AttributeLevel:
         """
         if cluster_type == "total":
             return sum(
-                [
-                    len(protein_ids)
-                    for _, protein_ids in list(self.protein_ids_by_cluster_type.items())
-                ]
+                len(protein_ids)
+                for _, protein_ids in list(
+                    self.protein_ids_by_cluster_type.items()
+                )
             )
         else:
             return len(self.protein_ids_by_cluster_type[cluster_type])
@@ -171,14 +170,12 @@ class AttributeLevel:
         """
         if cluster_type == "total":
             return sum(
-                [
-                    len(cluster_ids)
-                    for _, cluster_ids in list(
-                        self.cluster_ids_by_cluster_type_by_cluster_status[
-                            cluster_status
-                        ].items()
-                    )
-                ]
+                len(cluster_ids)
+                for _, cluster_ids in list(
+                    self.cluster_ids_by_cluster_type_by_cluster_status[
+                        cluster_status
+                    ].items()
+                )
             )
         else:
             return len(
@@ -201,19 +198,16 @@ class AttributeLevel:
                 cluster types.
         """
         span = 0
-        if cluster_type == "total":
-            span = sum(
-                [
-                    sum(protein_ids)
-                    for _, protein_ids in list(
-                        self.protein_span_by_cluster_type.items()
-                    )
-                ]
+        return (
+            sum(
+                sum(protein_ids)
+                for _, protein_ids in list(
+                    self.protein_span_by_cluster_type.items()
+                )
             )
-        else:
-            span = sum(self.protein_span_by_cluster_type[cluster_type])
-
-        return span
+            if cluster_type == "total"
+            else sum(self.protein_span_by_cluster_type[cluster_type])
+        )
 
     def get_cluster_count_by_cluster_cardinality_by_cluster_type(
         self,

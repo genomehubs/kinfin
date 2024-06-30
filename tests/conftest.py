@@ -38,12 +38,11 @@ def get_file_pairs(config) -> List[Tuple[str, str]]:
         files2
     ), "Directories do not contain the same number of files"
 
-    file_pairs: List[Tuple[str, str]] = []
-    for gen_file, exp_file in zip(files1, files2):
-        if gen_file.endswith(".txt"):
-            file_pairs.append(
-                (os.path.join(generated, gen_file), os.path.join(expected, exp_file))
-            )
+    file_pairs: List[Tuple[str, str]] = [
+        (os.path.join(generated, gen_file), os.path.join(expected, exp_file))
+        for gen_file, exp_file in zip(files1, files2)
+        if gen_file.endswith(".txt")
+    ]
     return file_pairs
 
 

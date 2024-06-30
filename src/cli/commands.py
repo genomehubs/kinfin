@@ -173,9 +173,9 @@ def parse_args(
         return ServeArgs(port=args.port)
     elif args.command == "analyse":
         validate_cli_args(args=args)
-        fuzzy_range = set(
-            [x for x in range(args.min, args.max + 1) if not x == args.target_count]
-        )
+        fuzzy_range = {
+            x for x in range(args.min, args.max + 1) if x != args.target_count
+        }
 
         return InputData(
             cluster_file=args.cluster_file,

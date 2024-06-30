@@ -40,7 +40,7 @@ def get_singletons(
     singleton_idx = 0
     for protein in proteinCollection.proteins_list:
         if protein.clustered is False:
-            cluster_id = "singleton_%s" % singleton_idx
+            cluster_id = f"singleton_{singleton_idx}"
             cluster = Cluster(
                 cluster_id,
                 [protein.protein_id],
@@ -132,7 +132,7 @@ def parse_domains_from_functional_annotations_file(
             go_terms: List[str] = []
             domain_counter_by_domain_source: Dict[str, Counter[str]] = {}
             for idx, field in enumerate(temp):
-                if not field == "None":
+                if field != "None":
                     domain_source: str = proteinCollection.domain_sources[idx]
                     domain_string: List[str] = field.split(";")
                     domain_counts_by_domain_id: Dict[str, int] = {}
@@ -325,8 +325,9 @@ def build_ProteinCollection(
             .replace(")", "_")
         )  # orthofinder replaces characters
         species_id = sequence_id.split("_")[0]
-        proteome_id = aloCollection.proteome_id_by_species_id.get(species_id, None)
-        if proteome_id:
+        if proteome_id := aloCollection.proteome_id_by_species_id.get(
+            species_id, None
+        ):
             protein = Protein(protein_id, proteome_id, species_id, sequence_id)
             proteins_list.append(protein)
         else:

@@ -38,4 +38,4 @@ def analyse(input_data: InputData) -> None:
     dataFactory.write_output()
     overall_end = time.time()
     overall_elapsed = overall_end - overall_start
-    logger.info("[STATUS] - Took %ss to run kinfin." % (overall_elapsed))
+    logger.info(f"[STATUS] - Took {overall_elapsed}s to run kinfin.")

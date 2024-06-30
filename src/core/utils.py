@@ -37,18 +37,13 @@ def progress(iteration: int, steps: int | float, max_value: int) -> None:
     >>> progress(5, 2, 10)
     [PROGRESS]     - 50%
     """
-    if int(iteration) == int(max_value):
+    if iteration == max_value:
         sys.stdout.write("\r")
         print("[PROGRESS]\t- %d%%" % (100))
-    elif int(iteration) % int(steps + 1) == 0:
+    elif iteration % int(steps + 1) == 0:
         sys.stdout.write("\r")
-        print(
-            "[PROGRESS]\t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
-            end=" ",
-        )
+        print("[PROGRESS]\t- %d%%" % (float(iteration / max_value) * 100), end=" ")
         sys.stdout.flush()
-    else:
-        pass
 
 
 def check_file(filepath: str | None, install_kinfin: bool = False) -> None:
@@ -83,7 +78,7 @@ def yield_file_lines(filepath: str) -> Generator[str, Any, None]:
             for line in fh:
                 line = line.decode("utf-8")
                 if line.startswith("nodesDB.txt"):
-                    line = "#%s" % line.split("#")[1]
+                    line = f'#{line.split("#")[1]}'
                 yield line.rstrip("\n")
     else:
         with open(filepath) as fh:
@@ -163,10 +158,7 @@ def mean(lst) -> float:
     Returns:
     - float: Mean of the list.
     """
-    if lst:
-        return float(sum(lst)) / len(lst)
-    else:
-        return 0.0
+    return float(sum(lst)) / len(lst) if lst else 0.0
 
 
 def sd(lst, population=True) -> float:
@@ -185,12 +177,8 @@ def sd(lst, population=True) -> float:
     differences = [x_ - mean(lst) for x_ in lst]
     sq_differences = [d**2 for d in differences]
     ssd = sum(sq_differences)
-    if population is True:
-        variance = ssd / n
-    else:
-        variance = ssd / (n - 1)
-    sd_result = sqrt(variance)
-    return sd_result
+    variance = ssd / n if population is True else ssd / (n - 1)
+    return sqrt(variance)
 
 
 def statistic(
@@ -277,7 +265,4 @@ def statistic(
         pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
-    else:
-        pass
-
     return pvalue, log2_mean, mean_count_1, mean_count_2

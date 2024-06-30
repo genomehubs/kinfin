@@ -52,7 +52,6 @@ class DataFactory:
                 json_list=self.inputData.config_data,
                 taxon_idx_mapping_file=self.inputData.taxon_idx_mapping_file,
             )
-            pass
         else:
             raise ValueError("[ERROR] - Either provide config file or json")
 
@@ -87,7 +86,7 @@ class DataFactory:
             output_path = os.path.join(os.getcwd(), "kinfin_results")
 
         self.dirs["main"] = output_path
-        logger.info(f"[STATUS] - Output directories in")
+        logger.info("[STATUS] - Output directories in")
         logger.info(f"\t{output_path}")
         if os.path.exists(output_path):
             logger.info("[STATUS] - Directory exists. Deleting directory ...")
@@ -166,65 +165,65 @@ class DataFactory:
                 if len(intersection) == 0:
                     # Nothing to see here ...
                     node.counts["absent"] += 1  # type: ignore
-                else:
-                    if cluster.singleton is True:
-                        # This is a singleton
-                        node.counts["singleton"] += 1  # type: ignore
-                        node.apomorphic_cluster_counts["singletons"] += 1  # type: ignore
-                    elif len(difference) > 0:
-                        # This is a 'shared' cluster
-                        node.counts["shared"] += 1  # type: ignore
-                    elif len(difference) == 0:
-                        # This is a node 'specific' cluster
-                        node.counts["specific"] += 1  # type: ignore
-                        if cluster.proteome_count == 1:
-                            # But it only belongs to one proteome
-                            node.apomorphic_cluster_counts["non_singletons"] += 1  # type: ignore
-                        else:
-                            # It has more than one proteome
-                            child_nodes_covered = []
-                            child_node_proteome_coverage_strings = []
-                            child_node_proteome_ids_covered_count = 0
-                            for child_node in node.get_children():
-                                if child_node.proteome_ids.isdisjoint(
-                                    cluster.proteome_ids
-                                ):
-                                    # No child node proteomes are not in cluster
-                                    child_nodes_covered.append(False)
-                                else:
-                                    # At least on child node proteome in cluster
-                                    child_nodes_covered.append(True)
-                                    child_node_proteome_ids_covered_count = len(
-                                        cluster.proteome_ids.intersection(
-                                            child_node.proteome_ids
-                                        )
+                elif cluster.singleton is True:
+                    # This is a singleton
+                    node.counts["singleton"] += 1  # type: ignore
+                    node.apomorphic_cluster_counts["singletons"] += 1  # type: ignore
+                elif len(difference) > 0:
+                    # This is a 'shared' cluster
+                    node.counts["shared"] += 1  # type: ignore
+                elif len(difference) == 0:
+                    # This is a node 'specific' cluster
+                    node.counts["specific"] += 1  # type: ignore
+                    if cluster.proteome_count == 1:
+                        # But it only belongs to one proteome
+                        node.apomorphic_cluster_counts["non_singletons"] += 1  # type: ignore
+                    else:
+                        # It has more than one proteome
+                        child_nodes_covered = []
+                        child_node_proteome_coverage_strings = []
+                        child_node_proteome_ids_covered_count = 0
+                        for child_node in node.get_children():
+                            if child_node.proteome_ids.isdisjoint(
+                                cluster.proteome_ids
+                            ):
+                                # No child node proteomes are not in cluster
+                                child_nodes_covered.append(False)
+                            else:
+                                # At least on child node proteome in cluster
+                                child_nodes_covered.append(True)
+                                child_node_proteome_ids_covered_count = len(
+                                    cluster.proteome_ids.intersection(
+                                        child_node.proteome_ids
                                     )
-                                    child_node_proteome_coverage_strings.append(
-                                        f"{child_node.name}=({child_node_proteome_ids_covered_count}/{len(child_node.proteome_ids)})"
-                                    )
-                            if all(child_nodes_covered):
-                                # At least one proteome of each child node in cluster
-                                # => SYNAPOMORPHY
-                                node_proteome_coverage = len(intersection) / len(
-                                    node.proteome_ids  # type: ignore
                                 )
-                                node_cluster_type = ""
-                                if node_proteome_coverage == 1.0:
-                                    node_cluster_type = "complete_presence"
-                                else:
-                                    node_cluster_type = "partial_absence"
-                                node.synapomorphic_cluster_counts[node_cluster_type] += 1  # type: ignore
+                                child_node_proteome_coverage_strings.append(
+                                    f"{child_node.name}=({child_node_proteome_ids_covered_count}/{len(child_node.proteome_ids)})"
+                                )
+                        if all(child_nodes_covered):
+                            # At least one proteome of each child node in cluster
+                            # => SYNAPOMORPHY
+                            node_proteome_coverage = len(intersection) / len(
+                                node.proteome_ids  # type: ignore
+                            )
+                            node_cluster_type = ""
+                            node_cluster_type = (
+                                "complete_presence"
+                                if node_proteome_coverage == 1.0
+                                else "partial_absence"
+                            )
+                            node.synapomorphic_cluster_counts[node_cluster_type] += 1  # type: ignore
 
-                                node.synapomorphic_cluster_strings.append(  # type: ignore
-                                    (
-                                        cluster.cluster_id,
-                                        node.name,
-                                        node_cluster_type,
-                                        "{0:.3}".format(node_proteome_coverage),
-                                        ";".join(child_node_proteome_coverage_strings),
-                                        ",".join(sorted(intersection)),
-                                    )
+                            node.synapomorphic_cluster_strings.append(  # type: ignore
+                                (
+                                    cluster.cluster_id,
+                                    node.name,
+                                    node_cluster_type,
+                                    "{0:.3}".format(node_proteome_coverage),
+                                    ";".join(child_node_proteome_coverage_strings),
+                                    ",".join(sorted(intersection)),
                                 )
+                            )
         for attribute in self.aloCollection.attributes:
             protein_counts_of_proteomes_by_level_by_attribute[attribute] = {}
             proteome_coverage_by_level_by_attribute[attribute] = {}
@@ -245,7 +244,7 @@ class DataFactory:
                         protein_ids: List[str] = list(protein_get_by_proteome_id(proteome_id, []))  # fmt:skip
                         protein_ids_by_level[level] += protein_ids
                         protein_count_by_proteome_id[proteome_id] = len(protein_ids)
-                        if not protein_count_by_proteome_id[proteome_id] == 0:
+                        if protein_count_by_proteome_id[proteome_id] != 0:
                             protein_ids_by_proteome_id[proteome_id] = protein_ids
 
                     if protein_ids_by_proteome_id:
@@ -291,7 +290,7 @@ class DataFactory:
                     else:
                         ALO_cluster_status = "present"
 
-                        if not cluster_type_by_attribute[attribute] == "singleton":
+                        if cluster_type_by_attribute[attribute] != "singleton":
                             ALO_proteome_counts_in_cluster: List[int] = [
                                 count
                                 for _, count in list(
@@ -310,7 +309,7 @@ class DataFactory:
                                 non_ALO_levels = [
                                     non_ALO_level
                                     for non_ALO_level in explicit_protein_count_by_proteome_id_by_level
-                                    if not non_ALO_level == level
+                                    if non_ALO_level != level
                                 ]
                                 non_ALO_proteome_counts_in_cluster = []
                                 for non_ALO_level in non_ALO_levels:
@@ -358,10 +357,10 @@ class DataFactory:
         cluster.protein_median = median(
             [
                 count
-                for count in protein_counts_of_proteomes_by_level_by_attribute["all"][
+                for count in protein_counts_of_proteomes_by_level_by_attribute[
                     "all"
-                ]
-                if not count == 0
+                ]["all"]
+                if count != 0
             ]
         )
 
@@ -396,9 +395,10 @@ class DataFactory:
         Returns:
         - None
         """
-        cluster_protein_count = []
-        for cluster in self.clusterCollection.cluster_list:
-            cluster_protein_count.append(cluster.protein_count)
+        cluster_protein_count = [
+            cluster.protein_count
+            for cluster in self.clusterCollection.cluster_list
+        ]
         cluster_protein_counter = Counter(cluster_protein_count)
         count_plot_f = os.path.join(
             self.dirs["main"], f"cluster_size_distribution.{self.inputData.plot_format}"
@@ -449,136 +449,142 @@ class DataFactory:
 
         """
         if filetype == "attribute_metrics":
-            attribute_metrics_header = []
-            attribute_metrics_header.append("#attribute")
-            attribute_metrics_header.append("taxon_set")
-            attribute_metrics_header.append("cluster_total_count")
-            attribute_metrics_header.append("protein_total_count")
-            attribute_metrics_header.append("protein_total_span")
-            attribute_metrics_header.append("singleton_cluster_count")
-            attribute_metrics_header.append("singleton_protein_count")
-            attribute_metrics_header.append("singleton_protein_span")
-            attribute_metrics_header.append("specific_cluster_count")
-            attribute_metrics_header.append("specific_protein_count")
-            attribute_metrics_header.append("specific_protein_span")
-            attribute_metrics_header.append("shared_cluster_count")
-            attribute_metrics_header.append("shared_protein_count")
-            attribute_metrics_header.append("shared_protein_span")
-            attribute_metrics_header.append("specific_cluster_true_1to1_count")
-            attribute_metrics_header.append("specific_cluster_fuzzy_count")
-            attribute_metrics_header.append("shared_cluster_true_1to1_count")
-            attribute_metrics_header.append("shared_cluster_fuzzy_count")
-            attribute_metrics_header.append("absent_cluster_total_count")
-            attribute_metrics_header.append("absent_cluster_singleton_count")
-            attribute_metrics_header.append("absent_cluster_specific_count")
-            attribute_metrics_header.append("absent_cluster_shared_count")
-            attribute_metrics_header.append("TAXON_count")
-            attribute_metrics_header.append("TAXON_taxa")
+            attribute_metrics_header = [
+                "#attribute",
+                "taxon_set",
+                "cluster_total_count",
+                "protein_total_count",
+                "protein_total_span",
+                "singleton_cluster_count",
+                "singleton_protein_count",
+                "singleton_protein_span",
+                "specific_cluster_count",
+                "specific_protein_count",
+                "specific_protein_span",
+                "shared_cluster_count",
+                "shared_protein_count",
+                "shared_protein_span",
+                "specific_cluster_true_1to1_count",
+                "specific_cluster_fuzzy_count",
+                "shared_cluster_true_1to1_count",
+                "shared_cluster_fuzzy_count",
+                "absent_cluster_total_count",
+                "absent_cluster_singleton_count",
+                "absent_cluster_specific_count",
+                "absent_cluster_shared_count",
+                "TAXON_count",
+                "TAXON_taxa",
+            ]
             return "\t".join(attribute_metrics_header)
-        elif filetype == "cluster_metrics_ALO":
-            cluster_metrics_ALO_header = []
-            cluster_metrics_ALO_header.append("#cluster_id")
-            cluster_metrics_ALO_header.append("cluster_status")
-            cluster_metrics_ALO_header.append("cluster_type")
-            cluster_metrics_ALO_header.append("cluster_protein_count")
-            cluster_metrics_ALO_header.append("cluster_proteome_count")
-            cluster_metrics_ALO_header.append("TAXON_protein_count")
-            cluster_metrics_ALO_header.append("TAXON_mean_count")
-            cluster_metrics_ALO_header.append("non_taxon_mean_count")
-            cluster_metrics_ALO_header.append("representation")
-            cluster_metrics_ALO_header.append("log2_mean(TAXON/others)")
-            cluster_metrics_ALO_header.append("pvalue(TAXON vs. others)")
-            cluster_metrics_ALO_header.append("TAXON_coverage")
-            cluster_metrics_ALO_header.append("TAXON_count")
-            cluster_metrics_ALO_header.append("non_TAXON_count")
-            cluster_metrics_ALO_header.append("TAXON_taxa")
-            cluster_metrics_ALO_header.append("non_TAXON_taxa")
-            # for domain_source in clusterCollection.domain_sources:
-            #    cluster_metrics_ALO_header.append(domain_source)
-            return "\t".join(cluster_metrics_ALO_header)
+        elif filetype == "cafe":
+            cafe_header = ["#ID"]
+            cafe_header.extend(
+                iter(sorted(self.aloCollection.ALO_by_level_by_attribute["TAXON"]))
+            )
+            return "\t".join(cafe_header)
+        elif filetype == "cluster_1to1s_ALO":
+            cluster_1to1s_ALO_header = [
+                "#cluster_id",
+                "cluster_type",
+                "1to1_type",
+                "proteome_count",
+                "percentage_at_target_count",
+            ]
+            return "\t".join(cluster_1to1s_ALO_header)
         elif filetype == "cluster_metrics":
-            cluster_metrics_header = []
-            cluster_metrics_header.append("#cluster_id")
-            cluster_metrics_header.append("cluster_protein_count")
-            cluster_metrics_header.append("protein_median_count")
-            cluster_metrics_header.append("TAXON_count")
-            cluster_metrics_header.append("attribute")
-            cluster_metrics_header.append("attribute_cluster_type")
-            cluster_metrics_header.append("protein_span_mean")
-            cluster_metrics_header.append("protein_span_sd")
+            cluster_metrics_header = [
+                "#cluster_id",
+                "cluster_protein_count",
+                "protein_median_count",
+                "TAXON_count",
+                "attribute",
+                "attribute_cluster_type",
+                "protein_span_mean",
+                "protein_span_sd",
+            ]
             cluster_metrics_header += [
-                "%s_count" % level
+                f"{level}_count"
                 for level in sorted(
                     self.aloCollection.ALO_by_level_by_attribute[attribute]
                 )
             ]
-            if not attribute == "TAXON":
+            if attribute != "TAXON":
                 cluster_metrics_header += [
-                    "%s_median" % level
+                    f"{level}_median"
                     for level in sorted(
                         self.aloCollection.ALO_by_level_by_attribute[attribute]
                     )
                 ]
                 cluster_metrics_header += [
-                    "%s_cov" % level
+                    f"{level}_cov"
                     for level in sorted(
                         self.aloCollection.ALO_by_level_by_attribute[attribute]
                     )
                 ]
             return "\t".join(cluster_metrics_header)
+        elif filetype == "cluster_metrics_ALO":
+            cluster_metrics_ALO_header = [
+                "#cluster_id",
+                "cluster_status",
+                "cluster_type",
+                "cluster_protein_count",
+                "cluster_proteome_count",
+                "TAXON_protein_count",
+                "TAXON_mean_count",
+                "non_taxon_mean_count",
+                "representation",
+                "log2_mean(TAXON/others)",
+                "pvalue(TAXON vs. others)",
+                "TAXON_coverage",
+                "TAXON_count",
+                "non_TAXON_count",
+                "TAXON_taxa",
+                "non_TAXON_taxa",
+            ]
+            # for domain_source in clusterCollection.domain_sources:
+            #    cluster_metrics_ALO_header.append(domain_source)
+            return "\t".join(cluster_metrics_ALO_header)
         elif filetype == "cluster_metrics_domains":
-            cluster_metrics_domains_header = []
-            cluster_metrics_domains_header.append("#cluster_id")
-            cluster_metrics_domains_header.append("cluster_protein_count")
-            cluster_metrics_domains_header.append("TAXON_count")
-            cluster_metrics_domains_header.append("protein_span_mean")
-            cluster_metrics_domains_header.append("protein_span_sd")
-            cluster_metrics_domains_header.append("fraction_secreted")
+            cluster_metrics_domains_header = [
+                "#cluster_id",
+                "cluster_protein_count",
+                "TAXON_count",
+                "protein_span_mean",
+                "protein_span_sd",
+                "fraction_secreted",
+            ]
             for domain_source in self.clusterCollection.domain_sources:
-                cluster_metrics_domains_header.append(domain_source)
-                cluster_metrics_domains_header.append(f"{domain_source}_entropy")
+                cluster_metrics_domains_header.extend(
+                    (domain_source, f"{domain_source}_entropy")
+                )
             return "\t".join(cluster_metrics_domains_header)
         elif filetype == "cluster_metrics_domains_detailed":
-            cluster_metrics_domains_detailed_header = []
-            cluster_metrics_domains_detailed_header.append("#cluster_id")
-            cluster_metrics_domains_detailed_header.append("domain_source")
-            cluster_metrics_domains_detailed_header.append("domain_id")
-            cluster_metrics_domains_detailed_header.append("domain_description")
-            cluster_metrics_domains_detailed_header.append("protein_count")
-            cluster_metrics_domains_detailed_header.append("protein_count_with_domain")
-            cluster_metrics_domains_detailed_header.append("TAXA_with_domain_fraction")
-            cluster_metrics_domains_detailed_header.append("TAXA_with_domain")
-            cluster_metrics_domains_detailed_header.append("TAXA_without_domain")
+            cluster_metrics_domains_detailed_header = [
+                "#cluster_id",
+                "domain_source",
+                "domain_id",
+                "domain_description",
+                "protein_count",
+                "protein_count_with_domain",
+                "TAXA_with_domain_fraction",
+                "TAXA_with_domain",
+                "TAXA_without_domain",
+            ]
             return "\t".join(cluster_metrics_domains_detailed_header)
-        elif filetype == "cafe":
-            cafe_header = []
-            cafe_header.append("#ID")
-            for level in sorted(self.aloCollection.ALO_by_level_by_attribute["TAXON"]):
-                cafe_header.append(level)
-            return "\t".join(cafe_header)
         elif filetype == "pairwise_representation_test":
-            pairwise_representation_test_header = []
-            pairwise_representation_test_header.append("#cluster_id")
-            pairwise_representation_test_header.append("TAXON_1")
-            pairwise_representation_test_header.append("TAXON_1_mean")
-            pairwise_representation_test_header.append("TAXON_2")
-            pairwise_representation_test_header.append("TAXON_2_mean")
-            pairwise_representation_test_header.append("log2_mean(TAXON_1/TAXON_2)")
-            pairwise_representation_test_header.append(
-                "mwu_pvalue(TAXON_1 vs. TAXON_2)"
-            )
+            pairwise_representation_test_header = [
+                "#cluster_id",
+                "TAXON_1",
+                "TAXON_1_mean",
+                "TAXON_2",
+                "TAXON_2_mean",
+                "log2_mean(TAXON_1/TAXON_2)",
+                "mwu_pvalue(TAXON_1 vs. TAXON_2)",
+            ]
             # pairwise_representation_test_header.append("go_terms")
             # for domain_source in clusterCollection.domain_sources:
             #    pairwise_representation_test_header.append(domain_source)
             return "\t".join(pairwise_representation_test_header)
-        elif filetype == "cluster_1to1s_ALO":
-            cluster_1to1s_ALO_header = []
-            cluster_1to1s_ALO_header.append("#cluster_id")
-            cluster_1to1s_ALO_header.append("cluster_type")
-            cluster_1to1s_ALO_header.append("1to1_type")
-            cluster_1to1s_ALO_header.append("proteome_count")
-            cluster_1to1s_ALO_header.append("percentage_at_target_count")
-            return "\t".join(cluster_1to1s_ALO_header)
         else:
             error_msg = f"[ERROR] {filetype} is not a valid header 'filetype'"
             raise ValueError(error_msg)
@@ -609,7 +615,7 @@ class DataFactory:
         """
 
         for other_level in set(levels).difference(levels_seen):
-            if not other_level == level:
+            if other_level != level:
                 other_ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][
                     other_level
                 ]
@@ -685,12 +691,13 @@ class DataFactory:
         absent_cluster_specific_count, absent_cluster_shared_count,
         proteome_count, TAXON_taxa]
         """
-        attribute_metrics = []
-        attribute_metrics.append(ALO.attribute)
-        attribute_metrics.append(ALO.level)
-        attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "total")
-        )
+        attribute_metrics = [
+            ALO.attribute,
+            ALO.level,
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "total"
+            ),
+        ]
         attribute_metrics.append(ALO.get_protein_count_by_cluster_type("total"))
         attribute_metrics.append(ALO.get_protein_span_by_cluster_type("total"))
         attribute_metrics.append(
@@ -745,10 +752,14 @@ class DataFactory:
                 "absent", "specific"
             )
         )
-        attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "shared")
+        attribute_metrics.extend(
+            (
+                ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                    "absent", "shared"
+                ),
+                ALO.proteome_count,
+            )
         )
-        attribute_metrics.append(ALO.proteome_count)
         attribute_metrics.append(ALO.get_proteomes())
         return "\t".join([str(field) for field in attribute_metrics])
 
@@ -774,8 +785,6 @@ class DataFactory:
         for attribute in pairwise_representation_test_by_pair_by_attribute:
             for pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
                 pair_list = list(pair)
-                x_label = pair_list[0]
-                y_label = pair_list[1]
                 pair_data = pairwise_representation_test_by_pair_by_attribute[
                     attribute
                 ][pair]
@@ -935,6 +944,8 @@ class DataFactory:
                         True, linewidth=0.5, which="minor", color="lightgrey"
                     )
                     axScatter.set_ylim(1.1, np.min(p_array) * 0.1)
+                    x_label = pair_list[0]
+                    y_label = pair_list[1]
                     axScatter.set_xlabel(
                         f"log2(mean({x_label})/mean({y_label}))",
                         fontsize=self.inputData.fontsize,
@@ -1010,9 +1021,7 @@ class DataFactory:
                 self.get_header_line("cluster_metrics", attribute)
             ]
 
-            levels = sorted(
-                [x for x in self.aloCollection.ALO_by_level_by_attribute[attribute]]
-            )
+            levels = sorted(list(self.aloCollection.ALO_by_level_by_attribute[attribute]))
             levels_seen = set()
 
             for level in levels:
@@ -1048,49 +1057,48 @@ class DataFactory:
                     self.get_header_line("cluster_1to1s_ALO", attribute)
                 ]
 
-                if not attribute == "TAXON":
-                    if ALO:
+                if not attribute == "TAXON" and ALO:
+                    for (
+                        cluster_type
+                    ) in ALO.clusters_by_cluster_cardinality_by_cluster_type:
                         for (
+                            cluster_cardinality
+                        ) in ALO.clusters_by_cluster_cardinality_by_cluster_type[
                             cluster_type
-                        ) in ALO.clusters_by_cluster_cardinality_by_cluster_type:
+                        ]:
                             for (
-                                cluster_cardinality
+                                cluster_id
                             ) in ALO.clusters_by_cluster_cardinality_by_cluster_type[
                                 cluster_type
+                            ][
+                                cluster_cardinality
                             ]:
-                                for (
-                                    cluster_id
-                                ) in ALO.clusters_by_cluster_cardinality_by_cluster_type[
-                                    cluster_type
-                                ][
-                                    cluster_cardinality
-                                ]:
-                                    cluster_1to1_ALO_line = f"{cluster_id}"
-                                    cluster_1to1_ALO_line += f"\t{cluster_type}"
-                                    cluster_1to1_ALO_line += f"\t{cluster_cardinality}"
-                                    cluster_1to1_ALO_line += f"\t{self.clusterCollection.cluster_list_by_cluster_id[
-                                            cluster_id
-                                        ].proteome_count}"
-                                    cluster_1to1_ALO_line += "\t{0:.2f}".format(
-                                        len(
-                                            [
-                                                protein_count
-                                                for proteome_id, protein_count in list(
-                                                    self.clusterCollection.cluster_list_by_cluster_id[
-                                                        cluster_id
-                                                    ].protein_count_by_proteome_id.items()
-                                                )
-                                                if protein_count
-                                                == self.inputData.fuzzy_count
-                                            ]
-                                        )
-                                        / self.clusterCollection.cluster_list_by_cluster_id[
-                                            cluster_id
-                                        ].proteome_count
+                                cluster_1to1_ALO_line = f"{cluster_id}"
+                                cluster_1to1_ALO_line += f"\t{cluster_type}"
+                                cluster_1to1_ALO_line += f"\t{cluster_cardinality}"
+                                cluster_1to1_ALO_line += f"\t{self.clusterCollection.cluster_list_by_cluster_id[
+                                        cluster_id
+                                    ].proteome_count}"
+                                cluster_1to1_ALO_line += "\t{0:.2f}".format(
+                                    len(
+                                        [
+                                            protein_count
+                                            for proteome_id, protein_count in list(
+                                                self.clusterCollection.cluster_list_by_cluster_id[
+                                                    cluster_id
+                                                ].protein_count_by_proteome_id.items()
+                                            )
+                                            if protein_count
+                                            == self.inputData.fuzzy_count
+                                        ]
                                     )
-                                    cluster_1to1_ALO_output.append(
-                                        cluster_1to1_ALO_line
-                                    )
+                                    / self.clusterCollection.cluster_list_by_cluster_id[
+                                        cluster_id
+                                    ].proteome_count
+                                )
+                                cluster_1to1_ALO_output.append(
+                                    cluster_1to1_ALO_line
+                                )
 
                 for cluster in self.clusterCollection.cluster_list:
 
@@ -1158,198 +1166,196 @@ class DataFactory:
                     # - has line for each domain_id for each domain_source
                     ###########################
 
-                    if not levels_seen and attribute == "TAXON":
-                        if self.clusterCollection.functional_annotation_parsed:
-                            # cluster_metrics_domain_line
-                            cluster_metrics_domains_line = f"{cluster.cluster_id}"
-                            cluster_metrics_domains_line += f"\t{cluster.protein_count}"
+                    if not levels_seen and attribute == "TAXON" and self.clusterCollection.functional_annotation_parsed:
+                        cluster_metrics_domains_line = f"{cluster.cluster_id}"
+                        cluster_metrics_domains_line += f"\t{cluster.protein_count}"
+                        cluster_metrics_domains_line += (
+                            f"\t{cluster.proteome_count}"
+                        )
+                        if (
+                            self.clusterCollection.fastas_parsed
+                            and cluster.protein_length_stats
+                        ):
                             cluster_metrics_domains_line += (
-                                f"\t{cluster.proteome_count}"
+                                f"\t{cluster.protein_length_stats["mean"]}"
                             )
+                            cluster_metrics_domains_line += (
+                                f"\t{cluster.protein_length_stats["sd"]}"
+                            )
+                    
+                        else:
+                            cluster_metrics_domains_line += "\tN/A"
+                            cluster_metrics_domains_line += "\tN/A"
+                        if "SignalP_EUK" in self.clusterCollection.domain_sources:
+                            cluster_metrics_domains_line += "\t{0:.2f}".format(
+                                cluster.secreted_cluster_coverage
+                            )
+                        else:
+                            cluster_metrics_domains_line += "\tN/A"
+                        for domain_source in self.clusterCollection.domain_sources:
+                            # cluster_metrics_domains
                             if (
-                                self.clusterCollection.fastas_parsed
-                                and cluster.protein_length_stats
-                            ):
-                                cluster_metrics_domains_line += (
-                                    f"\t{cluster.protein_length_stats["mean"]}"
-                                )
-                                cluster_metrics_domains_line += (
-                                    f"\t{cluster.protein_length_stats["sd"]}"
-                                )
-
-                            else:
-                                cluster_metrics_domains_line += "\tN/A"
-                                cluster_metrics_domains_line += "\tN/A"
-                            if "SignalP_EUK" in self.clusterCollection.domain_sources:
-                                cluster_metrics_domains_line += "\t{0:.2f}".format(
-                                    cluster.secreted_cluster_coverage
-                                )
-                            else:
-                                cluster_metrics_domains_line += "\tN/A"
-                            for domain_source in self.clusterCollection.domain_sources:
-                                # cluster_metrics_domains
-                                if (
-                                    domain_source
-                                    in cluster.domain_counter_by_domain_source
-                                ):
-                                    sorted_counts = sorted(
-                                        [
-                                            f"{domain_id}:{count}"
-                                            for domain_id, count in cluster.domain_counter_by_domain_source[
-                                                domain_source
-                                            ].most_common()
-                                        ],
-                                        key=lambda x: (
-                                            x.split(":")[-1],
-                                            x.split(":")[-2],
-                                        ),
-                                    )
-                                    sorted_counts_str = ";".join(sorted_counts)
-                                    cluster_metrics_domains_line += (
-                                        f"\t{sorted_counts_str}"
-                                    )
-
-                                    cluster_metrics_domains_line += "\t{0:.3f}".format(
-                                        cluster.domain_entropy_by_domain_source[
-                                            domain_source
-                                        ]
-                                    )
-                                else:
-                                    cluster_metrics_domains_line += "\tN/A"
-                                    cluster_metrics_domains_line += "\tN/A"
-                            cluster_metrics_domains_output.append(
-                                cluster_metrics_domains_line
-                            )
-                            for (
                                 domain_source
-                            ) in cluster.domain_counter_by_domain_source:
-                                for (
-                                    domain_id,
-                                    count,
-                                ) in cluster.domain_counter_by_domain_source[
-                                    domain_source
-                                ].most_common():
-                                    cluster_metrics_domains_detailed_output_line = (
-                                        f"{cluster.cluster_id}"
-                                    )
-                                    cluster_metrics_domains_detailed_output_line += (
-                                        f"\t{domain_source}"
-                                    )
+                                in cluster.domain_counter_by_domain_source
+                            ):
+                                sorted_counts = sorted(
+                                    [
+                                        f"{domain_id}:{count}"
+                                        for domain_id, count in cluster.domain_counter_by_domain_source[
+                                            domain_source
+                                        ].most_common()
+                                    ],
+                                    key=lambda x: (
+                                        x.split(":")[-1],
+                                        x.split(":")[-2],
+                                    ),
+                                )
+                                sorted_counts_str = ";".join(sorted_counts)
+                                cluster_metrics_domains_line += (
+                                    f"\t{sorted_counts_str}"
+                                )
+                    
+                                cluster_metrics_domains_line += "\t{0:.3f}".format(
+                                    cluster.domain_entropy_by_domain_source[
+                                        domain_source
+                                    ]
+                                )
+                            else:
+                                cluster_metrics_domains_line += "\tN/A"
+                                cluster_metrics_domains_line += "\tN/A"
+                        cluster_metrics_domains_output.append(
+                            cluster_metrics_domains_line
+                        )
+                        for (
+                            domain_source
+                        ) in cluster.domain_counter_by_domain_source:
+                            for (
+                                domain_id,
+                                count,
+                            ) in cluster.domain_counter_by_domain_source[
+                                domain_source
+                            ].most_common():
+                                cluster_metrics_domains_detailed_output_line = (
+                                    f"{cluster.cluster_id}"
+                                )
+                                cluster_metrics_domains_detailed_output_line += (
+                                    f"\t{domain_source}"
+                                )
+                                cluster_metrics_domains_detailed_output_line += (
+                                    f"\t{domain_id}"
+                                )
+                                if domain_source == "SignalP_EUK":
                                     cluster_metrics_domains_detailed_output_line += (
                                         f"\t{domain_id}"
                                     )
-                                    if domain_source == "SignalP_EUK":
-                                        cluster_metrics_domains_detailed_output_line += (
-                                            f"\t{domain_id}"
-                                        )
+                                else:
+                                    if (
+                                        domain_source
+                                        in self.proteinCollection.domain_desc_by_id_by_source
+                                    ):
+                                        cluster_metrics_domains_detailed_output_line += f"\t{self.proteinCollection.domain_desc_by_id_by_source[
+                                                domain_source
+                                            ].get(
+                                                domain_id, "N/A"
+                                            )}"
                                     else:
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            "\tN/A"
+                                        )
+                    
+                                cluster_metrics_domains_detailed_output_line += (
+                                    f"\t{cluster.protein_count}"
+                                )
+                                protein_with_domain_count_by_proteome_id = {}
+                                proteome_count_with_domain = 0
+                                protein_without_domain_count_by_proteome_id = {}
+                                for proteome_id, protein_ids in list(
+                                    cluster.protein_ids_by_proteome_id.items()
+                                ):
+                                    proteome_seen = False
+                                    for protein_id in protein_ids:
                                         if (
                                             domain_source
-                                            in self.proteinCollection.domain_desc_by_id_by_source
-                                        ):
-                                            cluster_metrics_domains_detailed_output_line += f"\t{self.proteinCollection.domain_desc_by_id_by_source[
-                                                    domain_source
-                                                ].get(
-                                                    domain_id, "N/A"
-                                                )}"
-                                        else:
-                                            cluster_metrics_domains_detailed_output_line += (
-                                                "\tN/A"
-                                            )
-
-                                    cluster_metrics_domains_detailed_output_line += (
-                                        f"\t{cluster.protein_count}"
-                                    )
-                                    protein_with_domain_count_by_proteome_id = {}
-                                    proteome_count_with_domain = 0
-                                    protein_without_domain_count_by_proteome_id = {}
-                                    for proteome_id, protein_ids in list(
-                                        cluster.protein_ids_by_proteome_id.items()
-                                    ):
-                                        proteome_seen = False
-                                        for protein_id in protein_ids:
-                                            if (
+                                            in self.proteinCollection.proteins_by_protein_id[
+                                                protein_id
+                                            ].domain_counter_by_domain_source
+                                            and domain_id
+                                            in self.proteinCollection.proteins_by_protein_id[
+                                                protein_id
+                                            ].domain_counter_by_domain_source[
                                                 domain_source
-                                                in self.proteinCollection.proteins_by_protein_id[
-                                                    protein_id
-                                                ].domain_counter_by_domain_source
-                                                and domain_id
-                                                in self.proteinCollection.proteins_by_protein_id[
-                                                    protein_id
-                                                ].domain_counter_by_domain_source[
-                                                    domain_source
-                                                ]
-                                            ):
-                                                protein_with_domain_count_by_proteome_id[
-                                                    proteome_id
-                                                ] = (
-                                                    protein_with_domain_count_by_proteome_id.get(
-                                                        proteome_id, 0
-                                                    )
-                                                    + 1
-                                                )
-                                                if not proteome_seen:
-                                                    proteome_count_with_domain += 1
-                                                    proteome_seen = True
-                                            else:
-                                                protein_without_domain_count_by_proteome_id[
-                                                    proteome_id
-                                                ] = (
-                                                    protein_without_domain_count_by_proteome_id.get(
-                                                        proteome_id, 0
-                                                    )
-                                                    + 1
-                                                )
-                                    proteomes_with_domain_count_string = ",".join(
-                                        sorted(
-                                            [
-                                                f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
-                                                for proteome_id, count in list(
-                                                    protein_with_domain_count_by_proteome_id.items()
-                                                )
                                             ]
-                                        )
-                                    )
-                                    proteomes_without_domain_count_string = ",".join(
-                                        sorted(
-                                            [
-                                                f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
-                                                for proteome_id, count in list(
-                                                    protein_without_domain_count_by_proteome_id.items()
+                                        ):
+                                            protein_with_domain_count_by_proteome_id[
+                                                proteome_id
+                                            ] = (
+                                                protein_with_domain_count_by_proteome_id.get(
+                                                    proteome_id, 0
                                                 )
-                                            ]
-                                        )
+                                                + 1
+                                            )
+                                            if not proteome_seen:
+                                                proteome_count_with_domain += 1
+                                                proteome_seen = True
+                                        else:
+                                            protein_without_domain_count_by_proteome_id[
+                                                proteome_id
+                                            ] = (
+                                                protein_without_domain_count_by_proteome_id.get(
+                                                    proteome_id, 0
+                                                )
+                                                + 1
+                                            )
+                                proteomes_with_domain_count_string = ",".join(
+                                    sorted(
+                                        [
+                                            f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                            for proteome_id, count in list(
+                                                protein_with_domain_count_by_proteome_id.items()
+                                            )
+                                        ]
                                     )
-                                    cluster_metrics_domains_detailed_output_line += f"\t{sum(
-                                            protein_with_domain_count_by_proteome_id.values()
-                                        )}"
+                                )
+                                proteomes_without_domain_count_string = ",".join(
+                                    sorted(
+                                        [
+                                            f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                            for proteome_id, count in list(
+                                                protein_without_domain_count_by_proteome_id.items()
+                                            )
+                                        ]
+                                    )
+                                )
+                                cluster_metrics_domains_detailed_output_line += f"\t{sum(
+                                        protein_with_domain_count_by_proteome_id.values()
+                                    )}"
+                                cluster_metrics_domains_detailed_output_line += (
+                                    "\t{0:.3f}".format(
+                                        proteome_count_with_domain
+                                        / cluster.proteome_count
+                                    )
+                                )
+                                if proteomes_with_domain_count_string:
                                     cluster_metrics_domains_detailed_output_line += (
-                                        "\t{0:.3f}".format(
-                                            proteome_count_with_domain
-                                            / cluster.proteome_count
-                                        )
+                                        f"\t{proteomes_with_domain_count_string}"
                                     )
-                                    if proteomes_with_domain_count_string:
-                                        cluster_metrics_domains_detailed_output_line += (
-                                            f"\t{proteomes_with_domain_count_string}"
-                                        )
-                                    else:
-                                        cluster_metrics_domains_detailed_output_line += (
-                                            "\tN/A"
-                                        )
-                                    if proteomes_without_domain_count_string:
-                                        cluster_metrics_domains_detailed_output_line += (
-                                            f"\t{proteomes_without_domain_count_string}"
-                                        )
-                                    else:
-                                        cluster_metrics_domains_detailed_output_line += (
-                                            "\tN/A"
-                                        )
-                                    cluster_metrics_domains_detailed_output_by_domain_source[
-                                        domain_source
-                                    ].append(
-                                        cluster_metrics_domains_detailed_output_line
+                                else:
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        "\tN/A"
                                     )
+                                if proteomes_without_domain_count_string:
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        f"\t{proteomes_without_domain_count_string}"
+                                    )
+                                else:
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        "\tN/A"
+                                    )
+                                cluster_metrics_domains_detailed_output_by_domain_source[
+                                    domain_source
+                                ].append(
+                                    cluster_metrics_domains_detailed_output_line
+                                )
 
                     ###########################
                     # cluster_metrics_ALO : populate

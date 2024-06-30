@@ -34,9 +34,7 @@ def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:
     for line in yield_file_lines(filepath):
         if line.startswith("#"):
             nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
-        elif not line.strip():
-            pass
-        else:
+        elif line.strip():
             nodes_count += 1
             try:
                 node, rank, name, parent = line.rstrip("\n").split("\t")
@@ -71,9 +69,9 @@ def get_lineage(
     node = taxid
     while parent != "1":
         taxrank = nodesdb[node]["rank"]
-        name = nodesdb[node]["name"]
         parent = nodesdb[node]["parent"]
         if taxrank in taxranks:
+            name = nodesdb[node]["name"]
             lineage[taxrank] = name
         node = parent
     return lineage
@@ -119,17 +117,13 @@ def parse_attributes_from_config_file(
         if line.startswith("#"):
             if not attributes:
                 attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                if not attributes[0] == "IDX" or not attributes[1] == "TAXON":
+                if attributes[0] != "IDX" or attributes[1] != "TAXON":
                     error_msg = f"[ERROR] - First/second element have to be IDX/TAXON.\n\t{attributes}"
                     raise ValueError(error_msg)
-            else:
-                # accounts for SpeciesIDs that are commented out for Orthofinder
-                pass
-
         elif line.strip():
             temp = line.split(",")
 
-            if not len(temp) == len(attributes):
+            if len(temp) != len(attributes):
                 error_msg = f"[ERROR] - number of columns in line differs from header\n\t{attributes}\n\t{temp}"
                 raise ValueError(error_msg)
 
@@ -142,12 +136,8 @@ def parse_attributes_from_config_file(
             proteomes.add(proteome_id)
             proteome_id_by_species_id[species_id] = proteome_id
 
-            level_by_attribute_by_proteome_id[proteome_id] = {
-                attribute: level for attribute, level in zip(attributes, temp)
-            }
+            level_by_attribute_by_proteome_id[proteome_id] = dict(zip(attributes, temp))
             level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
-        else:
-            pass
     attributes.insert(0, "all")  # append to front
     return (
         proteomes,
@@ -182,7 +172,7 @@ def add_taxid_attributes(
             - Updated list of attributes with taxonomic ranks added and "TAXID" removed.
             - Updated dictionary of attributes indexed by proteome ID, with taxonomic attributes added and "TAXID" removed.
     """
-    NODESDB = parse_nodesdb(str(nodesdb_f))
+    NODESDB = parse_nodesdb(nodesdb_f)
     for proteome_id in level_by_attribute_by_proteome_id:
         taxid = level_by_attribute_by_proteome_id[proteome_id]["TAXID"]
         lineage = get_lineage(taxid=taxid, nodesdb=NODESDB, taxranks=taxranks)
@@ -198,9 +188,7 @@ def add_taxid_attributes(
     attributes.remove("TAXID")
 
     # add taxranks to rank
-    for taxrank in taxranks:
-        attributes.append(taxrank)
-
+    attributes.extend(iter(taxranks))
     return attributes, level_by_attribute_by_proteome_id
 
 
@@ -235,7 +223,7 @@ def parse_tree_from_file(
     logger.info(tree_ete)
     node_idx_by_proteome_ids: Dict[frozenset[str], str] = {}
     for idx, node in enumerate(tree_ete.traverse("levelorder")):  # type: ignore
-        proteome_ids = frozenset([leaf.name for leaf in node])
+        proteome_ids = frozenset(leaf.name for leaf in node)
         if not node.name:
             node.add_features(
                 name=f"n{idx}",
@@ -386,10 +374,9 @@ def parse_pfam_mapping(pfam_mapping_f: str) -> Dict[str, str]:
         domain_desc: str = temp[4]
         if domain_id not in pfam_mapping_dict:
             pfam_mapping_dict[domain_id] = domain_desc
-        else:
-            if not domain_desc == pfam_mapping_dict[domain_id]:
-                error_msg = f"[ERROR] : Conflicting descriptions for {domain_id}"
-                raise ValueError(error_msg)
+        elif domain_desc != pfam_mapping_dict[domain_id]:
+            error_msg = f"[ERROR] : Conflicting descriptions for {domain_id}"
+            raise ValueError(error_msg)
 
     return pfam_mapping_dict
 
@@ -418,10 +405,9 @@ def parse_ipr_mapping(ipr_mapping_f: str) -> Dict[str, str]:
             ipr_desc: str = " ".join(temp[1:])
             if ipr_id not in ipr_mapping_dict:
                 ipr_mapping_dict[ipr_id] = ipr_desc
-            else:
-                if not ipr_desc == ipr_mapping_dict[ipr_id]:
-                    error_msg = f"[ERROR] : Conflicting descriptions for {ipr_id}"
-                    raise ValueError(error_msg)
+            elif ipr_desc != ipr_mapping_dict[ipr_id]:
+                error_msg = f"[ERROR] : Conflicting descriptions for {ipr_id}"
+                raise ValueError(error_msg)
     return ipr_mapping_dict
 
 
@@ -449,10 +435,9 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
 
             if go_id not in go_mapping_dict:
                 go_mapping_dict[go_id] = go_desc
-            else:
-                if not go_desc == go_mapping_dict[go_id]:
-                    error_msg = f"[ERROR] : Conflicting descriptions for {go_id}"
-                    raise ValueError(error_msg)
+            elif go_desc != go_mapping_dict[go_id]:
+                error_msg = f"[ERROR] : Conflicting descriptions for {go_id}"
+                raise ValueError(error_msg)
     return go_mapping_dict
 
 
@@ -497,11 +482,10 @@ def get_attribute_cluster_type(
     """
     if singleton:
         return "singleton"
+    if len(implicit_protein_ids_by_proteome_id_by_level) > 1:
+        return "shared"
     else:
-        if len(implicit_protein_ids_by_proteome_id_by_level) > 1:
-            return "shared"
-        else:
-            return "specific"
+        return "specific"
 
 
 def get_ALO_cluster_cardinality(
@@ -527,28 +511,27 @@ def get_ALO_cluster_cardinality(
         length = len(ALO_proteome_counts_in_cluster)
         if all(count == 1 for count in ALO_proteome_counts_in_cluster):
             return "true"
-        else:
-            fuzzycount_count = len(
-                [
-                    ALO_proteome_counts
-                    for ALO_proteome_counts in ALO_proteome_counts_in_cluster
-                    if ALO_proteome_counts == fuzzy_count
-                ]
-            )
+        fuzzycount_count = len(
+            [
+                ALO_proteome_counts
+                for ALO_proteome_counts in ALO_proteome_counts_in_cluster
+                if ALO_proteome_counts == fuzzy_count
+            ]
+        )
 
-            fuzzyrange_count = len(
-                [
-                    ALO_proteome_counts
-                    for ALO_proteome_counts in ALO_proteome_counts_in_cluster
-                    if ALO_proteome_counts in fuzzy_range
-                ]
-            )
+        fuzzyrange_count = len(
+            [
+                ALO_proteome_counts
+                for ALO_proteome_counts in ALO_proteome_counts_in_cluster
+                if ALO_proteome_counts in fuzzy_range
+            ]
+        )
 
+        if fuzzycount_count + fuzzyrange_count == length:
             fuzzy_fr = fuzzycount_count / length
 
             if fuzzy_fr >= fuzzy_fraction:
-                if fuzzycount_count + fuzzyrange_count == length:
-                    return "fuzzy"
+                return "fuzzy"
 
     return None
 

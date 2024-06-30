@@ -78,7 +78,9 @@ async def initialize(
         raise http_exc
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Internal Server Error: {str(e)}"
+        ) from e
 
 
 @router.get("/plot/{plot_type}")

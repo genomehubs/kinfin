@@ -65,12 +65,12 @@ def validate_cli_args(args) -> None:
             f"[ERROR] : --min {args.min} is greater than --max {args.max}"
         )
 
-    if not args.repetitions > 0:
+    if args.repetitions <= 0:
         error_msgs.append(
             "[ERROR] : Please specify a positive integer for the number of repetitions for the rarefaction curves"
         )
 
-    if not args.min_proteomes > 0:
+    if args.min_proteomes <= 0:
         error_msgs.append(
             "[ERROR] : Please specify a positive integer for the minimum number of proteomes to consider for computations"
         )

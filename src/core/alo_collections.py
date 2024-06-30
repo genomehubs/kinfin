@@ -122,24 +122,19 @@ class AloCollection:
         """
 
         node_header_f = os.path.join(dirs["tree_headers"], f"{node.name}.header.png")
-        data = []
-        data.append(
+        data = [
             (
                 "Apomorphies (size=1)",
                 "{:,}".format(
                     node.apomorphic_cluster_counts["singletons"]  # type:ignore
                 ),
-            )
-        )
-        data.append(
+            ),
             (
                 "Apomorphies (size>1)",
                 "{:,}".format(
                     node.apomorphic_cluster_counts["non_singletons"]  # type:ignore
                 ),
-            )
-        )
-        data.append(
+            ),
             (
                 "Synapomorphies (all)",
                 "{:,}".format(
@@ -150,9 +145,7 @@ class AloCollection:
                         "partial_absence"
                     ]
                 ),
-            )
-        )
-        data.append(
+            ),
             (
                 "Synapomorphies (cov=100%)",
                 "{:,}".format(
@@ -160,16 +153,16 @@ class AloCollection:
                         "complete_presence"
                     ]
                 ),
-            )
-        )
-        data.append(
+            ),
             (
                 "Synapomorphies (cov<100%)",
                 "{:,}".format(
-                    node.synapomorphic_cluster_counts["partial_absence"]  # type:ignore
+                    node.synapomorphic_cluster_counts[  # type: ignore
+                        "partial_absence"
+                    ]  # type:ignore
                 ),
-            )
-        )
+            ),
+        ]
         col_labels = ("Type", "Count")
         fig, ax = plt.subplots(figsize=(2, 0.5))
         ax.set_facecolor("white")
@@ -187,12 +180,8 @@ class AloCollection:
         for key, cell in list(table.get_celld().items()):
             row, col = key
             cell._text.set_color("grey")
-            if row > 0:
-                cell.set_edgecolor("darkgrey")
-                cell.visible_edges = "T"
-            else:
-                cell.set_edgecolor("darkgrey")
-                cell.visible_edges = "B"
+            cell.set_edgecolor("darkgrey")
+            cell.visible_edges = "T" if row > 0 else "B"
             if row == len(data) - 2:
                 cell.set_edgecolor("darkgrey")
                 cell.visible_edges = "T"
@@ -223,10 +212,10 @@ class AloCollection:
         - Optional[str]: Path to the saved chart file if successful, None otherwise.
         """
 
-        proteome_coverages = []
-        for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
-            proteome_coverages.append(float(synapomorphic_cluster_string[3]))
-        if proteome_coverages:
+        if proteome_coverages := [
+            float(synapomorphic_cluster_string[3])
+            for synapomorphic_cluster_string in node.synapomorphic_cluster_strings
+        ]:
             chart_f = os.path.join(dirs["tree_charts"], f"{node.name}.barchart.png")
             f, ax = plt.subplots(figsize=(3.0, 3.0))
             ax.set_facecolor("white")
@@ -358,66 +347,68 @@ class AloCollection:
         Returns:
         - None
         """
-        if self.tree_ete:
-            logger.info("[STATUS] - Writing data for tree ... ")
-            # Node stats
-            node_stats_f = os.path.join(dirs["tree"], "tree.node_metrics.txt")
-            node_stats_header: List[str] = []
-            node_stats_header.append("#nodeID")
-            node_stats_header.append("taxon_specific_apomorphies_singletons")
-            node_stats_header.append("taxon_specific_apomorphies_non_singletons")
-            node_stats_header.append("node_specific_synapomorphies_total")
-            node_stats_header.append("node_specific_synapomorphies_complete_presence")
-            node_stats_header.append("node_specific_synapomorphies_partial_absence")
-            node_stats_header.append("proteome_count")
-            node_stats: List[str] = []
-            node_stats.append("\t".join(node_stats_header))
-            # Cluster node stats
-            node_clusters_f = os.path.join(dirs["tree"], "tree.cluster_metrics.txt")
-            node_clusters_header = []
-            node_clusters_header.append("#clusterID")
-            node_clusters_header.append("nodeID")
-            node_clusters_header.append("synapomorphy_type")
-            node_clusters_header.append("node_taxon_coverage")
-            node_clusters_header.append("children_coverage")
-            node_clusters_header.append("node_taxa_present")
-            node_clusters = []
-            node_clusters.append("\t".join(node_clusters_header))
-            # header_f_by_node_name
-            header_f_by_node_name = {}
-            charts_f_by_node_name = {}
-            for node in self.tree_ete.traverse("levelorder"):  # type: ignore
-                for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
-                    node_clusters.append(
-                        "\t".join(
-                            [
-                                str(string)
-                                for string in list(synapomorphic_cluster_string)
-                            ]
-                        )
+        if not self.tree_ete:
+            return
+        logger.info("[STATUS] - Writing data for tree ... ")
+        # Node stats
+        node_stats_f = os.path.join(dirs["tree"], "tree.node_metrics.txt")
+        node_stats_header: List[str] = [
+            "#nodeID",
+            "taxon_specific_apomorphies_singletons",
+            "taxon_specific_apomorphies_non_singletons",
+            "node_specific_synapomorphies_total",
+            "node_specific_synapomorphies_complete_presence",
+            "node_specific_synapomorphies_partial_absence",
+            "proteome_count",
+        ]
+        node_stats: List[str] = ["\t".join(node_stats_header)]
+        # Cluster node stats
+        node_clusters_f = os.path.join(dirs["tree"], "tree.cluster_metrics.txt")
+        node_clusters_header = [
+            "#clusterID",
+            "nodeID",
+            "synapomorphy_type",
+            "node_taxon_coverage",
+            "children_coverage",
+            "node_taxa_present",
+        ]
+        node_clusters = ["\t".join(node_clusters_header)]
+        # header_f_by_node_name
+        header_f_by_node_name = {}
+        charts_f_by_node_name = {}
+        for node in self.tree_ete.traverse("levelorder"):  # type: ignore
+            for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
+                node_clusters.append(
+                    "\t".join(
+                        [str(string) for string in list(synapomorphic_cluster_string)]
                     )
-                node_stats_line = []
-                node_stats_line.append(node.name)
-                node_stats_line.append(node.apomorphic_cluster_counts["singletons"])  # type: ignore
-                node_stats_line.append(node.apomorphic_cluster_counts["non_singletons"])  # type: ignore
-                node_stats_line.append(node.synapomorphic_cluster_counts["complete_presence"] + node.synapomorphic_cluster_counts["partial_absence"])  # type: ignore
-                node_stats_line.append(node.synapomorphic_cluster_counts["complete_presence"])  # type: ignore
-                node_stats_line.append(node.synapomorphic_cluster_counts["partial_absence"])  # type: ignore
-                node_stats_line.append(len(node.proteome_ids))  # type: ignore
-                node_stats.append("\t".join([str(string) for string in node_stats_line]))  # fmt:skip
-                if render_tree:
-                    header_f_by_node_name[node.name] = self.generate_header_for_node(node, dirs)  # fmt:skip
-                charts_f_by_node_name[node.name] = self.generate_chart_for_node(node, dirs, plot_format, fontsize)  # fmt:skip
-            logger.info("[STATUS] - Writing %s ... " % node_stats_f)
-            with open(node_stats_f, "w") as node_stats_fh:
-                node_stats_fh.write("\n".join(node_stats) + "\n")
-            logger.info("[STATUS] - Writing %s ... " % node_clusters_f)
-            with open(node_clusters_f, "w") as node_clusters_fh:
-                node_clusters_fh.write("\n".join(node_clusters) + "\n")
+                )
+            node_stats_line = [
+                node.name,
+                node.apomorphic_cluster_counts["singletons"],  # type: ignore
+                node.apomorphic_cluster_counts["non_singletons"],  # type: ignore
+                (
+                    node.synapomorphic_cluster_counts["complete_presence"]  # type: ignore
+                    + node.synapomorphic_cluster_counts["partial_absence"]  # type: ignore
+                ),
+                node.synapomorphic_cluster_counts["complete_presence"],  # type: ignore
+                node.synapomorphic_cluster_counts["partial_absence"],  # type: ignore
+                len(node.proteome_ids),  # type: ignore
+            ]
+            node_stats.append("\t".join([str(string) for string in node_stats_line]))  # fmt:skip
             if render_tree:
-                self.plot_tree(header_f_by_node_name, charts_f_by_node_name, dirs)
-            else:
-                self.plot_text_tree(dirs)
+                header_f_by_node_name[node.name] = self.generate_header_for_node(node, dirs)  # fmt:skip
+            charts_f_by_node_name[node.name] = self.generate_chart_for_node(node, dirs, plot_format, fontsize)  # fmt:skip
+        logger.info(f"[STATUS] - Writing {node_stats_f} ... ")
+        with open(node_stats_f, "w") as node_stats_fh:
+            node_stats_fh.write("\n".join(node_stats) + "\n")
+        logger.info(f"[STATUS] - Writing {node_clusters_f} ... ")
+        with open(node_clusters_f, "w") as node_clusters_fh:
+            node_clusters_fh.write("\n".join(node_clusters) + "\n")
+        if render_tree:
+            self.plot_tree(header_f_by_node_name, charts_f_by_node_name, dirs)
+        else:
+            self.plot_text_tree(dirs)
 
     def compute_rarefaction_data(
         self,
@@ -451,7 +442,7 @@ class AloCollection:
         for attribute in self.attributes:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
                 proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
-                if not len(proteome_ids) == 1:
+                if len(proteome_ids) != 1:
                     if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
                         rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
                     if (
@@ -465,17 +456,16 @@ class AloCollection:
                         ] = {}
                     ALO = self.ALO_by_level_by_attribute[attribute][level]
                     if ALO is not None:
-                        for repetition in range(0, repetitions):
+                        for _ in range(repetitions):
                             seen_cluster_ids = set()
-                            random_list_of_proteome_ids = [x for x in ALO.proteomes]
+                            random_list_of_proteome_ids = list(ALO.proteomes)
                             random.shuffle(random_list_of_proteome_ids)
                             for idx, proteome_id in enumerate(
                                 random_list_of_proteome_ids
                             ):
-                                proteome_ALO = self.ALO_by_level_by_attribute["TAXON"][
-                                    proteome_id
-                                ]
-                                if proteome_ALO:
+                                if proteome_ALO := self.ALO_by_level_by_attribute[
+                                    "TAXON"
+                                ][proteome_id]:
                                     seen_cluster_ids.update(
                                         proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status[
                                             "present"
@@ -506,12 +496,12 @@ class AloCollection:
                                         attribute
                                     ][level][sample_size].append(len(seen_cluster_ids))
 
-        for attribute in rarefaction_by_samplesize_by_level_by_attribute:
+        for (
+            attribute,
+            rarefaction_by_samplesize_by_level,
+        ) in rarefaction_by_samplesize_by_level_by_attribute.items():
             rarefaction_plot_f = os.path.join(
                 dirs[attribute], f"{attribute}.rarefaction_curve.{plot_format}"
-            )
-            rarefaction_by_samplesize_by_level = (
-                rarefaction_by_samplesize_by_level_by_attribute[attribute]
             )
             f, ax = plt.subplots(figsize=plotsize)
             ax.set_facecolor("white")

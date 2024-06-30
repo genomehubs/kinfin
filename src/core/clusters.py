@@ -25,14 +25,14 @@ class Cluster:
             }
         except KeyError as e:
             error_msg = f"[ERROR] - Protein {e.args[0]} in clustering belongs to proteomes that are not present in the config-file. Please add those proteomes or recluster by omitting these proteomes."
-            raise KeyError(error_msg)
+            raise KeyError(error_msg) from e
 
         self.proteome_ids_list: List[str] = list(self.proteomes_by_protein_id.values())
         self.protein_count_by_proteome_id: Counter[str] = Counter(self.proteome_ids_list)  # fmt: skip
         self.proteome_ids: FrozenSet[str] = frozenset(self.proteome_ids_list)
         self.proteome_count: int = len(self.proteome_ids)
-        self.singleton: bool = False if self.protein_count > 1 else True
-        self.apomorphy: bool = False if self.proteome_count > 1 else True
+        self.singleton: bool = self.protein_count <= 1
+        self.apomorphy: bool = self.proteome_count <= 1
 
         self.protein_ids_by_proteome_id: DefaultDict[str, Set[str]] = compute_protein_ids_by_proteome(self.proteomes_by_protein_id)  # fmt:skip
         self.protein_counts_of_proteomes_by_level_by_attribute:Dict[str, Dict[str, List[int]]] = {}  # fmt:skip
@@ -70,8 +70,7 @@ class Cluster:
             for protein_id in protein_ids
         ]
         if all(protein_lengths):
-            protein_length_stats: Dict[str, float] = {}
-            protein_length_stats["mean"] = mean(protein_lengths)
+            protein_length_stats: Dict[str, float] = {"mean": mean(protein_lengths)}
             protein_length_stats["median"] = median(protein_lengths)
             protein_length_stats["sd"] = sd(protein_lengths)
             return protein_length_stats
@@ -93,10 +92,8 @@ class Cluster:
         Returns:
         - float: Fraction of secreted proteins in the provided set of protein IDs.
         """
-        secreted = 0
-        for protein_id in protein_ids:
-            if proteinCollection.proteins_by_protein_id[protein_id].secreted:
-                secreted += 1
+        secreted = sum(bool(proteinCollection.proteins_by_protein_id[protein_id].secreted)
+                   for protein_id in protein_ids)
         return secreted / protein_count
 
     def compute_domain_counter_by_domain_source(
@@ -117,12 +114,9 @@ class Cluster:
         """
         cluster_domain_counter_by_domain_source: Dict[str, Counter[str]] = {}
         for protein_id in protein_ids:
-            protein_domain_counter_by_domain_source: Dict[str, Counter[str]] = (
-                proteinCollection.proteins_by_protein_id[
-                    protein_id
-                ].domain_counter_by_domain_source
-            )
-            if protein_domain_counter_by_domain_source:
+            if protein_domain_counter_by_domain_source := proteinCollection.proteins_by_protein_id[
+                protein_id
+            ].domain_counter_by_domain_source:
                 for domain_source, protein_domain_counter in list(
                     protein_domain_counter_by_domain_source.items()
                 ):
@@ -146,12 +140,10 @@ class Cluster:
         for domain_source, domain_counter in list(
             self.domain_counter_by_domain_source.items()
         ):
-            total_count: int = len([domain for domain in domain_counter.elements()])
+            total_count: int = len(list(domain_counter.elements()))
             domain_entropy: float = -sum(
-                [
-                    i / total_count * log(i / total_count, 2)
-                    for i in list(domain_counter.values())
-                ]
+                i / total_count * log(i / total_count, 2)
+                for i in list(domain_counter.values())
             )
             if str(domain_entropy) == "-0.0":
                 self.domain_entropy_by_domain_source[domain_source] = 0.0

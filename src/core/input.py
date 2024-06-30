@@ -7,34 +7,9 @@ class ServeArgs:
 
 
 class InputData:
-    def __init__(
-        self,
-        nodesdb_f: str,
-        pfam_mapping_f: str,
-        ipr_mapping_f: str,
-        go_mapping_f: str,
-        cluster_file: str,
-        config_data: List[Dict[str, str]] | str,
-        sequence_ids_file: str,
-        species_ids_file: Optional[str] = None,
-        functional_annotation_f: Optional[str] = None,
-        fasta_dir: Optional[str] = None,
-        tree_file: Optional[str] = None,
-        output_path: Optional[str] = None,
-        infer_singletons: Optional[bool] = False,
-        plot_tree: bool = False,
-        min_proteomes: int = 2,
-        test: str = "mannwhitneyu",
-        taxranks: List[str] = ["phylum", "order", "genus"],
-        repetitions: int = 30,
-        fuzzy_count: int = 1,
-        fuzzy_fraction: float = 0.75,
-        fuzzy_range: Set[int] = set([x for x in range(0, 20 + 1) if not x == 1]),
-        fontsize: int = 18,
-        plotsize: Tuple[float, float] = (24, 12),
-        plot_format: str = "pdf",
-        taxon_idx_mapping_file: Optional[str] = None,
-    ):
+    def __init__(self, nodesdb_f: str, pfam_mapping_f: str, ipr_mapping_f: str, go_mapping_f: str, cluster_file: str, config_data: List[Dict[str, str]] | str, sequence_ids_file: str, species_ids_file: Optional[str] = None, functional_annotation_f: Optional[str] = None, fasta_dir: Optional[str] = None, tree_file: Optional[str] = None, output_path: Optional[str] = None, infer_singletons: Optional[bool] = False, plot_tree: bool = False, min_proteomes: int = 2, test: str = "mannwhitneyu", taxranks: List[str] = None, repetitions: int = 30, fuzzy_count: int = 1, fuzzy_fraction: float = 0.75, fuzzy_range: Set[int] = {x for x in range(20 + 1) if x != 1}, fontsize: int = 18, plotsize: Tuple[float, float] = (24, 12), plot_format: str = "pdf", taxon_idx_mapping_file: Optional[str] = None):
+        if taxranks is None:
+            taxranks = ["phylum", "order", "genus"]
         self.cluster_f = cluster_file
         self.config_data = config_data
         self.sequence_ids_f = sequence_ids_file

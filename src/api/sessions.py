@@ -115,14 +115,12 @@ class SessionManager:
         if not session:
             return None
 
-        expired = session.is_expired()
-
-        if not expired:
-            session.update_activity()
-            return session.result_path
-        else:
+        if expired := session.is_expired():
             self.remove(session_id)
             return None
+        else:
+            session.update_activity()
+            return session.result_path
 
     def remove(self, session_id) -> bool:
         """
@@ -135,15 +133,13 @@ class SessionManager:
             bool: True if session was successfully removed, False otherwise.
         """
         shutil.rmtree(self.sessions[session_id].result_path)
-        session = self.sessions.pop(session_id, None)
-        if session:
-            try:
-                os.rmdir(session.result_path)
-            except FileNotFoundError:
-                pass
-            return True
-        else:
+        if not (session := self.sessions.pop(session_id, None)):
             return False
+        try:
+            os.rmdir(session.result_path)
+        except FileNotFoundError:
+            pass
+        return True
 
     def clear_expired_sessions(self) -> None:
         """Remove all expired sessions"""
