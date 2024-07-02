@@ -101,7 +101,7 @@ def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:
     """
     check_file(fasta_file)
     with open(fasta_file) as fh:
-        print(f"[STATUS]\t - Parsing FASTA {fasta_file}")
+        logger.info(f"[STATUS]\t - Parsing FASTA {fasta_file}")
         header: str = ""
         seqs: List[str] = []
         for line in fh:
