@@ -41,10 +41,13 @@ if __name__ == "__main__":
             logger.error("[ERROR] CLUSTER_FILE_PATH should be an absolute path.")
             sys.exit(1)
         if sequence_ids_f is None or not os.path.isabs(sequence_ids_f):
-            logger.error("[ERROR] SEQUENCE_IDS_FILE_PATH should be an absolute path.")
+            logger.error(
+                "[ERROR] SEQUENCE_IDS_FILE_PATH should be an absolute path.")
             sys.exit(1)
-        if taxon_idx_mapping_file is None or not os.path.isabs(taxon_idx_mapping_file):
-            logger.error("[ERROR] TAXON_IDX_MAPPING_FILE_PATH should be an absolute path.")  # fmt:skip
+        if taxon_idx_mapping_file is None or not os.path.isabs(
+                taxon_idx_mapping_file):
+            logger.error(
+                "[ERROR] TAXON_IDX_MAPPING_FILE_PATH should be an absolute path.")
             sys.exit(1)
         if results_base_dir is None or not os.path.isabs(results_base_dir):
             logger.error("[ERROR] RESULTS_BASE_DIR should be an absolute path.")

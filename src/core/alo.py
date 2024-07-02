@@ -46,8 +46,12 @@ class AttributeLevel:
             "specific": {"true": [], "fuzzy": []},
         }
 
-        self.cluster_status_by_cluster_id: Dict[str, Literal["absent", "present"]] = {}
-        self.cluster_type_by_cluster_id: Dict[str,Literal['singleton', 'shared', 'specific']] = {}  # fmt:skip
+        self.cluster_status_by_cluster_id: Dict[
+            str, Literal["absent", "present"]
+        ] = {}
+        self.cluster_type_by_cluster_id: Dict[
+            str, Literal["singleton", "shared", "specific"]
+        ] = {}
 
         self.cluster_mwu_pvalue_by_cluster_id = {}
         self.cluster_mwu_log2_mean_by_cluster_id = {}
@@ -57,7 +61,9 @@ class AttributeLevel:
         self.domain_counter_by_domain_source_by_cluster_type = None
         self.protein_with_domain_count_by_domain_source_by_cluster_type = None
 
-        self.protein_length_stats_by_cluster_id: Dict[str, Dict[str, int | float]] = {}  # fmt:skip
+        self.protein_length_stats_by_cluster_id: Dict[
+            str, Dict[str, int | float]
+        ] = {}
         self.protein_count_by_cluster_id: Dict[str, int] = {}
 
     def add_cluster(
@@ -105,14 +111,22 @@ class AttributeLevel:
         ].append(cluster.cluster_id)
         self.cluster_status_by_cluster_id[cluster.cluster_id] = ALO_cluster_status
         self.cluster_type_by_cluster_id[cluster.cluster_id] = attribute_cluster_type
-        self.protein_length_stats_by_cluster_id[cluster.cluster_id] = ALO_protein_length_stats  # fmt:skip
+        self.protein_length_stats_by_cluster_id[cluster.cluster_id] = (
+            ALO_protein_length_stats
+        )
 
-        self.protein_count_by_cluster_id[cluster.cluster_id] = len(ALO_protein_ids_in_cluster)  # fmt:skip
+        self.protein_count_by_cluster_id[cluster.cluster_id] = len(
+            ALO_protein_ids_in_cluster
+        )
 
         if ALO_cluster_status == "present":
             for ALO_protein_id in ALO_protein_ids_in_cluster:
-                self.protein_ids_by_cluster_type[attribute_cluster_type].append(ALO_protein_id)  # fmt:skip
-            self.protein_span_by_cluster_type[attribute_cluster_type].append(ALO_protein_length_stats["sum"])  # fmt:skip
+                self.protein_ids_by_cluster_type[attribute_cluster_type].append(
+                    ALO_protein_id
+                )
+            self.protein_span_by_cluster_type[attribute_cluster_type].append(
+                ALO_protein_length_stats["sum"]
+            )
             if attribute_cluster_type != "singleton" and ALO_cluster_cardinality:
                 self.clusters_by_cluster_cardinality_by_cluster_type[
                     attribute_cluster_type
@@ -120,7 +134,9 @@ class AttributeLevel:
 
         self.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id] = mwu_pvalue
         self.cluster_mwu_log2_mean_by_cluster_id[cluster.cluster_id] = mwu_log2_mean
-        self.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id] = mean_ALO_count
+        self.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id] = (
+            mean_ALO_count
+        )
         self.cluster_mean_non_ALO_count_by_cluster_id[cluster.cluster_id] = (
             mean_non_ALO_count
         )
@@ -141,9 +157,7 @@ class AttributeLevel:
         if cluster_type == "total":
             return sum(
                 len(protein_ids)
-                for _, protein_ids in list(
-                    self.protein_ids_by_cluster_type.items()
-                )
+                for _, protein_ids in list(self.protein_ids_by_cluster_type.items())
             )
         else:
             return len(self.protein_ids_by_cluster_type[cluster_type])
@@ -197,13 +211,10 @@ class AttributeLevel:
                 If 'cluster_type' is "total", returns the sum of spans across all
                 cluster types.
         """
-        span = 0
         return (
             sum(
                 sum(protein_ids)
-                for _, protein_ids in list(
-                    self.protein_span_by_cluster_type.items()
-                )
+                for _, protein_ids in list(self.protein_span_by_cluster_type.items())
             )
             if cluster_type == "total"
             else sum(self.protein_span_by_cluster_type[cluster_type])
@@ -227,7 +238,11 @@ class AttributeLevel:
         Raises:
             KeyError: If 'cluster_type' or 'cluster_cardinality' is not found.
         """
-        return len(self.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][cluster_cardinality])  # fmt:skip
+        return len(
+            self.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][
+                cluster_cardinality
+            ]
+        )
 
     def get_proteomes(self) -> str:
         """
@@ -236,4 +251,6 @@ class AttributeLevel:
         Returns:
             str: Comma-separated and sorted list of proteome IDs.
         """
-        return ", ".join(sorted([str(proteome_id) for proteome_id in self.proteomes]))
+        return ", ".join(
+            sorted([str(proteome_id) for proteome_id in self.proteomes])
+        )

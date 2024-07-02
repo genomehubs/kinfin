@@ -37,7 +37,7 @@ class ProteinCollection:
         self.domain_sources: List[str] = []
         self.fastas_parsed: bool = False
         self.functional_annotation_parsed: bool = False
-        self.domain_desc_by_id_by_source: Dict[str, Dict[str,str]] = {}  # fmt: skip
+        self.domain_desc_by_id_by_source: Dict[str, Dict[str, str]] = {}
 
     def add_annotation_to_protein(
         self,

@@ -2,11 +2,13 @@ import os
 import shutil
 import time
 from collections import Counter
-from typing import Any, Dict, FrozenSet, Generator, List, Literal, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, Generator, List, Optional, Set, Tuple
 
 import matplotlib as mat
+import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.ticker import FormatStrFormatter, NullFormatter
 
 from core.alo import AttributeLevel
 from core.alo_collections import AloCollection
@@ -23,8 +25,6 @@ from core.proteins import ProteinCollection
 from core.utils import logger, median, progress, statistic
 
 mat.use("agg")
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter, NullFormatter
 
 plt.style.use("ggplot")
 mat.rc("ytick", labelsize=20)
@@ -122,10 +122,16 @@ class DataFactory:
 
     def analyse_clusters(self) -> None:
         if self.clusterCollection.inferred_singletons_count:
-            logger.info(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count} (of which {self.clusterCollection.inferred_singletons_count} were inferred singletons)")  # fmt:skip
+            logger.info(
+                f"[STATUS]\t - Clusters found = {
+                    self.clusterCollection.cluster_count} (of which {
+                    self.clusterCollection.inferred_singletons_count} were inferred singletons)"
+            )
 
         else:
-            logger.info(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count}")  # fmt:skip
+            logger.info(
+                f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count}"
+            )
 
         parse_steps = self.clusterCollection.cluster_count / 100
 
@@ -136,7 +142,9 @@ class DataFactory:
             progress(idx + 1, parse_steps, self.clusterCollection.cluster_count)
         analyse_clusters_end = time.time()
         analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
-        logger.info(f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters")
+        logger.info(
+            f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters"
+        )
 
     def plot_cluster_sizes(self):
         """
@@ -156,7 +164,9 @@ class DataFactory:
         ]
         cluster_protein_counter = Counter(cluster_protein_count)
         count_plot_f = os.path.join(
-            self.dirs["main"], f"cluster_size_distribution.{self.inputData.plot_format}"
+            self.dirs["main"],
+            f"cluster_size_distribution.{
+                self.inputData.plot_format}",
         )
         f, ax = plt.subplots(figsize=self.inputData.plotsize)
         ax.set_facecolor("white")
@@ -376,7 +386,8 @@ class DataFactory:
                 ]
                 if (
                     other_ALO
-                    and len(cluster.proteome_ids.intersection(other_ALO.proteomes)) >= 2
+                    and len(cluster.proteome_ids.intersection(other_ALO.proteomes))
+                    >= 2
                 ):
                     protein_counts_level = [
                         count
@@ -425,7 +436,8 @@ class DataFactory:
                         # mean_level = mean(protein_counts_level)
                         # mean_other_level = mean(protein_counts_other_level)
                         # log2fc_mean = log((mean_level/mean_other_level), 2)
-                        # yield [cluster.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+                        # yield [cluster.cluster_id, level, other_level, mean_level,
+                        # mean_other_level, log2fc_mean, pvalue]
 
     def get_attribute_metrics(self, ALO: AttributeLevel) -> str:
         """
@@ -449,7 +461,9 @@ class DataFactory:
         attribute_metrics = [
             ALO.attribute,
             ALO.level,
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "total"),
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "total"
+            ),
         ]
         attribute_metrics.append(ALO.get_protein_count_by_cluster_type("total"))
         attribute_metrics.append(ALO.get_protein_span_by_cluster_type("total"))
@@ -468,7 +482,9 @@ class DataFactory:
         attribute_metrics.append(ALO.get_protein_count_by_cluster_type("specific"))
         attribute_metrics.append(ALO.get_protein_span_by_cluster_type("specific"))
         attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "shared")
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "shared"
+            )
         )
         attribute_metrics.append(ALO.get_protein_count_by_cluster_type("shared"))
         attribute_metrics.append(ALO.get_protein_span_by_cluster_type("shared"))
@@ -493,7 +509,9 @@ class DataFactory:
             )
         )
         attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "total")
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "absent", "total"
+            )
         )
         attribute_metrics.append(
             ALO.get_cluster_count_by_cluster_status_by_cluster_type(
@@ -538,13 +556,18 @@ class DataFactory:
         cluster_metrics_domains_detailed_output_by_domain_source = {}
         cluster_metrics_domains_detailed_f_by_domain_source = {}
         for domain_source in self.clusterCollection.domain_sources:
-            cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
             cluster_metrics_domains_detailed_output_by_domain_source[
                 domain_source
-            ].append(self.get_header_line("cluster_metrics_domains_detailed", "TAXON"))
+            ] = []
+            cluster_metrics_domains_detailed_output_by_domain_source[
+                domain_source
+            ].append(
+                self.get_header_line("cluster_metrics_domains_detailed", "TAXON")
+            )
             cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = (
                 os.path.join(
-                    self.dirs["main"], f"cluster_domain_annotation.{domain_source}.txt"
+                    self.dirs["main"],
+                    f"cluster_domain_annotation.{domain_source}.txt",
                 )
             )
 
@@ -633,8 +656,8 @@ class DataFactory:
                                 cluster_1to1_ALO_line += f"\t{cluster_type}"
                                 cluster_1to1_ALO_line += f"\t{cluster_cardinality}"
                                 cluster_1to1_ALO_line += f"\t{self.clusterCollection.cluster_list_by_cluster_id[
-                                        cluster_id
-                                    ].proteome_count}"
+                                    cluster_id
+                                ].proteome_count}"
                                 cluster_1to1_ALO_line += "\t{0:.2f}".format(
                                     len(
                                         [
@@ -666,28 +689,27 @@ class DataFactory:
                         cluster_metrics_line += f"\t{cluster.protein_median}"
                         cluster_metrics_line += f"\t{cluster.proteome_count}"
                         cluster_metrics_line += f"\t{attribute}"
-                        cluster_metrics_line += (
-                            f"\t{cluster.cluster_type_by_attribute[attribute]}"
-                        )
+                        cluster_metrics_line += f"\t{
+                            cluster.cluster_type_by_attribute[attribute]}"
                         if (
                             self.clusterCollection.fastas_parsed
                             and cluster.protein_length_stats
                         ):
-                            cluster_metrics_line += (
-                                f"\t{cluster.protein_length_stats["mean"]}"
-                            )
-                            cluster_metrics_line += (
-                                f"\t{cluster.protein_length_stats["sd"]}"
-                            )
+                            cluster_metrics_line += f"\t{
+                                cluster.protein_length_stats["mean"]}"
+                            cluster_metrics_line += f"\t{
+                                cluster.protein_length_stats["sd"]}"
                         else:
                             cluster_metrics_line += "\tN/A"
                             cluster_metrics_line += "\tN/A"
                         for _level in levels:
-                            cluster_metrics_line += f"\t{sum(cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
+                            cluster_metrics_line += f"\t{
+                                sum(
+                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
                         if not attribute == "TAXON":
                             for _level in levels:
                                 cluster_metrics_line += f"\t{median(
-                                        cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
+                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
                             for _level in levels:
                                 cluster_metrics_line += "\t{0:.2f}".format(
                                     cluster.proteome_coverage_by_level_by_attribute[
@@ -706,12 +728,12 @@ class DataFactory:
                         # cafe_line.append("None")
                         for _level in levels:
                             cafe_line += f"\t{sum(
-                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[
-                                        attribute
-                                    ][
-                                        _level
-                                    ]
-                                )}"
+                                cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                    attribute
+                                ][
+                                    _level
+                                ]
+                            )}"
                         cafe_output.append(cafe_line)
 
                     ###########################
@@ -732,12 +754,10 @@ class DataFactory:
                             self.clusterCollection.fastas_parsed
                             and cluster.protein_length_stats
                         ):
-                            cluster_metrics_domains_line += (
-                                f"\t{cluster.protein_length_stats["mean"]}"
-                            )
-                            cluster_metrics_domains_line += (
-                                f"\t{cluster.protein_length_stats["sd"]}"
-                            )
+                            cluster_metrics_domains_line += f"\t{
+                                cluster.protein_length_stats["mean"]}"
+                            cluster_metrics_domains_line += f"\t{
+                                cluster.protein_length_stats["sd"]}"
 
                         else:
                             cluster_metrics_domains_line += "\tN/A"
@@ -750,7 +770,10 @@ class DataFactory:
                             cluster_metrics_domains_line += "\tN/A"
                         for domain_source in self.clusterCollection.domain_sources:
                             # cluster_metrics_domains
-                            if domain_source in cluster.domain_counter_by_domain_source:
+                            if (
+                                domain_source
+                                in cluster.domain_counter_by_domain_source
+                            ):
                                 sorted_counts = sorted(
                                     [
                                         f"{domain_id}:{count}"
@@ -764,7 +787,9 @@ class DataFactory:
                                     ),
                                 )
                                 sorted_counts_str = ";".join(sorted_counts)
-                                cluster_metrics_domains_line += f"\t{sorted_counts_str}"
+                                cluster_metrics_domains_line += (
+                                    f"\t{sorted_counts_str}"
+                                )
 
                                 cluster_metrics_domains_line += "\t{0:.3f}".format(
                                     cluster.domain_entropy_by_domain_source[
@@ -784,9 +809,8 @@ class DataFactory:
                             ) in cluster.domain_counter_by_domain_source[
                                 domain_source
                             ].most_common():
-                                cluster_metrics_domains_detailed_output_line = (
-                                    f"{cluster.cluster_id}"
-                                )
+                                cluster_metrics_domains_detailed_output_line = f"{
+                                    cluster.cluster_id}"
                                 cluster_metrics_domains_detailed_output_line += (
                                     f"\t{domain_source}"
                                 )
@@ -803,18 +827,17 @@ class DataFactory:
                                         in self.proteinCollection.domain_desc_by_id_by_source
                                     ):
                                         cluster_metrics_domains_detailed_output_line += f"\t{self.proteinCollection.domain_desc_by_id_by_source[
-                                                domain_source
-                                            ].get(
-                                                domain_id, "N/A"
-                                            )}"
+                                            domain_source
+                                        ].get(
+                                            domain_id, "N/A"
+                                        )}"
                                     else:
                                         cluster_metrics_domains_detailed_output_line += (
                                             "\tN/A"
                                         )
 
-                                cluster_metrics_domains_detailed_output_line += (
-                                    f"\t{cluster.protein_count}"
-                                )
+                                cluster_metrics_domains_detailed_output_line += f"\t{
+                                    cluster.protein_count}"
                                 protein_with_domain_count_by_proteome_id = {}
                                 proteome_count_with_domain = 0
                                 protein_without_domain_count_by_proteome_id = {}
@@ -858,7 +881,9 @@ class DataFactory:
                                 proteomes_with_domain_count_string = ",".join(
                                     sorted(
                                         [
-                                            f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                            f"{proteome_id}:{count}/{
+                                                len(
+                                                    cluster.protein_ids_by_proteome_id[proteome_id])}"
                                             for proteome_id, count in list(
                                                 protein_with_domain_count_by_proteome_id.items()
                                             )
@@ -868,7 +893,9 @@ class DataFactory:
                                 proteomes_without_domain_count_string = ",".join(
                                     sorted(
                                         [
-                                            f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                            f"{proteome_id}:{count}/{
+                                                len(
+                                                    cluster.protein_ids_by_proteome_id[proteome_id])}"
                                             for proteome_id, count in list(
                                                 protein_without_domain_count_by_proteome_id.items()
                                             )
@@ -876,8 +903,8 @@ class DataFactory:
                                     )
                                 )
                                 cluster_metrics_domains_detailed_output_line += f"\t{sum(
-                                        protein_with_domain_count_by_proteome_id.values()
-                                    )}"
+                                    protein_with_domain_count_by_proteome_id.values()
+                                )}"
                                 cluster_metrics_domains_detailed_output_line += (
                                     "\t{0:.3f}".format(
                                         proteome_count_with_domain
@@ -912,24 +939,26 @@ class DataFactory:
 
                     cluster_metrics_ALO_line = f"{cluster.cluster_id}"
                     if ALO:
-                        cluster_metrics_ALO_line += (
-                            f"\t{ALO.cluster_status_by_cluster_id[cluster.cluster_id]}"
-                        )
+                        cluster_metrics_ALO_line += f"\t{ALO.cluster_status_by_cluster_id[cluster.cluster_id]}"
                         cluster_metrics_ALO_line += (
                             f"\t{ALO.cluster_type_by_cluster_id[cluster.cluster_id]}"
                         )
                     cluster_metrics_ALO_line += f"\t{cluster.protein_count}"
                     cluster_metrics_ALO_line += f"\t{cluster.proteome_count}"
                     cluster_metrics_ALO_line += f"\t{sum(
-                            cluster.protein_counts_of_proteomes_by_level_by_attribute[
-                                attribute
-                            ][level]
-                        )}"
+                        cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                            attribute
+                        ][level]
+                    )}"
                     if (
                         ALO
-                        and ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]
+                        and ALO.cluster_mean_ALO_count_by_cluster_id[
+                            cluster.cluster_id
+                        ]
                     ):
-                        cluster_metrics_ALO_line += f"\t{ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]}"
+                        cluster_metrics_ALO_line += f"\t{
+                            ALO.cluster_mean_ALO_count_by_cluster_id[
+                                cluster.cluster_id]}"
                     else:
                         cluster_metrics_ALO_line += "\tN/A"
                     if (
@@ -939,8 +968,8 @@ class DataFactory:
                         ]
                     ):
                         cluster_metrics_ALO_line += f"\t{ALO.cluster_mean_non_ALO_count_by_cluster_id[
-                                cluster.cluster_id
-                            ]}"
+                            cluster.cluster_id
+                        ]}"
                     else:
                         cluster_metrics_ALO_line += "\tN/A"
                     if (
@@ -948,7 +977,9 @@ class DataFactory:
                         and ALO.cluster_type_by_cluster_id[cluster.cluster_id]
                         == "shared"
                     ):
-                        if ALO.cluster_mwu_log2_mean_by_cluster_id[cluster.cluster_id]:
+                        if ALO.cluster_mwu_log2_mean_by_cluster_id[
+                            cluster.cluster_id
+                        ]:
                             background_pair = (level, "background")
                             if (
                                 attribute
@@ -986,7 +1017,9 @@ class DataFactory:
                                 ]
                             )
                             background_representation_test.append(
-                                ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]
+                                ALO.cluster_mwu_pvalue_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
                             )
                             background_representation_test_by_pair_by_attribute[
                                 attribute
@@ -1009,8 +1042,8 @@ class DataFactory:
                             else:
                                 cluster_metrics_ALO_line += "\tequal"
                             cluster_metrics_ALO_line += f"\t{ALO.cluster_mwu_log2_mean_by_cluster_id[
-                                    cluster.cluster_id
-                                ]}"
+                                cluster.cluster_id
+                            ]}"
                             cluster_metrics_ALO_line += f"\t{ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]}"
                         else:
                             cluster_metrics_ALO_line += "\tN/A"
@@ -1034,15 +1067,17 @@ class DataFactory:
                     cluster_metrics_ALO_line += f"\t{len(ALO_proteomes_present)}"
                     cluster_metrics_ALO_line += f"\t{len(non_ALO_proteomes_present)}"
                     if ALO_proteomes_present:
-                        cluster_metrics_ALO_line += (
-                            f"\t{",".join(sorted(list(ALO_proteomes_present)))}"
-                        )
+                        cluster_metrics_ALO_line += f"\t{
+                            ",".join(
+                                sorted(
+                                    list(ALO_proteomes_present)))}"
                     else:
                         cluster_metrics_ALO_line += "\tN/A"
                     if non_ALO_proteomes_present:
-                        cluster_metrics_ALO_line += (
-                            f"\t{",".join(sorted(list(non_ALO_proteomes_present)))}"
-                        )
+                        cluster_metrics_ALO_line += f"\t{
+                            ",".join(
+                                sorted(
+                                    list(non_ALO_proteomes_present)))}"
                     else:
                         cluster_metrics_ALO_line += "\tN/A"
                     # if cluster.go_terms:
@@ -1058,7 +1093,8 @@ class DataFactory:
 
                     if (
                         len(levels) > 1
-                        and len(ALO_proteomes_present) >= self.inputData.min_proteomes
+                        and len(ALO_proteomes_present)
+                        >= self.inputData.min_proteomes
                     ):
                         for result in self.pairwise_representation_test(
                             cluster, attribute, level, levels_seen, levels
@@ -1125,7 +1161,9 @@ class DataFactory:
                     with open(
                         cluster_metrics_domains_f, "w"
                     ) as cluster_metrics_domains_fh:
-                        logger.info(f"[STATUS] - Writing {cluster_metrics_domains_f}")
+                        logger.info(
+                            f"[STATUS] - Writing {cluster_metrics_domains_f}"
+                        )
                         cluster_metrics_domains_fh.write(
                             "\n".join(cluster_metrics_domains_output) + "\n"
                         )
@@ -1192,7 +1230,9 @@ class DataFactory:
                 with open(
                     pairwise_representation_test_f, "w"
                 ) as pairwise_representation_test_fh:
-                    logger.info(f"[STATUS] - Writing {pairwise_representation_test_f}")
+                    logger.info(
+                        f"[STATUS] - Writing {pairwise_representation_test_f}"
+                    )
                     pairwise_representation_test_fh.write(
                         "\n".join(pairwise_representation_test_output) + "\n"
                     )
@@ -1232,7 +1272,9 @@ class DataFactory:
                 number_of_samples = len(rarefaction_by_samplesize_by_level[level])
                 if number_of_samples > max_number_of_samples:
                     max_number_of_samples = number_of_samples
-                colour = plt.cm.Paired(idx / len(rarefaction_by_samplesize_by_level))  # type: ignore
+                colour = plt.cm.Paired(  # type: ignore
+                    idx / len(rarefaction_by_samplesize_by_level)
+                )  # type: ignore
                 x_values = []
                 y_mins = []
                 y_maxs = []
@@ -1261,7 +1303,11 @@ class DataFactory:
 
             ax.grid(True, linewidth=1, which="major", color="lightgrey")
             legend = ax.legend(
-                ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=fontsize
+                ncol=1,
+                numpoints=1,
+                loc="lower right",
+                frameon=True,
+                fontsize=fontsize,
             )
             legend.get_frame().set_facecolor("white")
             logger.info(f"[STATUS]\t- Plotting {rarefaction_plot_f}")
@@ -1300,15 +1346,16 @@ class DataFactory:
                 # At least one proteome of each child node in cluster
                 # => SYNAPOMORPHY
                 node_proteome_coverage = len(intersection) / len(
-                    node.proteome_ids  # type: ignore
-                )
+                    node.proteome_ids
+                )  # type: ignore
                 node_cluster_type = ""
                 node_cluster_type = (
                     "complete_presence"
                     if node_proteome_coverage == 1.0
                     else "partial_absence"
                 )
-                node.synapomorphic_cluster_counts[node_cluster_type] += 1  # type: ignore
+                # type: ignore
+                node.synapomorphic_cluster_counts[node_cluster_type] += 1
 
                 node.synapomorphic_cluster_strings.append(  # type: ignore
                     (
@@ -1325,9 +1372,15 @@ class DataFactory:
         if not self.aloCollection.tree_ete:
             return
 
-        for node in self.aloCollection.tree_ete.traverse("levelorder"):  # type: ignore
-            intersection = cluster.proteome_ids.intersection(node.proteome_ids)  # type: ignore
-            difference = cluster.proteome_ids.difference(node.proteome_ids)  # type: ignore
+        for node in self.aloCollection.tree_ete.traverse(
+            "levelorder"
+        ):  # type: ignore
+            intersection = cluster.proteome_ids.intersection(
+                node.proteome_ids  # type: ignore
+            )  # type: ignore
+            difference = cluster.proteome_ids.difference(
+                node.proteome_ids  # type: ignore
+            )  # type: ignore
 
             if len(intersection) == 0:
                 # Nothing to see here ...
@@ -1357,13 +1410,15 @@ class DataFactory:
     def _process_single_attribute(self, cluster: Cluster, attribute: str) -> None:
         protein_ids_by_level: Dict[str, List[str]] = {}
         protein_length_stats_by_level: Dict[str, Dict[str, int | float]] = {}
-        explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]] = {}
+        explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]] = (
+            {}
+        )
 
         cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute] = {}
         cluster.proteome_coverage_by_level_by_attribute[attribute] = {}
-        cluster.implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute] = (
-            {}
-        )
+        cluster.implicit_protein_ids_by_proteome_id_by_level_by_attribute[
+            attribute
+        ] = {}
 
         for level in self.aloCollection.ALO_by_level_by_attribute[attribute]:
             self._process_level(
@@ -1408,7 +1463,9 @@ class DataFactory:
         protein_ids_by_level[level] = []
 
         for proteome_id in ALO.proteomes_list:
-            protein_ids = list(cluster.protein_ids_by_proteome_id.get(proteome_id, []))
+            protein_ids = list(
+                cluster.protein_ids_by_proteome_id.get(proteome_id, [])
+            )
             protein_ids_by_level[level].extend(protein_ids)
             protein_count_by_proteome_id[proteome_id] = len(protein_ids)
             if protein_count_by_proteome_id[proteome_id] != 0:
@@ -1424,12 +1481,14 @@ class DataFactory:
         )
 
         protein_length_stats_by_level[level] = (
-            self.proteinCollection.get_protein_length_stats(protein_ids_by_level[level])
+            self.proteinCollection.get_protein_length_stats(
+                protein_ids_by_level[level]
+            )
         )
 
-        cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][level] = (
-            list(protein_count_by_proteome_id.values())
-        )
+        cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][
+            level
+        ] = list(protein_count_by_proteome_id.values())
 
     def _update_ALO_data(
         self,
@@ -1448,7 +1507,9 @@ class DataFactory:
                 len(
                     cluster.implicit_protein_ids_by_proteome_id_by_level_by_attribute[
                         attribute
-                    ].get(level, [])
+                    ].get(
+                        level, []
+                    )
                 )
                 / ALO.proteome_count
             )
@@ -1519,7 +1580,9 @@ class DataFactory:
                 count
                 for count in cluster.protein_counts_of_proteomes_by_level_by_attribute[
                     "all"
-                ]["all"]
+                ][
+                    "all"
+                ]
                 if count != 0
             ]
         )
@@ -1576,7 +1639,9 @@ class DataFactory:
     def _get_output_filename(self, attribute, pair_list):
         return os.path.join(
             self.dirs[attribute],
-            f"{attribute}.pairwise_representation_test.{"_".join(pair_list)}.{self.inputData.plot_format}",
+            f"{attribute}.pairwise_representation_test.{
+                "_".join(pair_list)}.{
+                self.inputData.plot_format}",
         )
 
     def _create_volcano_plot(self, p_values, log2fc_values, pair_list, output_file):
@@ -1587,7 +1652,9 @@ class DataFactory:
         p_array = np.array(p_values)
         log2fc_array = np.array(log2fc_values)
 
-        log2fc_percentile = self._plot_data(axScatter, axHistx, log2fc_array, p_array)
+        log2fc_percentile = self._plot_data(
+            axScatter, axHistx, log2fc_array, p_array
+        )
         self._set_plot_properties(
             axScatter, axHistx, log2fc_array, p_array, pair_list, log2fc_percentile
         )

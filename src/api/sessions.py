@@ -115,7 +115,7 @@ class SessionManager:
         if not session:
             return None
 
-        if expired := session.is_expired():
+        if session.is_expired():
             self.remove(session_id)
             return None
         else:

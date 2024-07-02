@@ -1,21 +1,19 @@
 import os
 import random
-from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 import ete3
 import matplotlib as mat
+import matplotlib.pyplot as plt
 import numpy as np
 from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
-from core.utils import logger, median
+from core.utils import logger
 
 mat.use("agg")
 
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter, NullFormatter
 
 plt.style.use("ggplot")
 mat.rc("ytick", labelsize=20)
@@ -46,11 +44,15 @@ class AloCollection:
         self.level_by_attribute_by_proteome_id = level_by_attribute_by_proteome_id
         self.node_idx_by_proteome_ids = node_idx_by_proteome_ids
         self.tree_ete = tree_ete
-        self.proteome_ids_by_level_by_attribute = self.compute_proteomes_by_level_by_attribute()  # fmt: skip
+        self.proteome_ids_by_level_by_attribute = (
+            self.compute_proteomes_by_level_by_attribute()
+        )
         self.fastas_parsed: bool = False
         self.ALO_by_level_by_attribute = self.create_ALOs()
 
-    def compute_proteomes_by_level_by_attribute(self) -> Dict[str, Dict[str, Set[str]]]:
+    def compute_proteomes_by_level_by_attribute(
+        self,
+    ) -> Dict[str, Dict[str, Set[str]]]:
         """
         Compute proteomes grouped by levels for each attribute.
 
@@ -70,7 +72,9 @@ class AloCollection:
         }
         for proteome_id in self.level_by_attribute_by_proteome_id:
             for attribute in self.attributes:
-                level = self.level_by_attribute_by_proteome_id[proteome_id][attribute]
+                level = self.level_by_attribute_by_proteome_id[proteome_id][
+                    attribute
+                ]
                 if level not in proteomes_by_level_by_attribute[attribute]:
                     proteomes_by_level_by_attribute[attribute][level] = set()
                 proteomes_by_level_by_attribute[attribute][level].add(proteome_id)
@@ -87,10 +91,14 @@ class AloCollection:
                 and the corresponding value is a dictionary mapping level (str)
                 to an AttributeLevel instance or None.
         """
-        ALO_by_level_by_attribute: Dict[str, Dict[str, Optional[AttributeLevel]]] = { attribute: {} for attribute in self.attributes }  # fmt:skip
+        ALO_by_level_by_attribute: Dict[str, Dict[str, Optional[AttributeLevel]]] = {
+            attribute: {} for attribute in self.attributes
+        }
         for attribute in self.proteome_ids_by_level_by_attribute:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
-                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
+                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
+                    level
+                ]
                 ALO = AttributeLevel(
                     #
                     attribute=attribute,
@@ -243,7 +251,9 @@ class AloCollection:
             f.savefig(chart_f, bbox_inches="tight", format="png")
             if plot_format == "pdf":
                 pdf_chart_f = os.path.join(
-                    dirs["tree_charts"], f"{node.name}.barchart.pdf"
+                    dirs["tree_charts"],
+                    f"{
+                        node.name}.barchart.pdf",
                 )
                 logger.info(f"[STATUS]\t- Plotting {pdf_chart_f}")
                 f.savefig(pdf_chart_f, bbox_inches="tight", format="pdf")
@@ -268,7 +278,9 @@ class AloCollection:
             self.tree_ete.write(format=1, outfile=tree_nwk_f)
             tree_txt_f = os.path.join(dirs["tree"], "tree.txt")
             with open(tree_txt_f, "w") as tree_txt_fh:
-                tree_txt_fh.write(f"{self.tree_ete.get_ascii(show_internal=True, compact=False)}\n")  # fmt:skip
+                tree_txt_fh.write(
+                    f"{self.tree_ete.get_ascii(show_internal=True, compact=False)}\n"
+                )
 
     def plot_tree(
         self,
@@ -300,14 +312,16 @@ class AloCollection:
         for node in self.tree_ete.traverse("levelorder"):  # type: ignore
             node.set_style(style)
             if header_f_by_node_name[node.name]:
+                # must be PNG! (ETE can't do PDF Faces)
                 node_header_face = ete3.faces.ImgFace(
                     header_f_by_node_name[node.name]
-                )  # must be PNG! (ETE can't do PDF Faces)
+                )
                 node.add_face(node_header_face, column=0, position="branch-top")
             if charts_f_by_node_name[node.name]:
+                # must be PNG! (ETE can't do PDF Faces)
                 node_chart_face = ete3.faces.ImgFace(
                     charts_f_by_node_name[node.name]
-                )  # must be PNG! (ETE can't do PDF Faces)
+                )
                 node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
             node.img_style["size"] = 10
@@ -323,7 +337,9 @@ class AloCollection:
         ts.allow_face_overlap = True
         ts.guiding_lines_color = "lightgrey"
         logger.info(f"[STATUS] - Writing tree {tree_f}... ")
-        self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)  # type: ignore
+        self.tree_ete.render(  # type: ignore
+            tree_f, dpi=600, h=1189, units="mm", tree_style=ts
+        )
 
     def write_tree(
         self,
@@ -381,7 +397,10 @@ class AloCollection:
             for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
                 node_clusters.append(
                     "\t".join(
-                        [str(string) for string in list(synapomorphic_cluster_string)]
+                        [
+                            str(string)
+                            for string in list(synapomorphic_cluster_string)
+                        ]
                     )
                 )
             node_stats_line = [
@@ -389,17 +408,24 @@ class AloCollection:
                 node.apomorphic_cluster_counts["singletons"],  # type: ignore
                 node.apomorphic_cluster_counts["non_singletons"],  # type: ignore
                 (
+                    # type: ignore
                     node.synapomorphic_cluster_counts["complete_presence"]  # type: ignore
+                    # type: ignore
                     + node.synapomorphic_cluster_counts["partial_absence"]  # type: ignore
                 ),
+                # type: ignore
                 node.synapomorphic_cluster_counts["complete_presence"],  # type: ignore
                 node.synapomorphic_cluster_counts["partial_absence"],  # type: ignore
                 len(node.proteome_ids),  # type: ignore
             ]
-            node_stats.append("\t".join([str(string) for string in node_stats_line]))  # fmt:skip
+            node_stats.append("\t".join([str(string) for string in node_stats_line]))
             if render_tree:
-                header_f_by_node_name[node.name] = self.generate_header_for_node(node, dirs)  # fmt:skip
-            charts_f_by_node_name[node.name] = self.generate_chart_for_node(node, dirs, plot_format, fontsize)  # fmt:skip
+                header_f_by_node_name[node.name] = self.generate_header_for_node(
+                    node, dirs
+                )
+            charts_f_by_node_name[node.name] = self.generate_chart_for_node(
+                node, dirs, plot_format, fontsize
+            )
         logger.info(f"[STATUS] - Writing {node_stats_f} ... ")
         with open(node_stats_f, "w") as node_stats_fh:
             node_stats_fh.write("\n".join(node_stats) + "\n")
@@ -438,13 +464,13 @@ class AloCollection:
                 sample_size = idx + 1
                 if (
                     sample_size
-                    not in rarefaction_by_samplesize_by_level_by_attribute[attribute][
-                        level
-                    ]
+                    not in rarefaction_by_samplesize_by_level_by_attribute[
+                        attribute
+                    ][level]
                 ):
-                    rarefaction_by_samplesize_by_level_by_attribute[attribute][level][
-                        sample_size
-                    ] = []
+                    rarefaction_by_samplesize_by_level_by_attribute[attribute][
+                        level
+                    ][sample_size] = []
                 rarefaction_by_samplesize_by_level_by_attribute[attribute][level][
                     sample_size
                 ].append(len(seen_cluster_ids))
@@ -471,7 +497,9 @@ class AloCollection:
         logger.info("[STATUS] - Generating rarefaction data ...")
         for attribute in self.attributes:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
-                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
+                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
+                    level
+                ]
                 if len(proteome_ids) == 1:
                     continue
 

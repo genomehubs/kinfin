@@ -24,29 +24,54 @@ class Cluster:
                 for _id in protein_ids
             }
         except KeyError as e:
-            error_msg = f"[ERROR] - Protein {e.args[0]} in clustering belongs to proteomes that are not present in the config-file. Please add those proteomes or recluster by omitting these proteomes."
+            error_msg = f"[ERROR] - Protein {e.args[0]} in clustering belongs to proteomes that are not present in the config-file."
+            error_msg += "Please add those proteomes or recluster by omitting these proteomes."
             raise KeyError(error_msg) from e
 
-        self.proteome_ids_list: List[str] = list(self.proteomes_by_protein_id.values())
-        self.protein_count_by_proteome_id: Counter[str] = Counter(self.proteome_ids_list)  # fmt: skip
+        self.proteome_ids_list: List[str] = list(
+            self.proteomes_by_protein_id.values()
+        )
+        self.protein_count_by_proteome_id: Counter[str] = Counter(
+            self.proteome_ids_list
+        )
         self.proteome_ids: FrozenSet[str] = frozenset(self.proteome_ids_list)
         self.proteome_count: int = len(self.proteome_ids)
         self.singleton: bool = self.protein_count <= 1
         self.apomorphy: bool = self.proteome_count <= 1
 
-        self.protein_ids_by_proteome_id: DefaultDict[str, Set[str]] = compute_protein_ids_by_proteome(self.proteomes_by_protein_id)  # fmt:skip
-        self.protein_counts_of_proteomes_by_level_by_attribute:Dict[str, Dict[str, List[int]]] = {}  # fmt:skip
-        self.proteome_coverage_by_level_by_attribute: Dict[str, Dict[str, float]] = {}
-        self.implicit_protein_ids_by_proteome_id_by_level_by_attribute: Dict[str, Dict[str, Dict[str, List[str]]]] = {}  # fmt:skip
+        self.protein_ids_by_proteome_id: DefaultDict[str, Set[str]] = (
+            compute_protein_ids_by_proteome(self.proteomes_by_protein_id)
+        )
+        self.protein_counts_of_proteomes_by_level_by_attribute: Dict[
+            str, Dict[str, List[int]]
+        ] = {}
+        self.proteome_coverage_by_level_by_attribute: Dict[str, Dict[str, float]] = (
+            {}
+        )
+        self.implicit_protein_ids_by_proteome_id_by_level_by_attribute: Dict[
+            str, Dict[str, Dict[str, List[str]]]
+        ] = {}
         self.cluster_type_by_attribute: Dict[
             str,
             Literal["singleton", "shared", "specific"],
         ] = {}
         self.protein_median: Optional[float] = None
-        self.protein_length_stats: Optional[Dict[str,float]]= self.compute_protein_length_stats(proteinCollection, self.protein_ids)  # fmt:skip
-        self.secreted_cluster_coverage: float = self.compute_secreted_cluster_coverage(proteinCollection, self.protein_ids, self.protein_count)  # fmt:skip
-        self.domain_counter_by_domain_source: Dict[str, Counter[str]] = self.compute_domain_counter_by_domain_source(proteinCollection, self.protein_ids)  # fmt:skip
-        self.domain_entropy_by_domain_source: Dict[str,float] = self.compute_domain_entropy_by_domain_source()  # fmt:skip
+        self.protein_length_stats: Optional[Dict[str, float]] = (
+            self.compute_protein_length_stats(proteinCollection, self.protein_ids)
+        )
+        self.secreted_cluster_coverage: float = (
+            self.compute_secreted_cluster_coverage(
+                proteinCollection, self.protein_ids, self.protein_count
+            )
+        )
+        self.domain_counter_by_domain_source: Dict[str, Counter[str]] = (
+            self.compute_domain_counter_by_domain_source(
+                proteinCollection, self.protein_ids
+            )
+        )
+        self.domain_entropy_by_domain_source: Dict[str, float] = (
+            self.compute_domain_entropy_by_domain_source()
+        )
 
     def compute_protein_length_stats(
         self,
@@ -92,8 +117,10 @@ class Cluster:
         Returns:
         - float: Fraction of secreted proteins in the provided set of protein IDs.
         """
-        secreted = sum(bool(proteinCollection.proteins_by_protein_id[protein_id].secreted)
-                   for protein_id in protein_ids)
+        secreted = sum(
+            bool(proteinCollection.proteins_by_protein_id[protein_id].secreted)
+            for protein_id in protein_ids
+        )
         return secreted / protein_count
 
     def compute_domain_counter_by_domain_source(

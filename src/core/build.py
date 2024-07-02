@@ -120,7 +120,7 @@ def parse_domains_from_functional_annotations_file(
 
         else:
             if not proteinCollection.domain_sources:
-                error_msg = f"[ERROR] - {functional_annotation_f} does not seem to have a header."  # fmt: skip
+                error_msg = f"[ERROR] - {functional_annotation_f} does not seem to have a header."
                 raise ValueError(error_msg)
 
             domain_protein_id: str = temp.pop(0)
@@ -137,10 +137,14 @@ def parse_domains_from_functional_annotations_file(
                         if domain_source == "GO":
                             domain_id = domain_id_count
                         else:
-                            domain_id, domain_count_str = domain_id_count.rsplit(":", 2)  # fmt: skip
+                            domain_id, domain_count_str = domain_id_count.rsplit(
+                                ":", 2
+                            )
                             domain_count = int(domain_count_str)
                         domain_counts_by_domain_id[domain_id] = domain_count
-                    domain_counter: Counter[str] = Counter(domain_counts_by_domain_id)  # fmt: skip
+                    domain_counter: Counter[str] = Counter(
+                        domain_counts_by_domain_id
+                    )
                     domain_counter_by_domain_source[domain_source] = domain_counter
             proteinCollection.add_annotation_to_protein(
                 domain_protein_id=domain_protein_id,
@@ -179,7 +183,9 @@ def build_AloCollection(
 
     # Add taxonomy if needed
     if "TAXID" in set(attributes):
-        logger.info("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
+        logger.info(
+            "[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB"
+        )
         attributes, level_by_attribute_by_proteome_id = add_taxid_attributes(
             attributes=attributes,
             level_by_attribute_by_proteome_id=level_by_attribute_by_proteome_id,
@@ -239,7 +245,9 @@ def build_AloCollection_from_json(
 
     # Add taxonomy if needed
     if "TAXID" in set(attributes):
-        logger.info("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
+        logger.info(
+            "[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB"
+        )
         attributes, level_by_attribute_by_proteome_id = add_taxid_attributes(
             attributes=attributes,
             level_by_attribute_by_proteome_id=level_by_attribute_by_proteome_id,
@@ -282,7 +290,9 @@ def get_protein_list_from_seq_f(sequence_ids_f: str, aloCollection: AloCollectio
             .replace(")", "_")
         )  # orthofinder replaces characters
         species_id = sequence_id.split("_")[0]
-        if proteome_id := aloCollection.proteome_id_by_species_id.get(species_id, None):
+        if proteome_id := aloCollection.proteome_id_by_species_id.get(
+            species_id, None
+        ):
             protein = Protein(protein_id, proteome_id, species_id, sequence_id)
             proteins_list.append(protein)
         else:
@@ -325,7 +335,9 @@ def build_ProteinCollection(
         aloCollection.fastas_parsed = True
         proteinCollection.fastas_parsed = True
     else:
-        logger.info("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")  # fmt: skip
+        logger.info(
+            "[STATUS] - No Fasta-Dir given, no AA-span information will be reported ..."
+        )
 
     if functional_annotation_f is not None:
         parse_domains_from_functional_annotations_file(

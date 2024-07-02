@@ -128,7 +128,8 @@ def parse_attributes_from_config_file(
                 raise ValueError(error_msg)
 
             if temp[1] in proteomes:
-                error_msg = f"[ERROR] - 'TAXON' should be unique. {temp[0]} was encountered multiple times"
+                error_msg = f"[ERROR] - 'TAXON' should be unique. {
+                    temp[0]} was encountered multiple times"
                 raise ValueError(error_msg)
 
             species_id = temp[0]
@@ -136,7 +137,9 @@ def parse_attributes_from_config_file(
             proteomes.add(proteome_id)
             proteome_id_by_species_id[species_id] = proteome_id
 
-            level_by_attribute_by_proteome_id[proteome_id] = dict(zip(attributes, temp))
+            level_by_attribute_by_proteome_id[proteome_id] = dict(
+                zip(attributes, temp)
+            )
             level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
     attributes.insert(0, "all")  # append to front
     return (
@@ -179,7 +182,9 @@ def add_taxid_attributes(
 
         # add lineage attribute/levels
         for taxrank in taxranks:
-            level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[taxrank]
+            level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[
+                taxrank
+            ]
 
         # remove taxid-levels
         del level_by_attribute_by_proteome_id[proteome_id]["TAXID"]
@@ -196,8 +201,8 @@ def add_taxid_attributes(
 def parse_tree_from_file(
     tree_f: Optional[str],
     attributes: List[str],
-    level_by_attribute_by_proteome_id: Dict[str, Dict[str,str]],
-    proteomes: Set[str]
+    level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]],
+    proteomes: Set[str],
 ) -> Tuple[Optional[Tree], Optional[Dict[frozenset[str], str]]]:
     """
     Parse a phylogenetic tree from nwk file and set specified outgroups.
@@ -214,7 +219,7 @@ def parse_tree_from_file(
         return None, None
     outgroups: List[str] = []
     if "OUT" not in attributes:
-        error_msg = "[ERROR] - Please specify one of more outgroup taxa"  # fmt: skip
+        error_msg = "[ERROR] - Please specify one of more outgroup taxa"
         ValueError(error_msg)
     outgroups = [
         proteome_id
@@ -224,9 +229,13 @@ def parse_tree_from_file(
     logger.info(f"[STATUS] - Parsing Tree file : {tree_f} ...")
     tree_ete: TreeNode = ete3.Tree(tree_f)
     if len(outgroups) > 1:
-        outgroup_node: TreeNode = tree_ete.get_common_ancestor(outgroups)  # type: ignore
+        outgroup_node: TreeNode = tree_ete.get_common_ancestor(
+            outgroups
+        )  # type: ignore
         try:
-            logger.info(f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ...")
+            logger.info(
+                f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ..."
+            )
             tree_ete.set_outgroup(outgroup_node)  # type: ignore
         except ete3.coretype.tree.TreeError:  # type: ignore
             logger.info("[STATUS] - Tree seems to be rooted already : ...")
@@ -444,7 +453,9 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
         if not line.startswith("!"):
             temp: List[str] = line.replace(" > ", "|").split("|")
             go_string: List[str] = temp[1].split(";")
-            go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(" ")
+            go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(
+                " "
+            )
 
             if go_id not in go_mapping_dict:
                 go_mapping_dict[go_id] = go_desc
@@ -483,7 +494,7 @@ def get_attribute_cluster_type(
 
     Parameters:
     - singleton: A boolean indicating whether the cluster is a singleton.
-    - implicit_protein_ids_by_proteome_id_by_level: A dictionary representing protein ids 
+    - implicit_protein_ids_by_proteome_id_by_level: A dictionary representing protein ids
       grouped by proteome id at different levels.
 
     Returns:
@@ -547,4 +558,3 @@ def get_ALO_cluster_cardinality(
                 return "fuzzy"
 
     return None
-
