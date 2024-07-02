@@ -516,205 +516,6 @@ class DataFactory:
         attribute_metrics.append(ALO.get_proteomes())
         return "\t".join([str(field) for field in attribute_metrics])
 
-    def plot_count_comparisons_volcano(
-        self,
-        pairwise_representation_test_by_pair_by_attribute,
-    ) -> None:
-        """
-        Plot volcano plots for pairwise comparisons based on statistical tests.
-
-        Parameters:
-        - pairwise_representation_test_by_pair_by_attribute (dict): A dictionary where keys are attributes
-          and values are dictionaries mapping pairs to their test results.
-
-        Notes:
-        - This function generates volcano plots for each pair of attributes, showing the relationship between
-          log2 fold change and p-values.
-
-        Returns:
-        - None: Plots are saved as files.
-        """
-        # [cluster.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
-        for attribute in pairwise_representation_test_by_pair_by_attribute:
-            for pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
-                pair_list = list(pair)
-                pair_data = pairwise_representation_test_by_pair_by_attribute[
-                    attribute
-                ][pair]
-                pair_data_count = len(pair_data)
-                p_values = []
-                log2fc_values = []
-                for data in pair_data:
-                    log2fc_values.append(data[5])
-                    pvalue = data[6]
-                    if pvalue == 0.0:
-                        pvalue = 0.01 / (
-                            pair_data_count + 1
-                        )  # if value is 0.0 it gets set beyond the bonferroni corrected 0.01
-                    p_values.append(pvalue)
-                if p_values:
-                    pairwise_representation_test_f = os.path.join(
-                        self.dirs[attribute],
-                        f"{attribute}.pairwise_representation_test.{"_".join(pair_list)}.{self.inputData.plot_format}",
-                    )
-
-                    plt.figure(1, figsize=self.inputData.plotsize)
-                    # f, ax = plt.subplots(figsize=self.inputData.plotsize)
-                    # ax.set_facecolor('white')
-                    # definitions for the axes
-                    left, width = 0.1, 0.65
-                    bottom, height = 0.1, 0.65
-                    bottom_h = left + width + 0.02
-                    rect_scatter: Optional[Tuple[float, float, float, float]] = (
-                        left,
-                        bottom,
-                        width,
-                        height,
-                    )
-                    rect_histx = (left, bottom_h, width, 0.2)
-                    # plt.set_facecolor('white')
-                    nullfmt = NullFormatter()
-
-                    axScatter = plt.axes(rect_scatter)
-                    axScatter.set_facecolor("white")
-                    p_array = np.array(p_values)
-                    log2fc_array = np.array(log2fc_values)
-                    log2fc_percentile = np.percentile(log2fc_array, 95)
-                    ooFive = 0.05
-                    ooOne = 0.01
-
-                    # distribution
-                    axHistx = plt.axes(rect_histx)
-                    axHistx.set_facecolor("white")
-                    axHistx.xaxis.set_major_formatter(nullfmt)
-                    axHistx.yaxis.set_major_formatter(nullfmt)
-                    binwidth = 0.05
-                    xymax = np.max(
-                        [np.max(np.fabs(log2fc_array)), np.max(np.fabs(p_values))]
-                    )
-                    lim = (int(xymax / binwidth) + 1) * binwidth
-                    bins = np.arange(-lim, lim + binwidth, binwidth)
-                    axHistx.hist(
-                        log2fc_array,
-                        bins=bins,
-                        histtype="stepfilled",
-                        color="grey",
-                        align="mid",
-                    )
-                    # plot h-lines
-                    # ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
-                    axScatter.axhline(
-                        y=ooFive, linewidth=2, color="orange", linestyle="--"
-                    )
-                    ooFive_artist = Line2D(
-                        (0, 1), (0, 0), color="orange", linestyle="--"
-                    )
-                    ooFive_label = f"p-value = {ooFive}"
-                    ooOne_label = f"p-value = {ooOne}"
-                    # ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
-                    axScatter.axhline(y=ooOne, linewidth=2, color="red", linestyle="--")
-                    ooOne_artist = Line2D((0, 1), (0, 0), color="red", linestyle="--")
-                    # bonferroni
-                    # ooFive_corrected = 0.05 / pair_data_count
-                    # ooOne_corrected = 0.01 / pair_data_count
-                    # ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
-                    # ooFive_corrected_artist = Line2D((0, 1), (0, 0), color='grey', linestyle='--')
-                    # ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
-                    # ooOne_corrected_artist = Line2D((0, 1), (0, 0), color='black', linestyle='--')
-
-                    # plot v-lines
-                    # ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
-                    # ax.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
-                    axScatter.axvline(
-                        x=1.0, linewidth=2, color="purple", linestyle="--"
-                    )
-                    axScatter.axvline(
-                        x=log2fc_percentile, linewidth=2, color="blue", linestyle="--"
-                    )
-                    v1_label = "|log2FC| = 1"
-                    v1_artist = Line2D((0, 1), (0, 0), color="purple", linestyle="--")
-                    nine_five_percentile_label = "|log2FC-95%%ile| = %s" % (
-                        "{0:.2f}".format(log2fc_percentile)
-                    )
-                    nine_five_percentile_artist = Line2D(
-                        (0, 1), (0, 0), color="blue", linestyle="--"
-                    )
-                    # ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
-                    # ax.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
-                    axScatter.axvline(
-                        x=-1.0, linewidth=2, color="purple", linestyle="--"
-                    )
-                    axScatter.axvline(
-                        x=-log2fc_percentile, linewidth=2, color="blue", linestyle="--"
-                    )
-                    # plot dots
-                    # ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
-                    axScatter.scatter(
-                        log2fc_array,
-                        p_array,
-                        alpha=0.8,
-                        edgecolors="none",
-                        s=25,
-                        c="grey",
-                    )
-                    # Create legend from custom artist/label lists
-                    # legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
-                    #          [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
-                    #          fontsize=self.inputData.fontsize, frameon=True)
-                    # legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
-                    legend = axScatter.legend(
-                        [
-                            ooFive_artist,
-                            ooOne_artist,
-                            v1_artist,
-                            nine_five_percentile_artist,
-                        ],
-                        [
-                            ooFive_label,
-                            ooOne_label,
-                            v1_label,
-                            nine_five_percentile_label,
-                        ],
-                        fontsize=self.inputData.fontsize,
-                        frameon=True,
-                    )
-                    legend.get_frame().set_facecolor("white")
-                    if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
-                        x_min = 0.0 - abs(np.max(log2fc_array))
-                        x_max = 0.0 + abs(np.max(log2fc_array))
-                    else:
-                        x_min = 0.0 - abs(np.min(log2fc_array))
-                        x_max = 0.0 + abs(np.min(log2fc_array))
-                    # ax.set_xlim(x_min - 1, x_max + 1)
-                    # ax.grid(True, linewidth=1, which="major", color="lightgrey")
-                    # ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-                    # ax.set_ylim(np.min(p_array) * 0.1, 1.1)
-                    # ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=self.inputData.fontsize)
-                    # ax.set_ylabel("p-value", fontsize=self.inputData.fontsize)
-                    axScatter.set_xlim(x_min - 1, x_max + 1)
-                    axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
-                    axScatter.grid(
-                        True, linewidth=0.5, which="minor", color="lightgrey"
-                    )
-                    axScatter.set_ylim(1.1, np.min(p_array) * 0.1)
-                    x_label = pair_list[0]
-                    y_label = pair_list[1]
-                    axScatter.set_xlabel(
-                        f"log2(mean({x_label})/mean({y_label}))",
-                        fontsize=self.inputData.fontsize,
-                    )
-                    axScatter.set_ylabel("p-value", fontsize=self.inputData.fontsize)
-                    # ax.set_yscale('log')
-                    axScatter.set_yscale("log")
-                    axHistx.set_xlim(axScatter.get_xlim())
-                    logger.info(f"[STATUS] - Plotting {pairwise_representation_test_f}")
-                    # plt.gca().invert_yaxis()
-                    plt.savefig(
-                        pairwise_representation_test_f,
-                        format=self.inputData.plot_format,
-                    )
-                    plt.close()
-
     def write_cluster_metrics(self) -> None:
         """
         Generate cluster metrics for the given data
@@ -1759,3 +1560,141 @@ class DataFactory:
 
         self._process_attributes(cluster)
         self._finalize_cluster_analysis(cluster)
+
+    def _prepare_data(self, pair_data):
+        pair_data_count = len(pair_data)
+        p_values = []
+        log2fc_values = []
+
+        for data in pair_data:
+            log2fc_values.append(data[5])
+            pvalue = data[6] if data[6] != 0.0 else 0.01 / (pair_data_count + 1)
+            p_values.append(pvalue)
+
+        return p_values, log2fc_values
+
+    def _get_output_filename(self, attribute, pair_list):
+        return os.path.join(
+            self.dirs[attribute],
+            f"{attribute}.pairwise_representation_test.{"_".join(pair_list)}.{self.inputData.plot_format}",
+        )
+
+    def _create_volcano_plot(self, p_values, log2fc_values, pair_list, output_file):
+        plt.figure(1, figsize=self.inputData.plotsize)
+
+        axScatter, axHistx = self._setup_plot_axes()
+
+        p_array = np.array(p_values)
+        log2fc_array = np.array(log2fc_values)
+
+        log2fc_percentile = self._plot_data(axScatter, axHistx, log2fc_array, p_array)
+        self._set_plot_properties(
+            axScatter, axHistx, log2fc_array, p_array, pair_list, log2fc_percentile
+        )
+
+        logger.info(f"[STATUS] - Plotting {output_file}")
+        plt.savefig(output_file, format=self.inputData.plot_format)
+        plt.close()
+
+    def _setup_plot_axes(self):
+        left, width = 0.1, 0.65
+        bottom, height = 0.1, 0.65
+        bottom_h = left + width + 0.02
+        rect_scatter = (left, bottom, width, height)
+        rect_histx = (left, bottom_h, width, 0.2)
+
+        axScatter = plt.axes(rect_scatter)
+        axScatter.set_facecolor("white")
+        axHistx = plt.axes(rect_histx)
+        axHistx.set_facecolor("white")
+        axHistx.xaxis.set_major_formatter(NullFormatter())
+        axHistx.yaxis.set_major_formatter(NullFormatter())
+
+        return axScatter, axHistx
+
+    def _plot_data(self, axScatter, axHistx, log2fc_array, p_array):
+        # Plot histogram
+        binwidth = 0.05
+        xymax = np.max(np.fabs(log2fc_array))
+        lim = (int(xymax / binwidth) + 1) * binwidth
+        bins = np.arange(-lim, lim + binwidth, binwidth)
+        axHistx.hist(
+            log2fc_array, bins=bins, histtype="stepfilled", color="grey", align="mid"
+        )
+
+        # Plot scatter
+        axScatter.scatter(
+            log2fc_array, p_array, alpha=0.8, edgecolors="none", s=25, c="grey"
+        )
+
+        # Add reference lines
+        ooFive, ooOne = 0.05, 0.01
+        log2fc_percentile = np.percentile(log2fc_array, 95)
+
+        axScatter.axhline(y=ooFive, linewidth=2, color="orange", linestyle="--")
+        axScatter.axhline(y=ooOne, linewidth=2, color="red", linestyle="--")
+        axScatter.axvline(x=1.0, linewidth=2, color="purple", linestyle="--")
+        axScatter.axvline(
+            x=log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+        axScatter.axvline(x=-1.0, linewidth=2, color="purple", linestyle="--")
+        axScatter.axvline(
+            x=-log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+
+        return log2fc_percentile
+
+    def _set_plot_properties(
+        self, axScatter, axHistx, log2fc_array, p_array, pair_list, log2fc_percentile
+    ):
+        # Set axis limits and properties
+        x_min = -max(abs(np.min(log2fc_array)), abs(np.max(log2fc_array)))
+        x_max = -x_min
+        axScatter.set_xlim(x_min - 1, x_max + 1)
+        axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
+        axScatter.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+        axScatter.set_ylim(1.1, np.min(p_array) * 0.1)
+        axScatter.set_xlabel(
+            f"log2(mean({pair_list[0]})/mean({pair_list[1]}))",
+            fontsize=self.inputData.fontsize,
+        )
+        axScatter.set_ylabel("p-value", fontsize=self.inputData.fontsize)
+        axScatter.set_yscale("log")
+        axHistx.set_xlim(axScatter.get_xlim())
+
+        # Add legend
+        legend_elements = [
+            Line2D([0], [0], color="orange", linestyle="--", label="p-value = 0.05"),
+            Line2D([0], [0], color="red", linestyle="--", label="p-value = 0.01"),
+            Line2D([0], [0], color="purple", linestyle="--", label="|log2FC| = 1"),
+            Line2D(
+                [0],
+                [0],
+                color="blue",
+                linestyle="--",
+                label=f"|log2FC-95%ile| = {log2fc_percentile:.2f}",
+            ),
+        ]
+        legend = axScatter.legend(
+            handles=legend_elements, fontsize=self.inputData.fontsize, frameon=True
+        )
+        legend.get_frame().set_facecolor("white")
+
+    def plot_count_comparisons_volcano(
+        self,
+        pairwise_representation_test_by_pair_by_attribute,
+    ):
+        for attribute in pairwise_representation_test_by_pair_by_attribute:
+            for pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
+                pair_list = list(pair)
+                pair_data = pairwise_representation_test_by_pair_by_attribute[
+                    attribute
+                ][pair]
+
+                p_values, log2fc_values = self._prepare_data(pair_data)
+
+                if p_values:
+                    output_file = self._get_output_filename(attribute, pair_list)
+                    self._create_volcano_plot(
+                        p_values, log2fc_values, pair_list, output_file
+                    )
