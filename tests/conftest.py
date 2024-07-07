@@ -34,9 +34,12 @@ def get_file_pairs(config) -> List[Tuple[str, str]]:
     files1: List[str] = get_files(generated)
     files2: List[str] = get_files(expected)
 
-    assert len(files1) == len(
-        files2
-    ), "Directories do not contain the same number of files"
+    set1 = set(files1)
+    set2 = set(files2)
+
+    missing_files = set1.symmetric_difference(set2)
+
+    assert not missing_files, f"files missing: {', '.join(list(missing_files))}"
 
     file_pairs: List[Tuple[str, str]] = [
         (os.path.join(generated, gen_file), os.path.join(expected, exp_file))
