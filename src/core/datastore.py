@@ -121,6 +121,15 @@ class DataFactory:
                     self.dirs["tree_headers"] = node_header_path
 
     def analyse_clusters(self) -> None:
+        """
+        Analyses clusters within the cluster collection.
+
+        Then proceeds to analyse each cluster individually,
+        logging progress and timing information.
+
+        Returns:
+            None
+        """
         if self.clusterCollection.inferred_singletons_count:
             logger.info(
                 f"[STATUS]\t - Clusters found = {
@@ -154,6 +163,23 @@ class DataFactory:
         plot_format: str,
         fontsize: int,
     ) -> None:
+        """
+        Plot rarefaction curves based on provided data.
+
+        Args:
+            rarefaction_by_samplesize_by_level_by_attribute (dict): A nested dictionary
+                where keys are attribute names, and values are dictionaries where keys
+                are level names and values are dictionaries mapping sample sizes to
+                lists of non-singleton cluster counts.
+            dirs (dict): A dictionary mapping attribute names to directory paths where
+                plots will be saved.
+            plotsize (tuple): A tuple specifying the size of the plot (width, height) in inches.
+            plot_format (str): The format of the plot to save (e.g., 'png', 'pdf').
+            fontsize (int): Font size for plot labels and legend.
+
+        Returns:
+            None
+        """
         for (
             attribute,
             rarefaction_by_samplesize_by_level,
@@ -211,6 +237,25 @@ class DataFactory:
             plt.close()
 
     def write_output(self) -> None:
+        """
+        Executes various methods to generate and write output files related to cluster analysis.
+
+        This method sequentially calls private methods to:
+        - Plot cluster sizes.
+        - Write cluster counts by taxon.
+        - Write cluster metrics related to domains.
+        - Write detailed cluster metrics related to domains.
+        - Write attribute metrics.
+        - Write a summary of cluster metrics.
+        - Write cluster metrics related to ALO (Additive Log Ratio) transformation.
+        - Write cluster 1-to-1 ALO metrics.
+        - Write pairwise representation metrics.
+
+        Each private method is responsible for generating specific outputs based on internal data.
+
+        Returns:
+            None
+        """
         self.__plot_cluster_sizes()
         self.__write_cluster_counts_by_taxon()
         self.__write_cluster_metrics_domains()
@@ -228,6 +273,21 @@ class DataFactory:
         intersection: FrozenSet[str],
         node,
     ) -> None:
+        """
+        Analyzes a specific cluster within an evolutionary tree node.
+
+        Updates various counts and attributes of the node based on the characteristics
+        of the given cluster and its intersection with proteome IDs.
+
+        Args:
+            cluster (Cluster): The cluster to analyze.
+            intersection (FrozenSet[str]): The intersection of proteome IDs between
+                the cluster and the current node.
+            node: The evolutionary tree node to update.
+
+        Returns:
+            None
+        """
         node.counts["specific"] += 1  # type: ignore
         if cluster.proteome_count == 1:
             # But it only belongs to one proteome
@@ -277,6 +337,19 @@ class DataFactory:
                 )
 
     def __analyse_tree_ete(self, cluster: Cluster) -> None:
+        """
+        Analyzes a cluster within an ETE Tree if available in the ALO collection.
+
+        Traverses the ETE Tree in level order, comparing proteome IDs of each node
+        with the cluster's proteome IDs. Updates counts and attributes of nodes
+        based on the analysis results.
+
+        Args:
+            cluster (Cluster): The cluster to analyze.
+
+        Returns:
+            None
+        """
         if not self.aloCollection.tree_ete:
             return
 
@@ -318,6 +391,26 @@ class DataFactory:
         protein_length_stats_by_level: Dict[str, Dict[str, int | float]],
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]],
     ) -> None:
+        """
+        Processes a specific level within an attribute for a given cluster.
+
+        Retrieves protein IDs and their counts associated with the specified level
+        from the ALO collection and updates various attributes and collections within
+        the cluster and the class instance.
+
+        Args:
+            cluster (Cluster): The cluster for which to process the level.
+            attribute (str): The attribute associated with the level.
+            level (str): The specific level to process.
+            protein_ids_by_level (dict): A dictionary to store protein IDs by level.
+            protein_length_stats_by_level (dict): A dictionary to store protein length statistics
+                by level.
+            explicit_protein_count_by_proteome_id_by_level (dict): A dictionary to store explicit
+                protein counts by proteome ID for each level.
+
+        Returns:
+            None
+        """
         ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
         if ALO is None:
             return
@@ -358,6 +451,25 @@ class DataFactory:
         protein_length_stats_by_level: Dict[str, Dict[str, int | float]],
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]],
     ) -> None:
+        """
+        Updates ALO (Additive Log Ratio) data for a given cluster and attribute.
+
+        Iterates through each level of the ALO collection corresponding to the attribute,
+        calculates various metrics based on the cluster's protein IDs and attributes, and
+        updates the ALO object with this information.
+
+        Args:
+            cluster (Cluster): The cluster to update ALO data for.
+            attribute (str): The attribute associated with the ALO data.
+            protein_ids_by_level (dict): A dictionary mapping level names to lists of protein IDs.
+            protein_length_stats_by_level (dict): A dictionary mapping level names to dictionaries
+                containing protein length statistics.
+            explicit_protein_count_by_proteome_id_by_level (dict): A dictionary mapping level names
+                to dictionaries where keys are proteome IDs and values are explicit protein counts.
+
+        Returns:
+            None
+        """
         for level in self.aloCollection.ALO_by_level_by_attribute[attribute]:
             ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
             if ALO is None:
@@ -433,6 +545,19 @@ class DataFactory:
             )
 
     def __process_single_attribute(self, cluster: Cluster, attribute: str) -> None:
+        """
+        Processes a single attribute for a given cluster.
+
+        Retrieves and processes each level associated with the attribute from the ALO
+        collection, updating various protein and cluster metrics within the cluster object.
+
+        Args:
+            cluster (Cluster): The cluster to process the attribute for.
+            attribute (str): The attribute to process.
+
+        Returns:
+            None
+        """
         protein_ids_by_level: Dict[str, List[str]] = {}
         protein_length_stats_by_level: Dict[str, Dict[str, int | float]] = {}
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]] = {}
@@ -469,10 +594,34 @@ class DataFactory:
         )
 
     def __process_attributes(self, cluster: Cluster) -> None:
+        """
+        Processes all attributes in the ALO collection for a given cluster.
+
+        Iterates through each attribute in the ALO collection and processes it
+        using the __process_single_attribute method.
+
+        Args:
+            cluster (Cluster): The cluster to process attributes for.
+
+        Returns:
+            None
+        """
         for attribute in self.aloCollection.attributes:
             self.__process_single_attribute(cluster, attribute)
 
     def __finalize_cluster_analysis(self, cluster: Cluster) -> None:
+        """
+        Finalizes the cluster analysis by calculating the median protein count.
+
+        Calculates the median protein count for the given cluster using the protein
+        counts of proteomes from specific levels and attributes.
+
+        Args:
+            cluster (Cluster): The cluster for which to finalize the analysis.
+
+        Returns:
+            None
+        """
         cluster.protein_median = median(
             [
                 count
@@ -484,6 +633,20 @@ class DataFactory:
         )
 
     def __analyse_cluster(self, cluster: Cluster) -> None:
+        """
+        Analyzes a cluster by performing various analysis steps.
+
+        Executes the analysis steps for the given cluster:
+        1. If an ETE tree is available in aloCollection, analyzes the tree structure.
+        2. Processes attributes associated with the cluster.
+        3. Finalizes the cluster analysis by calculating median protein counts.
+
+        Args:
+            cluster (Cluster): The cluster to be analyzed.
+
+        Returns:
+            None
+        """
         if self.aloCollection.tree_ete:
             self.__analyse_tree_ete(cluster=cluster)
 
@@ -493,6 +656,29 @@ class DataFactory:
     # write output
     # 0. __get_header_line
     def __get_header_line(self, filetype: str, attribute: str) -> str:
+        """
+        Generates a header line for different types of file formats based on the provided
+        `filetype` and `attribute`.
+
+        Args:
+            filetype (str): The type of file for which the header line is generated. Valid values:
+                            - "attribute_metrics": Header line for attribute metrics.
+                            - "cafe": Header line for CAFE analysis.
+                            - "cluster_1to1s_ALO": Header line for cluster 1-to-1 relationships with ALO.
+                            - "cluster_metrics": Header line for cluster metrics.
+                            - "cluster_metrics_ALO": Header line for cluster metrics with ALO.
+                            - "cluster_metrics_domains": Header line for cluster metrics with domains.
+                            - "cluster_metrics_domains_detailed": Header line for detailed cluster metrics with domains.
+                            - "pairwise_representation_test": Header line for pairwise representation test.
+
+            attribute (str): The attribute associated with the cluster, used in certain file types.
+
+        Returns:
+            str: The generated header line as a tab-separated string.
+
+        Raises:
+            ValueError: If `filetype` is not recognized.
+        """
         if filetype == "attribute_metrics":
             attribute_metrics_header = [
                 "#attribute",
@@ -636,6 +822,17 @@ class DataFactory:
 
     # 1. plot_cluster_sizes
     def __plot_cluster_sizes(self) -> None:
+        """
+        Plot the distribution of cluster sizes based on the protein counts in each cluster.
+
+        Saves the plot as a figure in the directory specified by self.dirs["main"].
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If self.inputData.plot_format is not a valid file format.
+        """
         cluster_protein_count = [
             cluster.protein_count for cluster in self.clusterCollection.cluster_list
         ]
@@ -674,6 +871,17 @@ class DataFactory:
 
     # 2. write_cluster_counts_by_taxon
     def __write_cluster_counts_by_taxon(self) -> None:
+        """
+        Write cluster counts by taxon attribute to a text file.
+
+        This method iterates through attributes in self.aloCollection.attributes,
+        retrieves protein counts by level for clusters in self.clusterCollection.cluster_list
+        that match the attribute "TAXON", and writes the data to a text file named
+        'cluster_counts_by_taxon.txt' in the directory specified by self.dirs["main"].
+
+        Raises:
+            ValueError: If the header type 'cafe' is not recognized.
+        """
         cafe_f = os.path.join(self.dirs["main"], "cluster_counts_by_taxon.txt")
         for attribute in self.aloCollection.attributes:
             levels = sorted(
@@ -700,6 +908,17 @@ class DataFactory:
 
     # 3. write_cluster_metrics_domains
     def __write_cluster_metrics_domains(self) -> None:
+        """
+        Write cluster metrics to a file 'cluster_metrics_domains.txt'.
+
+        This method constructs and writes cluster metrics data to a text file,
+        including cluster IDs, protein counts, taxon counts, domain statistics,
+        and entropy for each domain source present in the cluster collection.
+
+        Raises:
+            IOError: If there is an issue writing to the output file.
+
+        """
         cluster_metrics_domains_f = os.path.join(
             self.dirs["main"], "cluster_metrics_domains.txt"
         )
@@ -767,6 +986,22 @@ class DataFactory:
     def __count_proteins_with_domain(
         self, cluster: Cluster, domain_source: str, domain_id: str
     ) -> Tuple[Dict[str, int], Dict[str, int]]:
+        """
+        Count proteins with and without a specific domain in each proteome of a cluster.
+
+        Args:
+            cluster (Cluster): The cluster object containing proteins to be analyzed.
+            domain_source (str): The source of the domain to be counted (e.g., "Pfam", "InterPro").
+            domain_id (str): The ID of the specific domain to be counted.
+
+        Returns:
+            Tuple[Dict[str, int], Dict[str, int]]: A tuple containing:
+                - A dictionary where keys are proteome IDs and values are counts of proteins
+                  in the proteome that have the specified domain (`with_domain`).
+                - A dictionary where keys are proteome IDs and values are counts of proteins
+                  in the proteome that do not have the specified domain (`without_domain`).
+
+        """
         with_domain = defaultdict(int)
         without_domain = defaultdict(int)
 
@@ -787,6 +1022,19 @@ class DataFactory:
     def __format_proteome_counts(
         self, count_dict: Dict[str, int], cluster: Cluster
     ) -> str:
+        """
+        Format proteome counts into a string representation.
+
+        Args:
+            count_dict (Dict[str, int]): A dictionary where keys are proteome IDs and values are counts.
+            cluster (Cluster): The cluster object associated with the counts.
+
+        Returns:
+            str: A string representation of proteome counts formatted as "proteome_id:count/total"
+                 for each proteome ID in sorted order, separated by commas. If count_dict is empty,
+                 returns "N/A".
+
+        """
         return (
             ",".join(
                 f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
@@ -796,6 +1044,18 @@ class DataFactory:
         )
 
     def __get_domain_description(self, domain_source: str, domain_id: str) -> str:
+        """
+        Get the description of a domain based on its source and ID.
+
+        Args:
+            domain_source (str): The source of the domain (e.g., "SignalP_EUK", "Pfam").
+            domain_id (str): The ID of the domain whose description is to be retrieved.
+
+        Returns:
+            str: The description of the domain if found in `self.proteinCollection.domain_desc_by_id_by_source`,
+                 otherwise returns "N/A".
+
+        """
         if domain_source == "SignalP_EUK":
             return domain_id
         return self.proteinCollection.domain_desc_by_id_by_source.get(
@@ -805,6 +1065,18 @@ class DataFactory:
     def __process_cluster_domains(
         self, cluster: Cluster, output_by_domain_source: Dict[str, List[str]]
     ) -> None:
+        """
+        Process domain statistics for a cluster and populate the output dictionary.
+
+        Args:
+            cluster (Cluster): The cluster object containing domain statistics to process.
+            output_by_domain_source (Dict[str, List[str]]): A dictionary where keys are domain sources
+                and values are lists of output lines to be populated with processed domain statistics.
+
+        Returns:
+            None
+
+        """
         for (
             domain_source,
             domain_counter,
@@ -841,6 +1113,19 @@ class DataFactory:
         output_by_domain_source: Dict[str, List[str]],
         output_files: Dict[str, str],
     ) -> None:
+        """
+        Write domain outputs to respective output files.
+
+        Args:
+            output_by_domain_source (Dict[str, List[str]]): A dictionary where keys are domain sources
+                and values are lists of output lines to be written to output files.
+            output_files (Dict[str, str]): A dictionary where keys are domain sources and values are
+                corresponding output file paths.
+
+        Returns:
+            None
+
+        """
         for domain_source, output_lines in output_by_domain_source.items():
             if len(output_lines) > 1:
                 output_file = output_files[domain_source]
@@ -849,6 +1134,16 @@ class DataFactory:
                     fh.write("\n".join(output_lines) + "\n")
 
     def __write_cluster_metrics_domains_detailed(self) -> None:
+        """
+        Write detailed cluster metrics for domain annotations to respective output files.
+
+        This method constructs detailed cluster metrics for domain annotations and writes
+        them to individual output files for each domain source specified in the cluster
+        collection.
+
+        Returns:
+            None
+        """
         output_by_domain_source: Dict[str, List[str]] = {
             source: [
                 self.__get_header_line("cluster_metrics_domains_detailed", "TAXON")
@@ -871,6 +1166,20 @@ class DataFactory:
 
     # 5. write attribute metrics
     def __get_attribute_metrics(self, ALO: AttributeLevel) -> str:
+        """
+        Retrieve attribute metrics as a formatted string.
+
+        Args:
+            ALO (AttributeLevel): An instance of AttributeLevel containing the attribute metrics.
+
+        Returns:
+            str: A tab-separated string containing various attribute metrics:
+                 - Attribute name
+                 - Attribute level
+                 - Cluster counts and protein counts/span for different cluster types and statuses.
+                 - Proteome count and other relevant metrics.
+
+        """
         attribute_metrics = [
             ALO.attribute,
             ALO.level,
@@ -942,6 +1251,17 @@ class DataFactory:
         return "\t".join([str(field) for field in attribute_metrics])
 
     def __write_attribute_metrics(self) -> None:
+        """
+        Write attribute metrics for each attribute to respective output files.
+
+        This method iterates over each attribute in self.aloCollection.attributes,
+        retrieves attribute metrics for each level of the attribute, and writes them
+        to individual output files named after the attribute.
+
+        Returns:
+            None
+
+        """
         for attribute in self.aloCollection.attributes:
             attribute_metrics_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.attribute_metrics.txt"
@@ -967,6 +1287,17 @@ class DataFactory:
 
     # 6. write cluster summary
     def __write_cluster_summary(self) -> None:
+        """
+        Write cluster summary metrics for each attribute to respective output files.
+
+        This method iterates over each attribute in self.aloCollection.attributes,
+        retrieves cluster summary metrics for each cluster in self.clusterCollection.cluster_list,
+        and writes them to individual output files named after the attribute.
+
+        Returns:
+            None
+
+        """
         for attribute in self.aloCollection.attributes:
             cluster_metrics_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.cluster_summary.txt"
@@ -1022,6 +1353,20 @@ class DataFactory:
 
     # 7. Write cluster ALO metrics
     def __get_enrichment_data(self, ALO: AttributeLevel, cluster: Cluster) -> List[str]:
+        """
+        Retrieve enrichment data for a given AttributeLevel and Cluster.
+
+        Args:
+            ALO (AttributeLevel): An instance of AttributeLevel containing enrichment data.
+            cluster (Cluster): An instance of Cluster for which enrichment data is retrieved.
+
+        Returns:
+            List[str]: A list containing enrichment data:
+                - Enrichment status ("enriched", "depleted", "equal" or "N/A" if unavailable)
+                - Log2 mean value
+                - p-value
+
+        """
         if (
             ALO
             and ALO.cluster_type_by_cluster_id[cluster.cluster_id] == "shared"
@@ -1041,6 +1386,21 @@ class DataFactory:
         return ["N/A", "N/A", "N/A"]
 
     def __get_proteome_data(self, ALO: AttributeLevel, cluster: Cluster) -> List[str]:
+        """
+        Retrieve proteome data for a given AttributeLevel and Cluster.
+
+        Args:
+            ALO (AttributeLevel): An instance of AttributeLevel containing proteome data.
+            cluster (Cluster): An instance of Cluster for which proteome data is retrieved.
+
+        Returns:
+            List[str]: A list containing proteome data:
+                - Number of proteomes present in both ALO and cluster
+                - Number of proteomes present only in cluster
+                - Sorted list of proteome IDs present in both ALO and cluster, or "N/A" if none
+                - Sorted list of proteome IDs present only in cluster, or "N/A" if none
+
+        """
         ALO_proteomes_present = cluster.proteome_ids.intersection(
             ALO.proteomes if ALO else set()
         )
@@ -1063,6 +1423,19 @@ class DataFactory:
         ]
 
     def __write_cluster_metrics_ALO(self) -> None:
+        """
+        Write cluster metrics for each attribute level object (ALO) to separate files.
+
+        For each attribute in self.aloCollection.attributes, this method writes cluster metrics
+        to a file named '{attribute}.{level}.cluster_metrics.txt' in the corresponding directory
+        under self.dirs[attribute].
+
+        Metrics include cluster ID, status, type, protein count, proteome count, counts by level,
+        mean ALO counts, mean non-ALO counts, enrichment data, and proteome coverage.
+
+        Returns:
+            None
+        """
         for attribute in self.aloCollection.attributes:
             levels = sorted(
                 list(self.aloCollection.ALO_by_level_by_attribute[attribute])
@@ -1134,6 +1507,18 @@ class DataFactory:
 
     # 8. write cluster 1to1 ALO
     def __write_cluster_1to1_ALO(self) -> None:
+        """
+        Write cluster 1-to-1 relationships for each attribute level object (ALO) to separate files.
+
+        For each attribute in self.aloCollection.attributes, this method writes cluster 1-to-1
+        relationships to a file named '{attribute}.{level}.cluster_1to1s.txt' in the corresponding
+        directory under self.dirs[attribute].
+
+        Relationships include cluster ID, type, cardinality, proteome count, and fuzzy count ratio.
+
+        Returns:
+            None
+        """
         for attribute in self.aloCollection.attributes:
             levels = sorted(
                 list(self.aloCollection.ALO_by_level_by_attribute[attribute])
@@ -1206,6 +1591,21 @@ class DataFactory:
         cluster: Cluster,
         background_representation_test_by_pair_by_attribute,
     ) -> None:
+        """
+        Process and append background representation test results for a cluster and attribute level.
+
+        Args:
+            attribute (str): The attribute name.
+            level (str): The attribute level.
+            ALO (AttributeLevel): The AttributeLevel object for the attribute and level.
+            cluster (Cluster): The Cluster object representing the cluster.
+            background_representation_test_by_pair_by_attribute (Dict[str, Dict[str, Any]]):
+                A nested dictionary to store background representation test results,
+                structured as [attribute][background_pair] = list of test results.
+
+        Returns:
+            None
+        """
         background_pair = (level, "background")
         if attribute not in background_representation_test_by_pair_by_attribute:
             background_representation_test_by_pair_by_attribute[attribute] = {}
@@ -1237,7 +1637,28 @@ class DataFactory:
         level: str,
         levels_seen: Set[str],
         levels: List[str],
-    ) -> Generator[Any, Any, Any]:
+    ) -> Generator[List[Any], None, None]:
+        """
+        Generate pairwise representation test results for a cluster and attribute level.
+
+        Args:
+            cluster (Cluster): The Cluster object representing the cluster.
+            attribute (str): The attribute name.
+            level (str): The current attribute level.
+            levels_seen (Set[str]): A set of attribute levels already processed.
+            levels (List[str]): A list of all attribute levels.
+
+        Yields:
+            Generator[List[Any], None, None]: A generator yielding lists containing pairwise representation test results.
+                Each list includes:
+                - cluster.cluster_id: ID of the cluster.
+                - level: Current attribute level.
+                - other_level: Another attribute level being compared with `level`.
+                - mean_ALO_count: Mean count of ALOs in the cluster at `level`.
+                - mean_non_ALO_count: Mean count of non-ALOs in the cluster at `level`.
+                - mwu_log2_mean: Log2 mean of the Mann-Whitney U test results between `level` and `other_level`.
+                - mwu_pvalue: P-value of the Mann-Whitney U test results between `level` and `other_level`.
+        """
         for other_level in set(levels).difference(levels_seen):
             if other_level != level:
                 other_ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][
@@ -1307,6 +1728,22 @@ class DataFactory:
         pairwise_representation_test_by_pair_by_attribute,
         pairwise_representation_test_output: List[str],
     ) -> None:
+        """
+        Process pairwise representation tests for a specific attribute level and cluster.
+
+        Args:
+            attribute (str): The attribute name.
+            level (str): The current attribute level.
+            levels_seen (Set[str]): A set of attribute levels already processed.
+            levels (List[str]): A list of all attribute levels.
+            cluster (Cluster): The Cluster object representing the cluster.
+            pairwise_representation_test_by_pair_by_attribute (Dict[str, Dict[Tuple[str, str], List[List[Any]]]]):
+                Dictionary storing pairwise representation test results by attribute and pair of levels.
+            pairwise_representation_test_output (List[str]): List to store formatted output lines of pairwise tests.
+
+        Returns:
+            None
+        """
         for result in self.__get_pairwise_representation_test(
             cluster, attribute, level, levels_seen, levels
         ):
@@ -1325,6 +1762,17 @@ class DataFactory:
 
     # 9.5 __plot_count_comparisons_volcano
     def __prepare_data(self, pair_data: List[str]) -> Tuple[List[float], List[float]]:
+        """
+        Prepare data from pair_data into lists of p-values and log2 fold change (log2fc) values.
+
+        Args:
+            pair_data (List[str]): List of strings containing data for each pair.
+
+        Returns:
+            Tuple[List[float], List[float]]: Tuple containing:
+                - List[float]: p-values extracted from pair_data.
+                - List[float]: log2 fold change (log2fc) values extracted from pair_data.
+        """
         pair_data_count = len(pair_data)
         p_values: List[float] = []
         log2fc_values: List[float] = []
@@ -1337,6 +1785,16 @@ class DataFactory:
         return p_values, log2fc_values
 
     def __get_output_filename(self, attribute: str, pair_list: List[str]) -> str:
+        """
+        Generate an output filename based on attribute, pair_list, and plot_format.
+
+        Args:
+            attribute (str): Attribute name used in the filename.
+            pair_list (List[str]): List of strings used to form part of the filename.
+
+        Returns:
+            str: Generated output filename.
+        """
         return os.path.join(
             self.dirs[attribute],
             f"{attribute}.pairwise_representation_test.{
@@ -1351,6 +1809,18 @@ class DataFactory:
         pair_list: List[str],
         output_file: str,
     ) -> None:
+        """
+        Create a volcano plot to visualize differential expression analysis results.
+
+        Parameters:
+        - p_values (List[float]): List of p-values for each comparison.
+        - log2fc_values (List[float]): List of log2 fold change values for each comparison.
+        - pair_list (List[str]): List of pairs or labels corresponding to each comparison.
+        - output_file (str): Filepath where the plot will be saved.
+
+        Returns:
+        - None
+        """
         plt.figure(1, figsize=self.inputData.plotsize)
 
         axScatter, axHistx = self.__setup_plot_axes()
@@ -1368,6 +1838,13 @@ class DataFactory:
         plt.close()
 
     def __setup_plot_axes(self) -> Tuple[Any, Any]:
+        """
+        Set up the axes for a combined scatter plot and histogram.
+
+        Returns:
+        - Tuple of matplotlib.axes.Axes: Tuple containing the scatter plot axes (`axScatter`)
+        and the histogram axes (`axHistx`).
+        """
         left, width = 0.1, 0.65
         bottom, height = 0.1, 0.65
         bottom_h = left + width + 0.02
@@ -1390,6 +1867,18 @@ class DataFactory:
         log2fc_array: np.ndarray,
         p_array: np.ndarray,
     ) -> Any:
+        """
+        Plot data on scatter and histogram axes.
+
+        Parameters:
+        - axScatter (Any): Axes for the scatter plot.
+        - axHistx (Any): Axes for the histogram plot.
+        - log2fc_array (np.ndarray): Array of log2 fold change values.
+        - p_array (np.ndarray): Array of p-values.
+
+        Returns:
+        - float: 95th percentile of log2 fold change values.
+        """
         # Plot histogram
         binwidth = 0.05
         xymax = np.max(np.fabs(log2fc_array))
@@ -1430,6 +1919,20 @@ class DataFactory:
         pair_list: List[str],
         log2fc_percentile: Any,
     ) -> None:
+        """
+        Set properties and customize the appearance of the volcano plot.
+
+        Parameters:
+        - axScatter (Any): Axes for the scatter plot.
+        - axHistx (Any): Axes for the histogram plot.
+        - log2fc_array (np.ndarray): Array of log2 fold change values.
+        - p_array (np.ndarray): Array of p-values.
+        - pair_list (List[str]): List of pairs or labels corresponding to each comparison.
+        - log2fc_percentile (Any): 95th percentile of log2 fold change values.
+
+        Returns:
+        - None
+        """
         # Set axis limits and properties
         x_min = -max(abs(np.min(log2fc_array)), abs(np.max(log2fc_array)))
         x_max = -x_min
@@ -1467,6 +1970,16 @@ class DataFactory:
         self,
         pairwise_representation_test_by_pair_by_attribute,
     ) -> None:
+        """
+        Generate volcano plots for count comparisons based on pairwise representation test results.
+
+        Parameters:
+        - pairwise_representation_test_by_pair_by_attribute (Dict[str, Dict[Tuple[str, str], Any]]):
+        Dictionary containing test results organized by attribute and pair.
+
+        Returns:
+        - None
+        """
         for attribute in pairwise_representation_test_by_pair_by_attribute:
             for pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
                 pair_list = list(pair)
@@ -1483,6 +1996,28 @@ class DataFactory:
                     )
 
     def __write_pairwise_representation(self) -> None:
+        """
+        Process pairwise representation tests, write results, and generate volcano plots.
+
+        Iterates through attributes in `self.aloCollection.attributes` and performs the
+        following steps for each attribute:
+        1. Initializes dictionaries `pairwise_representation_test_by_pair_by_attribute`
+        and `background_representation_test_by_pair_by_attribute`.
+        2. Prepares output file path (`pairwise_representation_test_f`) and header line
+        (`pairwise_representation_test_output`) for pairwise representation test results.
+        3. Retrieves sorted levels from `self.aloCollection.ALO_by_level_by_attribute[attribute]`.
+        4. Iterates through each level and processes pairwise and background representation
+        tests for each cluster in `self.clusterCollection.cluster_list`.
+        5. Generates volcano plots using `__plot_count_comparisons_volcano` for
+        `background_representation_test_by_pair_by_attribute` if available.
+        6. Writes pairwise representation test results to `pairwise_representation_test_f`
+        if data is available.
+        7. Generates volcano plots using `__plot_count_comparisons_volcano` for
+        `pairwise_representation_test_by_pair_by_attribute` if data is available.
+
+        Returns:
+        - None
+        """
         for attribute in self.aloCollection.attributes:
             pairwise_representation_test_by_pair_by_attribute: Dict[
                 str, Dict[str, str]
