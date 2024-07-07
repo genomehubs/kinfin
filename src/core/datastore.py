@@ -1184,71 +1184,48 @@ class DataFactory:
             ALO.attribute,
             ALO.level,
             ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "total"),
-        ]
-        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("total"))
-        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("total"))
-        attribute_metrics.append(
+            ALO.get_protein_count_by_cluster_type("total"),
+            ALO.get_protein_span_by_cluster_type("total"),
             ALO.get_cluster_count_by_cluster_status_by_cluster_type(
                 "present", "singleton"
-            )
-        )
-        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("singleton"))
-        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("singleton"))
-        attribute_metrics.append(
+            ),
+            ALO.get_protein_count_by_cluster_type("singleton"),
+            ALO.get_protein_span_by_cluster_type("singleton"),
             ALO.get_cluster_count_by_cluster_status_by_cluster_type(
                 "present", "specific"
-            )
-        )
-        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("specific"))
-        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("specific"))
-        attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "shared")
-        )
-        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("shared"))
-        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("shared"))
-        attribute_metrics.append(
+            ),
+            ALO.get_protein_count_by_cluster_type("specific"),
+            ALO.get_protein_span_by_cluster_type("specific"),
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "shared"
+            ),
+            ALO.get_protein_count_by_cluster_type("shared"),
+            ALO.get_protein_span_by_cluster_type("shared"),
             ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
                 "specific", "true"
-            )
-        )
-        attribute_metrics.append(
+            ),
             ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
                 "specific", "fuzzy"
-            )
-        )
-        attribute_metrics.append(
+            ),
             ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
                 "shared", "true"
-            )
-        )
-        attribute_metrics.append(
+            ),
             ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
                 "shared", "fuzzy"
-            )
-        )
-        attribute_metrics.append(
-            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "total")
-        )
-        attribute_metrics.append(
+            ),
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "total"),
             ALO.get_cluster_count_by_cluster_status_by_cluster_type(
                 "absent", "singleton"
-            )
-        )
-        attribute_metrics.append(
+            ),
             ALO.get_cluster_count_by_cluster_status_by_cluster_type(
                 "absent", "specific"
-            )
-        )
-        attribute_metrics.extend(
-            (
-                ALO.get_cluster_count_by_cluster_status_by_cluster_type(
-                    "absent", "shared"
-                ),
-                ALO.proteome_count,
-            )
-        )
-        attribute_metrics.append(ALO.get_proteomes())
-        return "\t".join([str(field) for field in attribute_metrics])
+            ),
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "shared"),
+            ALO.proteome_count,
+            ALO.get_proteomes(),
+        ]
+
+        return "\t".join(map(str, attribute_metrics))
 
     def __write_attribute_metrics(self) -> None:
         """
@@ -1310,40 +1287,65 @@ class DataFactory:
                 self.__get_header_line("cluster_metrics", attribute)
             ]
             for cluster in self.clusterCollection.cluster_list:
-                cluster_metrics_line = f"{cluster.cluster_id}"
-                cluster_metrics_line += f"\t{cluster.protein_count}"
-                cluster_metrics_line += f"\t{cluster.protein_median}"
-                cluster_metrics_line += f"\t{cluster.proteome_count}"
-                cluster_metrics_line += f"\t{attribute}"
-                cluster_metrics_line += f"\t{
-                    cluster.cluster_type_by_attribute[attribute]}"
+                cluster_metrics_line = [
+                    str(cluster.cluster_id),
+                    str(cluster.protein_count),
+                    str(cluster.protein_median),
+                    str(cluster.proteome_count),
+                    str(attribute),
+                    str(cluster.cluster_type_by_attribute[attribute]),
+                ]
                 if (
                     self.clusterCollection.fastas_parsed
                     and cluster.protein_length_stats
                 ):
-                    cluster_metrics_line += f"\t{
-                        cluster.protein_length_stats["mean"]}"
-                    cluster_metrics_line += f"\t{
-                        cluster.protein_length_stats["sd"]}"
+                    cluster_metrics_line.extend(
+                        [
+                            str(cluster.protein_length_stats.get("mean", "N/A")),
+                            str(cluster.protein_length_stats.get("sd", "N/A")),
+                        ]
+                    )
                 else:
-                    cluster_metrics_line += "\tN/A"
-                    cluster_metrics_line += "\tN/A"
-                for _level in levels:
-                    cluster_metrics_line += f"\t{
-                        sum(
-                            cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
-                if not attribute == "TAXON":
-                    for _level in levels:
-                        cluster_metrics_line += f"\t{median(
-                            cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
-                    for _level in levels:
-                        cluster_metrics_line += "\t{0:.2f}".format(
-                            cluster.proteome_coverage_by_level_by_attribute[attribute][
-                                _level
-                            ]
-                        )
+                    cluster_metrics_line.extend(["N/A", "N/A"])
 
-                cluster_metrics_output.append(cluster_metrics_line)
+                cluster_metrics_line.extend(
+                    str(
+                        sum(
+                            cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                attribute
+                            ][_level]
+                        )
+                    )
+                    for _level in levels
+                )
+
+                if attribute != "TAXON":
+                    cluster_metrics_line.extend(
+                        [
+                            str(
+                                median(
+                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                        attribute
+                                    ][
+                                        _level
+                                    ]
+                                )
+                            )
+                            for _level in levels
+                        ]
+                    )
+                    cluster_metrics_line.extend(
+                        [
+                            "{0:.2f}".format(
+                                cluster.proteome_coverage_by_level_by_attribute[
+                                    attribute
+                                ][_level]
+                            )
+                            for _level in levels
+                        ]
+                    )
+
+                cluster_metrics_output.append("\t".join(cluster_metrics_line))
 
             if len(cluster_metrics_output) > 1:
                 with open(cluster_metrics_f, "w") as cluster_metrics_fh:
@@ -1549,29 +1551,38 @@ class DataFactory:
                             ][
                                 cluster_cardinality
                             ]:
-                                cluster_1to1_ALO_line = f"{cluster_id}"
-                                cluster_1to1_ALO_line += f"\t{cluster_type}"
-                                cluster_1to1_ALO_line += f"\t{cluster_cardinality}"
-                                cluster_1to1_ALO_line += f"\t{self.clusterCollection.cluster_list_by_cluster_id[
-                                    cluster_id
-                                ].proteome_count}"
-                                cluster_1to1_ALO_line += "\t{0:.2f}".format(
+                                cluster = (
+                                    self.clusterCollection.cluster_list_by_cluster_id[
+                                        cluster_id
+                                    ]
+                                )
+                                protein_count_by_proteome = (
+                                    cluster.protein_count_by_proteome_id
+                                )
+                                proteome_count = cluster.proteome_count
+
+                                fuzzy_proteome_ratio = (
                                     len(
                                         [
                                             protein_count
-                                            for proteome_id, protein_count in list(
-                                                self.clusterCollection.cluster_list_by_cluster_id[
-                                                    cluster_id
-                                                ].protein_count_by_proteome_id.items()
-                                            )
+                                            for _, protein_count in protein_count_by_proteome.items()
                                             if protein_count
                                             == self.inputData.fuzzy_count
                                         ]
                                     )
-                                    / self.clusterCollection.cluster_list_by_cluster_id[
-                                        cluster_id
-                                    ].proteome_count
+                                    / proteome_count
                                 )
+
+                                cluster_1to1_ALO_line = "\t".join(
+                                    [
+                                        str(cluster_id),
+                                        str(cluster_type),
+                                        str(cluster_cardinality),
+                                        str(proteome_count),
+                                        "{0:.2f}".format(fuzzy_proteome_ratio),
+                                    ]
+                                )
+
                                 cluster_1to1_ALO_output.append(cluster_1to1_ALO_line)
 
                 if len(cluster_1to1_ALO_output) > 1:
