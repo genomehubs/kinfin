@@ -1809,7 +1809,7 @@ class DataFactory:
         return os.path.join(
             self.dirs[attribute],
             f"{attribute}.pairwise_representation_test.{
-                "_".join(pair_list)}.{
+                '_'.join(pair_list)}.{
                 self.inputData.plot_format}",
         )
 

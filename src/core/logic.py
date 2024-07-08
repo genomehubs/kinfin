@@ -234,13 +234,13 @@ def parse_tree_from_file(
         )  # type: ignore
         try:
             logger.info(
-                f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ..."
+                f"[STATUS] - Setting LCA of {', '.join(outgroups)} as outgroup : ..."
             )
             tree_ete.set_outgroup(outgroup_node)  # type: ignore
         except ete3.coretype.tree.TreeError:  # type: ignore
             logger.info("[STATUS] - Tree seems to be rooted already : ...")
     else:
-        logger.info(f"[STATUS] - Setting {",".join(outgroups)} as outgroup : ...")
+        logger.info(f"[STATUS] - Setting {','.join(outgroups)} as outgroup : ...")
         tree_ete.set_outgroup(outgroups[0])  # type: ignore
     logger.info(tree_ete)
     node_idx_by_proteome_ids: Dict[frozenset[str], str] = {}
