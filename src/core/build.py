@@ -295,9 +295,9 @@ def get_protein_list_from_seq_f(sequence_ids_f: str, aloCollection: AloCollectio
         ):
             protein = Protein(protein_id, proteome_id, species_id, sequence_id)
             proteins_list.append(protein)
-        else:
-            error_msg = f"[ERROR] - Offending SequenceID : {line} (unknown species_id {species_id})"
-            raise ValueError(error_msg)
+        # else:
+        #     error_msg = f"[ERROR] - Offending SequenceID : {line} (unknown species_id {species_id})"
+        #     raise ValueError(error_msg)
     return proteins_list
 
 
