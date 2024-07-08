@@ -132,10 +132,7 @@ class DataFactory:
         """
         if self.clusterCollection.inferred_singletons_count:
             logger.info(
-                f"[STATUS]\t - Clusters found = {
-                    self.clusterCollection.cluster_count} (of which {
-                    self.clusterCollection.inferred_singletons_count} were inferred singletons)"
-            )
+                f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count} (of which {self.clusterCollection.inferred_singletons_count} were inferred singletons)")  # fmt:skip
 
         else:
             logger.info(
@@ -839,8 +836,7 @@ class DataFactory:
         cluster_protein_counter = Counter(cluster_protein_count)
         count_plot_f = os.path.join(
             self.dirs["main"],
-            f"cluster_size_distribution.{
-                self.inputData.plot_format}",
+            f"cluster_size_distribution.{self.inputData.plot_format}",
         )
         f, ax = plt.subplots(figsize=self.inputData.plotsize)
         ax.set_facecolor("white")
@@ -1808,9 +1804,7 @@ class DataFactory:
         """
         return os.path.join(
             self.dirs[attribute],
-            f"{attribute}.pairwise_representation_test.{
-                '_'.join(pair_list)}.{
-                self.inputData.plot_format}",
+            f"{attribute}.pairwise_representation_test.{'_'.join(pair_list)}.{self.inputData.plot_format}",
         )
 
     def __create_volcano_plot(

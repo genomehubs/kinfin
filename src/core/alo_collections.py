@@ -252,8 +252,7 @@ class AloCollection:
             if plot_format == "pdf":
                 pdf_chart_f = os.path.join(
                     dirs["tree_charts"],
-                    f"{
-                        node.name}.barchart.pdf",
+                    f"{node.name}.barchart.pdf",
                 )
                 logger.info(f"[STATUS]\t- Plotting {pdf_chart_f}")
                 f.savefig(pdf_chart_f, bbox_inches="tight", format="pdf")

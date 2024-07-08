@@ -57,8 +57,7 @@ def validate_cli_args(args) -> None:
 
     if args.target_fraction < 0 or args.target_fraction > 1:
         error_msgs.append(
-            f"[ERROR] : --target_fraction {
-                args.target_fraction} is not between 0.0 and 1.0"
+            f"[ERROR] : --target_fraction {args.target_fraction} is not between 0.0 and 1.0"
         )
 
     if args.min > args.max:

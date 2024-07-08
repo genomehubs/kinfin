@@ -128,8 +128,7 @@ def parse_attributes_from_config_file(
                 raise ValueError(error_msg)
 
             if temp[1] in proteomes:
-                error_msg = f"[ERROR] - 'TAXON' should be unique. {
-                    temp[0]} was encountered multiple times"
+                error_msg = f"[ERROR] - 'TAXON' should be unique. {temp[0]} was encountered multiple times"  # fmt:skip
                 raise ValueError(error_msg)
 
             species_id = temp[0]
