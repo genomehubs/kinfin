@@ -217,10 +217,7 @@ def statistic(
     implicit_count_1: List[float] = [count for count in count_1 if count > 0]
     implicit_count_2: List[float] = [count for count in count_2 if count > 0]
 
-    if (
-        len(implicit_count_1) < min_proteomes
-        or len(implicit_count_2) < min_proteomes
-    ):
+    if len(implicit_count_1) < min_proteomes or len(implicit_count_2) < min_proteomes:
         return None, None, None, None
 
     mean_count_1 = mean(implicit_count_1)
@@ -255,9 +252,7 @@ def statistic(
             pvalue = 1.0
     elif test == "ttest":
         # try:
-        pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[
-            1
-        ]  # t-test
+        pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]  # t-test
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
     elif test == "ks":

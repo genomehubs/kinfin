@@ -25,12 +25,12 @@ class Cluster:
             }
         except KeyError as e:
             error_msg = f"[ERROR] - Protein {e.args[0]} in clustering belongs to proteomes that are not present in the config-file."
-            error_msg += "Please add those proteomes or recluster by omitting these proteomes."
+            error_msg += (
+                "Please add those proteomes or recluster by omitting these proteomes."
+            )
             raise KeyError(error_msg) from e
 
-        self.proteome_ids_list: List[str] = list(
-            self.proteomes_by_protein_id.values()
-        )
+        self.proteome_ids_list: List[str] = list(self.proteomes_by_protein_id.values())
         self.protein_count_by_proteome_id: Counter[str] = Counter(
             self.proteome_ids_list
         )
@@ -45,9 +45,7 @@ class Cluster:
         self.protein_counts_of_proteomes_by_level_by_attribute: Dict[
             str, Dict[str, List[int]]
         ] = {}
-        self.proteome_coverage_by_level_by_attribute: Dict[str, Dict[str, float]] = (
-            {}
-        )
+        self.proteome_coverage_by_level_by_attribute: Dict[str, Dict[str, float]] = {}
         self.implicit_protein_ids_by_proteome_id_by_level_by_attribute: Dict[
             str, Dict[str, Dict[str, List[str]]]
         ] = {}
@@ -59,10 +57,8 @@ class Cluster:
         self.protein_length_stats: Optional[Dict[str, float]] = (
             self.compute_protein_length_stats(proteinCollection, self.protein_ids)
         )
-        self.secreted_cluster_coverage: float = (
-            self.compute_secreted_cluster_coverage(
-                proteinCollection, self.protein_ids, self.protein_count
-            )
+        self.secreted_cluster_coverage: float = self.compute_secreted_cluster_coverage(
+            proteinCollection, self.protein_ids, self.protein_count
         )
         self.domain_counter_by_domain_source: Dict[str, Counter[str]] = (
             self.compute_domain_counter_by_domain_source(

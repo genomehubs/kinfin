@@ -137,14 +137,10 @@ def parse_domains_from_functional_annotations_file(
                         if domain_source == "GO":
                             domain_id = domain_id_count
                         else:
-                            domain_id, domain_count_str = domain_id_count.rsplit(
-                                ":", 2
-                            )
+                            domain_id, domain_count_str = domain_id_count.rsplit(":", 2)
                             domain_count = int(domain_count_str)
                         domain_counts_by_domain_id[domain_id] = domain_count
-                    domain_counter: Counter[str] = Counter(
-                        domain_counts_by_domain_id
-                    )
+                    domain_counter: Counter[str] = Counter(domain_counts_by_domain_id)
                     domain_counter_by_domain_source[domain_source] = domain_counter
             proteinCollection.add_annotation_to_protein(
                 domain_protein_id=domain_protein_id,
@@ -290,9 +286,7 @@ def get_protein_list_from_seq_f(sequence_ids_f: str, aloCollection: AloCollectio
             .replace(")", "_")
         )  # orthofinder replaces characters
         species_id = sequence_id.split("_")[0]
-        if proteome_id := aloCollection.proteome_id_by_species_id.get(
-            species_id, None
-        ):
+        if proteome_id := aloCollection.proteome_id_by_species_id.get(species_id, None):
             protein = Protein(protein_id, proteome_id, species_id, sequence_id)
             proteins_list.append(protein)
         # else:

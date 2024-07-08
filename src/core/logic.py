@@ -136,9 +136,7 @@ def parse_attributes_from_config_file(
             proteomes.add(proteome_id)
             proteome_id_by_species_id[species_id] = proteome_id
 
-            level_by_attribute_by_proteome_id[proteome_id] = dict(
-                zip(attributes, temp)
-            )
+            level_by_attribute_by_proteome_id[proteome_id] = dict(zip(attributes, temp))
             level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
     attributes.insert(0, "all")  # append to front
     return (
@@ -181,9 +179,7 @@ def add_taxid_attributes(
 
         # add lineage attribute/levels
         for taxrank in taxranks:
-            level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[
-                taxrank
-            ]
+            level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[taxrank]
 
         # remove taxid-levels
         del level_by_attribute_by_proteome_id[proteome_id]["TAXID"]
@@ -452,9 +448,7 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
         if not line.startswith("!"):
             temp: List[str] = line.replace(" > ", "|").split("|")
             go_string: List[str] = temp[1].split(";")
-            go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(
-                " "
-            )
+            go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(" ")
 
             if go_id not in go_mapping_dict:
                 go_mapping_dict[go_id] = go_desc

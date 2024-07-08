@@ -72,9 +72,7 @@ class AloCollection:
         }
         for proteome_id in self.level_by_attribute_by_proteome_id:
             for attribute in self.attributes:
-                level = self.level_by_attribute_by_proteome_id[proteome_id][
-                    attribute
-                ]
+                level = self.level_by_attribute_by_proteome_id[proteome_id][attribute]
                 if level not in proteomes_by_level_by_attribute[attribute]:
                     proteomes_by_level_by_attribute[attribute][level] = set()
                 proteomes_by_level_by_attribute[attribute][level].add(proteome_id)
@@ -96,9 +94,7 @@ class AloCollection:
         }
         for attribute in self.proteome_ids_by_level_by_attribute:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
-                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
-                    level
-                ]
+                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
                 ALO = AttributeLevel(
                     #
                     attribute=attribute,
@@ -312,15 +308,11 @@ class AloCollection:
             node.set_style(style)
             if header_f_by_node_name[node.name]:
                 # must be PNG! (ETE can't do PDF Faces)
-                node_header_face = ete3.faces.ImgFace(
-                    header_f_by_node_name[node.name]
-                )
+                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])
                 node.add_face(node_header_face, column=0, position="branch-top")
             if charts_f_by_node_name[node.name]:
                 # must be PNG! (ETE can't do PDF Faces)
-                node_chart_face = ete3.faces.ImgFace(
-                    charts_f_by_node_name[node.name]
-                )
+                node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])
                 node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
             node.img_style["size"] = 10
@@ -396,10 +388,7 @@ class AloCollection:
             for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
                 node_clusters.append(
                     "\t".join(
-                        [
-                            str(string)
-                            for string in list(synapomorphic_cluster_string)
-                        ]
+                        [str(string) for string in list(synapomorphic_cluster_string)]
                     )
                 )
             node_stats_line = [
@@ -463,13 +452,13 @@ class AloCollection:
                 sample_size = idx + 1
                 if (
                     sample_size
-                    not in rarefaction_by_samplesize_by_level_by_attribute[
-                        attribute
-                    ][level]
-                ):
-                    rarefaction_by_samplesize_by_level_by_attribute[attribute][
+                    not in rarefaction_by_samplesize_by_level_by_attribute[attribute][
                         level
-                    ][sample_size] = []
+                    ]
+                ):
+                    rarefaction_by_samplesize_by_level_by_attribute[attribute][level][
+                        sample_size
+                    ] = []
                 rarefaction_by_samplesize_by_level_by_attribute[attribute][level][
                     sample_size
                 ].append(len(seen_cluster_ids))
@@ -496,9 +485,7 @@ class AloCollection:
         logger.info("[STATUS] - Generating rarefaction data ...")
         for attribute in self.attributes:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
-                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
-                    level
-                ]
+                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
                 if len(proteome_ids) == 1:
                     continue
 

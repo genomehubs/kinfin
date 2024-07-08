@@ -46,9 +46,7 @@ class AttributeLevel:
             "specific": {"true": [], "fuzzy": []},
         }
 
-        self.cluster_status_by_cluster_id: Dict[
-            str, Literal["absent", "present"]
-        ] = {}
+        self.cluster_status_by_cluster_id: Dict[str, Literal["absent", "present"]] = {}
         self.cluster_type_by_cluster_id: Dict[
             str, Literal["singleton", "shared", "specific"]
         ] = {}
@@ -61,9 +59,7 @@ class AttributeLevel:
         self.domain_counter_by_domain_source_by_cluster_type = None
         self.protein_with_domain_count_by_domain_source_by_cluster_type = None
 
-        self.protein_length_stats_by_cluster_id: Dict[
-            str, Dict[str, int | float]
-        ] = {}
+        self.protein_length_stats_by_cluster_id: Dict[str, Dict[str, int | float]] = {}
         self.protein_count_by_cluster_id: Dict[str, int] = {}
 
     def add_cluster(
@@ -134,9 +130,7 @@ class AttributeLevel:
 
         self.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id] = mwu_pvalue
         self.cluster_mwu_log2_mean_by_cluster_id[cluster.cluster_id] = mwu_log2_mean
-        self.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id] = (
-            mean_ALO_count
-        )
+        self.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id] = mean_ALO_count
         self.cluster_mean_non_ALO_count_by_cluster_id[cluster.cluster_id] = (
             mean_non_ALO_count
         )
@@ -251,6 +245,4 @@ class AttributeLevel:
         Returns:
             str: Comma-separated and sorted list of proteome IDs.
         """
-        return ", ".join(
-            sorted([str(proteome_id) for proteome_id in self.proteomes])
-        )
+        return ", ".join(sorted([str(proteome_id) for proteome_id in self.proteomes]))

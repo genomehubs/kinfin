@@ -33,8 +33,7 @@ def parse_args(
         description="Kinfin proteome cluster analysis tool"
     )
 
-    subparsers = parser.add_subparsers(
-        title="command", required=True, dest="command")
+    subparsers = parser.add_subparsers(title="command", required=True, dest="command")
     api_parser = subparsers.add_parser("serve", help="Start the server")
     api_parser.add_argument(
         "-p",
@@ -74,8 +73,7 @@ def parse_args(
         "--functional_annotation",
         help="Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam (can be generated through 'iprs_to_table.py')",
     )
-    other_files_group.add_argument(
-        "-a", "--fasta_dir", help="Directory of FASTA files")
+    other_files_group.add_argument("-a", "--fasta_dir", help="Directory of FASTA files")
     other_files_group.add_argument(
         "-t",
         "--tree_file",
