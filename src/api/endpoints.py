@@ -25,7 +25,7 @@ router = APIRouter()
 async def initialize(
     input_data: InputSchema,
     background_tasks: BackgroundTasks,
-) -> JSONResponse | HTTPException:
+) -> JSONResponse:
     """
     Initialize the analysis process.
 
@@ -87,7 +87,7 @@ async def initialize(
 async def get_plot(
     plot_type: str,
     session_id: str = Depends(header_scheme),
-) -> FileResponse | HTTPException:
+) -> FileResponse:
     """
     Retrieve a specific plot type for a given session.
 
