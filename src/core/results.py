@@ -2,7 +2,9 @@ import time
 
 from core.datastore import DataFactory
 from core.input import InputData
-from core.utils import logger
+import logging
+
+logger = logging.getLogger("kinfin_logger")
 
 
 def analyse(input_data: InputData) -> None:

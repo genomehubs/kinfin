@@ -6,19 +6,9 @@ from math import log, sqrt
 from typing import Any, Generator, List, Optional, Tuple
 
 import scipy
+import logging
 
-# setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s - %(message)s", "%Y-%m-%d %H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-# log_file = "app.log"
-# file_handler = logging.FileHandler(log_file)
-# file_handler.setFormatter(formatter)
-# logger.addHandler(file_handler)
+logger = logging.getLogger("kinfin_logger")
 
 
 def progress(iteration: int, steps: int | float, max_value: int) -> None:

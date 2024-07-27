@@ -1,5 +1,7 @@
+import os
 from core.input import InputData
 from core.results import analyse
+from core.logger import setup_logger
 
 
 def run_cli(args: InputData) -> None:
@@ -12,4 +14,6 @@ def run_cli(args: InputData) -> None:
     Returns:
         None
     """
+    log_path = os.path.join(args.output_path, "kinfin.log")
+    setup_logger(log_path)
     analyse(args)

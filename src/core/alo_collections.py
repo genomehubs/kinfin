@@ -10,7 +10,9 @@ from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
-from core.utils import logger
+import logging
+
+logger = logging.getLogger("kinfin_logger")
 
 mat.use("agg")
 

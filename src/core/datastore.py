@@ -22,8 +22,10 @@ from core.clusters import Cluster, ClusterCollection
 from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
 from core.proteins import ProteinCollection
-from core.utils import logger, median, progress, statistic
+from core.utils import median, progress, statistic
+import logging
 
+logger = logging.getLogger("kinfin_logger")
 mat.use("agg")
 
 plt.style.use("ggplot")

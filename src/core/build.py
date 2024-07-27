@@ -16,7 +16,11 @@ from core.logic import (
     parse_tree_from_file,
 )
 from core.proteins import Protein, ProteinCollection
-from core.utils import logger, progress, yield_file_lines
+from core.utils import progress, yield_file_lines
+
+import logging
+
+logger = logging.getLogger("kinfin_logger")
 
 
 def get_singletons(

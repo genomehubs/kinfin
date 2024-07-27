@@ -8,6 +8,10 @@ from ete3 import Tree, TreeNode
 
 from core.utils import logger, progress, read_fasta_len, yield_file_lines
 
+import logging
+
+logger = logging.getLogger("kinfin_logger")
+
 
 # common
 def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:

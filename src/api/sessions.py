@@ -6,8 +6,9 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 from uuid import uuid4
+import logging
 
-from core.utils import logger
+logger = logging.getLogger("kinfin_logger")
 
 
 class Session:

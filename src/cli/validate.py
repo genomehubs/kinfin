@@ -1,6 +1,9 @@
 import sys
 
-from core.utils import check_file, logger
+from core.utils import check_file
+import logging
+
+logger = logging.getLogger("kinfin_logger")
 
 
 def validate_cli_args(args) -> None:
