@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Set, Tuple
+import os
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 
 class ServeArgs:
@@ -14,7 +15,7 @@ class InputData:
         ipr_mapping_f: str,
         go_mapping_f: str,
         cluster_file: str,
-        config_data: List[Dict[str, str]] | str,
+        config_f: str,
         sequence_ids_file: str,
         species_ids_file: Optional[str] = None,
         functional_annotation_f: Optional[str] = None,
@@ -25,7 +26,7 @@ class InputData:
         plot_tree: bool = False,
         min_proteomes: int = 2,
         test: str = "mannwhitneyu",
-        taxranks: List[str] = None,
+        taxranks: List[str] = ["phylum", "order", "genus"],
         repetitions: int = 30,
         fuzzy_count: int = 1,
         fuzzy_fraction: float = 0.75,
@@ -35,16 +36,22 @@ class InputData:
         plot_format: str = "pdf",
         taxon_idx_mapping_file: Optional[str] = None,
     ):
-        if taxranks is None:
-            taxranks = ["phylum", "order", "genus"]
+        if output_path:
+            if not os.path.isabs(output_path):
+                output_path = os.path.abspath(output_path)
+        else:
+            output_path = os.path.join(os.getcwd(), "kinfin_results")
+
         self.cluster_f = cluster_file
-        self.config_data = config_data
+        self.config_f = config_f
         self.sequence_ids_f = sequence_ids_file
         self.species_ids_f = species_ids_file
         self.tree_f = tree_file
         self.functional_annotation_f = functional_annotation_f
+        if config_f.endswith(".json"):
+            if not taxon_idx_mapping_file:
+                raise ValueError("[ERROR] - taxon_idx_mapping not present")
         self.taxon_idx_mapping_file = taxon_idx_mapping_file
-
         self.nodesdb_f = nodesdb_f
         self.pfam_mapping_f = pfam_mapping_f
         self.ipr_mapping_f = ipr_mapping_f

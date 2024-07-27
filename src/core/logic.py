@@ -1,12 +1,17 @@
 import json
 import os
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple
+from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple, Union
 
 import ete3
 from ete3 import Tree, TreeNode
 
-from core.utils import logger, progress, read_fasta_len, yield_file_lines
+from core.utils import (
+    progress,
+    read_fasta_len,
+    yield_config_lines,
+    yield_file_lines,
+)
 
 import logging
 
@@ -82,8 +87,9 @@ def get_lineage(
 
 
 # cli
-def parse_attributes_from_config_file(
+def parse_attributes_from_config_data(
     config_f: str,
+    taxon_idx_mapping_file: Optional[str],
 ) -> Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]:
     """
     Parses attributes from a configuration file.
@@ -111,13 +117,13 @@ def parse_attributes_from_config_file(
         - The 'TAXON' attribute is expected to be unique for each line.
     """
 
-    logger.info(f"[STATUS] - Parsing config file: {config_f} ...")
+    logger.info(f"[STATUS] - Parsing config data ...")
     attributes: List[str] = []
     level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
     proteomes: Set[str] = set()
     proteome_id_by_species_id: Dict[str, str] = {}
 
-    for line in yield_file_lines(config_f):
+    for line in yield_config_lines(config_f, taxon_idx_mapping_file):
         if line.startswith("#"):
             if not attributes:
                 attributes = [x.strip() for x in line.lstrip("#").split(",")]
@@ -272,72 +278,6 @@ def parse_tree_from_file(
             )
         node_idx_by_proteome_ids[proteome_ids] = node.name
     return tree_ete, node_idx_by_proteome_ids
-
-
-# api
-def parse_attributes_from_json(
-    json_list: List[Dict[str, str]],
-    taxon_idx_mapping_file: str,
-) -> Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]:
-    """
-    Parses attributes from a JSON list.
-
-    Args:
-        json_list List[Dict[str,str]]: JSON list of attributes.
-        taxon_idx_mapping_file str: The path to the taxon-idx mapping file
-
-    Returns:
-        Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]: A tuple containing:
-            - A set of proteome IDs.
-            - A dictionary mapping species IDs to proteome IDs.
-            - A list of attributes.
-            - A dictionary mapping proteome IDs to dictionaries, where each inner dictionary
-              maps attributes to their corresponding levels.
-
-    Raises:
-        FileNotFoundError: If the specified configuration file is not found.
-        ValueError: If there are errors in the configuration file format or content.
-
-    Note:
-        - The configuration file is expected to have a header line starting with '#',
-          where the first element is 'IDX' and the second element is 'TAXON'.
-        - Each subsequent non-empty line in the configuration file should contain
-          comma-separated values corresponding to the attributes defined in the header line.
-        - The 'TAXON' attribute is expected to be unique for each line.
-    """
-
-    logger.info("[STATUS] - Parsing JSON list...")
-    attributes: List[str] = []
-    level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
-    proteomes: Set[str] = set()
-    proteome_id_by_species_id: Dict[str, str] = {}
-
-    attributes = list(json_list[0].keys())
-    attributes.insert(0, "IDX")
-
-    with open(taxon_idx_mapping_file, "r") as f:
-        taxon_idx_mapping = json.load(f)
-
-    attributes.insert(0, "all")
-
-    for entry in json_list:
-        proteome_id = entry["TAXON"]
-        species_id = taxon_idx_mapping[proteome_id]
-        proteomes.add(proteome_id)
-        proteome_id_by_species_id[species_id] = proteome_id
-
-        level_by_attribute_by_proteome_id[proteome_id] = {
-            attribute: entry.get(attribute, "") for attribute in attributes[1:]
-        }
-        level_by_attribute_by_proteome_id[proteome_id]["IDX"] = proteome_id
-        level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
-    attributes.insert(0, "all")
-    return (
-        proteomes,
-        proteome_id_by_species_id,
-        attributes,
-        level_by_attribute_by_proteome_id,
-    )
 
 
 def parse_fasta_dir(species_ids_f: str, fasta_dir: str) -> Dict[str, int]:

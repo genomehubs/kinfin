@@ -86,7 +86,7 @@ class Cluster:
           (standard deviation) of protein lengths, if all lengths are available and at least
           one protein ID is provided. Returns None if no valid protein lengths are found.
         """
-        protein_lengths: List[int | None] = [
+        protein_lengths: List[Optional[int]] = [
             proteinCollection.proteins_by_protein_id[protein_id].length
             for protein_id in protein_ids
         ]

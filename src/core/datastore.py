@@ -2,7 +2,7 @@ import os
 import shutil
 import time
 from collections import Counter, defaultdict
-from typing import Any, Dict, FrozenSet, Generator, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, Generator, List, Optional, Set, Tuple, Union
 
 import matplotlib as mat
 import matplotlib.pyplot as plt
@@ -14,7 +14,6 @@ from core.alo import AttributeLevel
 from core.alo_collections import AloCollection
 from core.build import (
     build_AloCollection,
-    build_AloCollection_from_json,
     build_ClusterCollection,
     build_ProteinCollection,
 )
@@ -39,24 +38,13 @@ class DataFactory:
     def __init__(self, inputData: InputData) -> None:
         self.dirs = {}
         self.inputData: InputData = inputData
-        if isinstance(self.inputData.config_data, str):
-            self.aloCollection: AloCollection = build_AloCollection(
-                config_f=self.inputData.config_data,
-                nodesdb_f=self.inputData.nodesdb_f,
-                tree_f=self.inputData.tree_f,
-                taxranks=self.inputData.taxranks,
-            )
-        elif self.inputData.taxon_idx_mapping_file is not None:
-            self.aloCollection: AloCollection = build_AloCollection_from_json(
-                nodesdb_f=self.inputData.nodesdb_f,
-                tree_f=self.inputData.tree_f,
-                taxranks=self.inputData.taxranks,
-                json_list=self.inputData.config_data,
-                taxon_idx_mapping_file=self.inputData.taxon_idx_mapping_file,
-            )
-        else:
-            raise ValueError("[ERROR] - Either provide config file or json")
-
+        self.aloCollection: AloCollection = build_AloCollection(
+            config_f=self.inputData.config_f,
+            nodesdb_f=self.inputData.nodesdb_f,
+            tree_f=self.inputData.tree_f,
+            taxranks=self.inputData.taxranks,
+            taxon_idx_mapping_file=self.inputData.taxon_idx_mapping_file,
+        )
         self.proteinCollection: ProteinCollection = build_ProteinCollection(
             aloCollection=self.aloCollection,
             fasta_dir=self.inputData.fasta_dir,
@@ -71,37 +59,39 @@ class DataFactory:
         )
         self.clusterCollection: ClusterCollection = build_ClusterCollection(
             cluster_f=self.inputData.cluster_f,
+            output_dir=self.inputData.output_path,
             proteinCollection=self.proteinCollection,
             infer_singletons=self.inputData.infer_singletons,
+            available_proteomes=self.aloCollection.proteomes,
         )
 
     def setup_dirs(self) -> None:
         """
         Set up output directories for storing results and attributes.
         """
-        output_path: Optional[str] = self.inputData.output_path
-
-        if output_path:
-            if not os.path.isabs(output_path):
-                output_path = os.path.abspath(output_path)
-        else:
-            output_path = os.path.join(os.getcwd(), "kinfin_results")
+        output_path: str = self.inputData.output_path
 
         self.dirs["main"] = output_path
         logger.info("[STATUS] - Output directories in")
         logger.info(f"\t{output_path}")
-        if os.path.exists(output_path):
-            logger.info("[STATUS] - Directory exists. Deleting directory ...")
-            shutil.rmtree(output_path)
+        log_file_path = (
+            os.path.join(output_path, "kinfin.log")
+            if os.path.exists(output_path)
+            else None
+        )
+        if not os.path.exists(output_path):
+            logger.info("[STATUS] - Creating main output directory...")
+            os.makedirs(output_path)
 
         logger.info("[STATUS] - Creating directories ...")
-        os.mkdir(output_path)
         for attribute in self.aloCollection.attributes:
             attribute_path = os.path.join(output_path, attribute)
             self.dirs[attribute] = attribute_path
             if not os.path.exists(attribute_path):
-                logger.info(f"\t{attribute_path}")
-                os.mkdir(attribute_path)
+                logger.info(
+                    f"[STATUS] - Creating directory for attribute: {attribute_path}"
+                )
+                os.makedirs(attribute_path)
 
         if self.aloCollection.tree_ete is not None:
             tree_path = os.path.join(output_path, "tree")
@@ -109,17 +99,23 @@ class DataFactory:
             node_header_path = os.path.join(tree_path, "headers")
 
             if not os.path.exists(tree_path):
-                logger.info(f"\t{tree_path}")
-                os.mkdir(tree_path)
+                logger.info(f"[STATUS] - Creating tree directory: {tree_path}")
+                os.makedirs(tree_path)
                 self.dirs["tree"] = tree_path
 
-                logger.info(f"\t{node_chart_path}")
-                os.mkdir(node_chart_path)
+            if not os.path.exists(node_chart_path):
+                logger.info(
+                    f"[STATUS] - Creating node charts directory: {node_chart_path}"
+                )
+                os.makedirs(node_chart_path)
                 self.dirs["tree_charts"] = node_chart_path
 
-                if self.inputData.plot_tree:
-                    logger.info(f"\t{node_header_path}")
-                    os.mkdir(node_header_path)
+            if self.inputData.plot_tree:
+                if not os.path.exists(node_header_path):
+                    logger.info(
+                        f"[STATUS] - Creating node headers directory: {node_header_path}"
+                    )
+                    os.makedirs(node_header_path)
                     self.dirs["tree_headers"] = node_header_path
 
     def analyse_clusters(self) -> None:
@@ -213,10 +209,18 @@ class DataFactory:
                 y_mins_array = np.array(y_mins)
                 y_maxs_array = np.array(y_maxs)
                 ax.plot(
-                    median_x_values, median_y_values, "-", color=colour, label=level
+                    median_x_values,
+                    median_y_values,
+                    "-",
+                    color=colour,
+                    label=level,
                 )
                 ax.fill_between(
-                    x_array, y_mins_array, y_maxs_array, color=colour, alpha=0.5
+                    x_array,
+                    y_mins_array,  # type:ignore
+                    y_maxs_array,  # type:ignore
+                    color=colour,
+                    alpha=0.5,
                 )
             ax.set_xlim([0, max_number_of_samples + 1])
             ax.set_ylabel("Count of non-singleton clusters", fontsize=fontsize)
@@ -387,7 +391,7 @@ class DataFactory:
         attribute: str,
         level: str,
         protein_ids_by_level: Dict[str, List[str]],
-        protein_length_stats_by_level: Dict[str, Dict[str, int | float]],
+        protein_length_stats_by_level: Dict[str, Dict[str, Union[int, float]]],
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]],
     ) -> None:
         """
@@ -447,7 +451,7 @@ class DataFactory:
         cluster: Cluster,
         attribute: str,
         protein_ids_by_level: Dict[str, List[str]],
-        protein_length_stats_by_level: Dict[str, Dict[str, int | float]],
+        protein_length_stats_by_level: Dict[str, Dict[str, Union[int, float]]],
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]],
     ) -> None:
         """
@@ -558,7 +562,7 @@ class DataFactory:
             None
         """
         protein_ids_by_level: Dict[str, List[str]] = {}
-        protein_length_stats_by_level: Dict[str, Dict[str, int | float]] = {}
+        protein_length_stats_by_level: Dict[str, Dict[str, Union[int, float]]] = {}
         explicit_protein_count_by_proteome_id_by_level: Dict[str, Dict[str, int]] = {}
 
         cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute] = {}
@@ -849,7 +853,7 @@ class DataFactory:
             y_values.append(count)
         x_array = np.array(x_values)  # type: ignore
         y_array = np.array(y_values)
-        ax.scatter(x_array, y_array, marker="o", alpha=0.8, s=100)
+        ax.scatter(x_array, y_array, marker="o", alpha=0.8, s=100)  # type: ignore
         ax.set_xlabel("Cluster size", fontsize=self.inputData.fontsize)
         ax.set_ylabel("Count", fontsize=self.inputData.fontsize)
         ax.set_yscale("log")
@@ -1888,7 +1892,7 @@ class DataFactory:
         """
         # Plot histogram
         binwidth = 0.05
-        xymax = np.max(np.fabs(log2fc_array))
+        xymax = np.max(np.fabs(log2fc_array))  # type: ignore
         lim = (int(xymax / binwidth) + 1) * binwidth
         bins = np.arange(-lim, lim + binwidth, binwidth)
         axHistx.hist(

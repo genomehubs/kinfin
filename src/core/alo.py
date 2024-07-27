@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Set
+from typing import Dict, List, Literal, Optional, Set, Union
 
 from core.clusters import Cluster
 
@@ -33,7 +33,7 @@ class AttributeLevel:
             "shared": [],
         }
 
-        self.protein_span_by_cluster_type: Dict[str, List[int | float]] = {
+        self.protein_span_by_cluster_type: Dict[str, List[Union[int, float]]] = {
             "singleton": [],
             "specific": [],
             "shared": [],
@@ -59,7 +59,9 @@ class AttributeLevel:
         self.domain_counter_by_domain_source_by_cluster_type = None
         self.protein_with_domain_count_by_domain_source_by_cluster_type = None
 
-        self.protein_length_stats_by_cluster_id: Dict[str, Dict[str, int | float]] = {}
+        self.protein_length_stats_by_cluster_id: Dict[
+            str, Dict[str, Union[int, float]]
+        ] = {}
         self.protein_count_by_cluster_id: Dict[str, int] = {}
 
     def add_cluster(
@@ -67,7 +69,7 @@ class AttributeLevel:
         cluster: Cluster,
         attribute_cluster_type: Literal["singleton", "shared", "specific"],
         ALO_cluster_status: Literal["absent", "present"],
-        ALO_protein_length_stats: Dict[str, int | float],
+        ALO_protein_length_stats: Dict[str, Union[int, float]],
         ALO_protein_ids_in_cluster: List[str],
         ALO_cluster_cardinality: Optional[str],
         mwu_pvalue: Optional[float],
@@ -84,7 +86,7 @@ class AttributeLevel:
                 Type of the cluster as either 'singleton', 'shared', or 'specific'.
             ALO_cluster_status (Literal["absent", "present"]):
                 Status of the cluster, either 'absent' or 'present'.
-            ALO_protein_length_stats (Dict[str, int | float]):
+            ALO_protein_length_stats (Dict[str, Union[int, float]]):
                 Length statistics of proteins in the cluster.
             ALO_protein_ids_in_cluster (List[str]):
                 List of protein IDs present in the cluster.
@@ -192,7 +194,7 @@ class AttributeLevel:
                 ]
             )
 
-    def get_protein_span_by_cluster_type(self, cluster_type: str) -> int | float:
+    def get_protein_span_by_cluster_type(self, cluster_type: str) -> Union[int, float]:
         """
         Get the total span of proteins for a specific cluster type.
 
@@ -201,7 +203,7 @@ class AttributeLevel:
                 Use "total" to get the total span across all cluster types.
 
         Returns:
-            int | float: Total span of proteins in the specified cluster type.
+            Union[int, float]: Total span of proteins in the specified cluster type.
                 If 'cluster_type' is "total", returns the sum of spans across all
                 cluster types.
         """

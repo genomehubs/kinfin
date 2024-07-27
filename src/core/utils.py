@@ -1,9 +1,10 @@
 import gzip
+import json
 import logging
 import os
 import sys
 from math import log, sqrt
-from typing import Any, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import scipy
 import logging
@@ -11,7 +12,7 @@ import logging
 logger = logging.getLogger("kinfin_logger")
 
 
-def progress(iteration: int, steps: int | float, max_value: int) -> None:
+def progress(iteration: int, steps: Union[int, float], max_value: int) -> None:
     """
     Print progress in percentage based on the current iteration, steps, and maximum value.
 
@@ -36,7 +37,7 @@ def progress(iteration: int, steps: int | float, max_value: int) -> None:
         sys.stdout.flush()
 
 
-def check_file(filepath: str | None, install_kinfin: bool = False) -> None:
+def check_file(filepath: Optional[str], install_kinfin: bool = False) -> None:
     """
     Check if a file exists.
 
@@ -74,6 +75,32 @@ def yield_file_lines(filepath: str) -> Generator[str, Any, None]:
         with open(filepath) as fh:
             for line in fh:
                 yield line.rstrip("\n")
+
+
+def yield_config_lines(
+    config_f: str,
+    taxon_idx_mapping_file: Optional[str],
+):
+    if config_f.endswith(".json"):
+        if not taxon_idx_mapping_file:
+            raise ValueError("[ERROR] - taxon_idx_mapping not present")
+
+        with open(taxon_idx_mapping_file, "r") as f_mapping, open(
+            config_f, "r"
+        ) as f_config:
+            taxon_idx_mapping = json.load(f_mapping)
+            config_data = json.load(f_config)
+            headers = ["IDX"] + list(config_data[0].keys())
+            yield "#" + ",".join(headers)
+
+            for item in config_data:
+                idx = taxon_idx_mapping[item["TAXON"]]
+                row = [idx] + [item[key] for key in headers[1:]]
+                yield ",".join(row)
+        return
+    else:
+        yield from yield_file_lines(config_f)
+        return
 
 
 def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:

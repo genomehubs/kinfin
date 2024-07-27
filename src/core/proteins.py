@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from core.utils import mean, median, sd
 
@@ -72,7 +72,7 @@ class ProteinCollection:
 
     def get_protein_length_stats(
         self, protein_ids: List[str]
-    ) -> Dict[str, int | float]:
+    ) -> Dict[str, Union[int, float]]:
         """
         Calculate statistics (sum, mean, median, standard deviation) of protein lengths.
 
@@ -80,7 +80,7 @@ class ProteinCollection:
             protein_ids (List[str]): List of protein IDs for which to calculate statistics.
 
         Returns:
-            Dict[str, int | float]: A dictionary containing the calculated statistics:
+            Dict[str, Union[int, float]): A dictionary containing the calculated statistics:
                 - 'sum': Sum of lengths of proteins in the input list.
                 - 'mean': Mean length of proteins in the input list.
                 - 'median': Median length of proteins in the input list.

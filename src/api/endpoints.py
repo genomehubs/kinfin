@@ -1,3 +1,5 @@
+import asyncio
+import json
 import os
 from typing import Dict, List
 
@@ -7,8 +9,6 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from api.sessions import session_manager
-from core.input import InputData
-from core.results import analyse
 
 
 class InputSchema(BaseModel):
@@ -21,11 +21,26 @@ header_scheme = APIKeyHeader(name="x-session-id")
 router = APIRouter()
 
 
+async def run_cli_command(command: list):
+    process = await asyncio.create_subprocess_exec(
+        *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+
+    stdout, stderr = await process.communicate()
+
+    stdout = stdout.decode().strip()
+    stderr = stderr.decode().strip()
+
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"CLI command failed with return code {process.returncode}: {stderr}"
+        )
+
+    return stdout
+
+
 @router.post("/init")
-async def initialize(
-    input_data: InputSchema,
-    background_tasks: BackgroundTasks,
-) -> JSONResponse:
+async def initialize(input_data: InputSchema) -> JSONResponse:
     """
     Initialize the analysis process.
 
@@ -53,20 +68,29 @@ async def initialize(
             )
 
         session_id, result_dir = session_manager.new()
-        data = InputData(
-            nodesdb_f=session_manager.nodesdb_f,
-            go_mapping_f=session_manager.go_mapping_f,
-            pfam_mapping_f=session_manager.pfam_mapping_f,
-            sequence_ids_file=session_manager.sequence_ids_f,
-            ipr_mapping_f=session_manager.ipr_mapping_f,
-            cluster_file=session_manager.cluster_f,
-            config_data=input_data.config,
-            taxon_idx_mapping_file=session_manager.taxon_idx_mapping_file,
-            output_path=result_dir,
-            plot_format="png",  # as we require images
-        )
+        os.makedirs(result_dir, exist_ok=True)
+        config_f = os.path.join(result_dir, "config.json")
 
-        background_tasks.add_task(analyse, data)
+        with open(config_f, "w") as file:
+            json.dump(input_data.config, file)
+
+        command = [
+            "python",
+            "src/main.py",
+            "analyse",
+            "-g",
+            session_manager.cluster_f,
+            "-c",
+            config_f,
+            "-s",
+            session_manager.sequence_ids_f,
+            "-m",
+            session_manager.taxon_idx_mapping_file,
+            "-o",
+            result_dir,
+        ]
+
+        asyncio.create_task(run_cli_command(command))
 
         return JSONResponse(
             content={"detail": "Analysis task has been queued."},

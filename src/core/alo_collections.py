@@ -186,7 +186,7 @@ class AloCollection:
         table.scale(2, 1)
         for key, cell in list(table.get_celld().items()):
             row, col = key
-            cell._text.set_color("grey")
+            cell._text.set_color("grey")  # type:ignore
             cell.set_edgecolor("darkgrey")
             cell.visible_edges = "T" if row > 0 else "B"
             if row == len(data) - 2:

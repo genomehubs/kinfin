@@ -1,5 +1,6 @@
 import argparse
 import sys
+from typing import Union
 
 from cli.validate import validate_cli_args
 from core.config import SUPPORTED_PLOT_FORMATS, SUPPORTED_TAXRANKS, SUPPORTED_TESTS
@@ -13,7 +14,7 @@ def parse_args(
     pfam_mapping_f: str,
     ipr_mapping_f: str,
     go_mapping_f: str,
-) -> ServeArgs | InputData:
+) -> Union[ServeArgs, InputData]:
     """Parse command-line arguments.
 
     Args:
@@ -67,6 +68,9 @@ def parse_args(
     other_files_group = cli_parser.add_argument_group("Other Files")
     other_files_group.add_argument(
         "-p", "--species_ids_file", help="SpeciesIDs.txt used in OrthoFinder"
+    )
+    other_files_group.add_argument(
+        "-m", "--taxon_idx_mapping", help="TAXON IDX Mapping File"
     )
     other_files_group.add_argument(
         "-f",
@@ -179,7 +183,7 @@ def parse_args(
 
         return InputData(
             cluster_file=args.cluster_file,
-            config_data=args.config_file,
+            config_f=args.config_file,
             sequence_ids_file=args.sequence_ids_file,
             species_ids_file=args.species_ids_file,
             functional_annotation_f=args.functional_annotation,
@@ -202,6 +206,7 @@ def parse_args(
             pfam_mapping_f=pfam_mapping_f,
             ipr_mapping_f=ipr_mapping_f,
             go_mapping_f=go_mapping_f,
+            taxon_idx_mapping_file=args.taxon_idx_mapping,
         )
     else:
         sys.exit()
