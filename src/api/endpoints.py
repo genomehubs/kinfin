@@ -3,12 +3,12 @@ import json
 import os
 from typing import Dict, List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
-from api.sessions import session_manager
+from api.sessions import query_manager
 
 
 class InputSchema(BaseModel):
@@ -23,7 +23,9 @@ router = APIRouter()
 
 async def run_cli_command(command: list):
     process = await asyncio.create_subprocess_exec(
-        *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        *command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
 
     stdout, stderr = await process.communicate()
@@ -67,8 +69,7 @@ async def initialize(input_data: InputSchema) -> JSONResponse:
                 detail="Each item in data must be a dictionary.",
             )
 
-        session_id, result_dir = session_manager.new()
-        os.makedirs(result_dir, exist_ok=True)
+        session_id, result_dir = query_manager.get_or_create_session(input_data.config)
         config_f = os.path.join(result_dir, "config.json")
 
         with open(config_f, "w") as file:
@@ -79,13 +80,13 @@ async def initialize(input_data: InputSchema) -> JSONResponse:
             "src/main.py",
             "analyse",
             "-g",
-            session_manager.cluster_f,
+            query_manager.cluster_f,
             "-c",
             config_f,
             "-s",
-            session_manager.sequence_ids_f,
+            query_manager.sequence_ids_f,
             "-m",
-            session_manager.taxon_idx_mapping_file,
+            query_manager.taxon_idx_mapping_file,
             "-o",
             result_dir,
         ]
@@ -125,26 +126,37 @@ async def get_plot(
     Raises:
         HTTPException: If the plot type is invalid, session ID is invalid, or the file is not found.
     """
-    if plot_type not in ["cluster-size-distribution", "all-rarefaction-curve"]:
-        raise HTTPException(status_code=404)
+    try:
+        if plot_type not in ["cluster-size-distribution", "all-rarefaction-curve"]:
+            raise HTTPException(status_code=404)
 
-    result_dir = session_manager.get(session_id)
-    if not result_dir:
-        raise HTTPException(status_code=401, detail="Invalid Session ID provided")
+        result_dir = query_manager.get_session_dir(session_id)
+        if not result_dir:
+            raise HTTPException(status_code=401, detail="Invalid Session ID provided")
 
-    file_path: str = ""
-    match plot_type:
-        case "cluster-size-distribution":
-            file_path = "cluster_size_distribution.png"
-        case "all-rarefaction-curve":
-            file_path = "all/all.rarefaction_curve.png"
+        file_path: str = ""
+        match plot_type:
+            case "cluster-size-distribution":
+                file_path = "cluster_size_distribution.png"
+            case "all-rarefaction-curve":
+                file_path = "all/all.rarefaction_curve.png"
+            case _:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Invalid plot type: {plot_type}",
+                )
 
-    file_path = os.path.join(result_dir, file_path)
+        file_path = os.path.join(result_dir, file_path)
 
-    if not os.path.exists(file_path):
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"{plot_type} File Not Found",
+            )
+
+        return FileResponse(file_path, media_type="image/png")
+    except Exception as e:
         raise HTTPException(
-            status_code=404,
-            detail=f"{plot_type} File Not Found",
-        )
-
-    return FileResponse(file_path, media_type="image/png")
+            status_code=500,
+            detail=f"Internal Server Error: {str(e)}",
+        ) from e

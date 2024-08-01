@@ -1,82 +1,25 @@
+import hashlib
+import json
+import logging
 import os
 import shutil
 import signal
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
-from uuid import uuid4
-import logging
+from typing import Dict, List, Optional, Tuple
+
 
 logger = logging.getLogger("kinfin_logger")
 
 
-class Session:
-    # TODO : Update to use Query Session instead of User Sessions
+class QueryManager:
     """
-    Represents a user session.
-
-    Attributes:
-        session_id (str): Unique identifier for the session.
-        result_path (str): Path where session results are stored.
-        last_activity (datetime): Timestamp of the last activity in the session.
+    A class to manage query sessions, including creation, retrieval, and cleanup of session directories.
     """
 
-    def __init__(self, results_base_dir: str) -> None:
-        """
-        Initialize a new session.
-
-        Args:
-            results_base_dir (str): Base directory where session results will be stored.
-        """
-        self.session_id = uuid4().hex
-
-        self.result_path = os.path.join(results_base_dir, self.session_id)
-        os.makedirs(self.result_path, exist_ok=True)
-        self.last_activity = datetime.now()
-
-    def update_activity(self) -> None:
-        """Update the timestamp of the last activity in the session"""
-        self.last_activity = datetime.now()
-
-    def is_expired(self) -> bool:
-        """
-        Check if the session has expired based on a threshold.
-
-        Returns:
-            bool: True if the session is expired, False otherwise.
-        """
-        threshold = os.getenv("SESSION_INACTIVITY_THRESHOLD")
-        default_threshold_hours = 24
-        try:
-            if threshold is None:
-                logger.warning(
-                    "[WARN] - SESSION_INACTIVITY_THRESHOLD environment variable not set. Defaulting to 24 hours."
-                )
-                threshold_hours = default_threshold_hours
-            else:
-                threshold_hours = float(threshold)
-        except ValueError:
-            logger.error(
-                "[ERROR] - Invalid value for SESSION_INACTIVITY_THRESHOLD environment variable. Defaulting to 24 hours."
-            )
-            threshold_hours = default_threshold_hours
-
-        return datetime.now() > self.last_activity + timedelta(hours=threshold_hours)
-
-
-class SessionManager:
-    """
-    Manages user sessions and their lifecycle.
-
-    Attributes:
-        results_base_dir (str): Base directory where session results are stored.
-        sessions (Dict[str, Session]): Dictionary to store active sessions.
-        cleanup_thread (Thread): Thread for periodic cleanup of expired sessions.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the SessionManager"""
+    def __init__(self, expiration_hours: int = 24) -> None:
+        """Initializes the QueryManager with the specified expiration time for sessions."""
         self.results_base_dir = ""
         self.cluster_f = ""
         self.sequence_ids_f = ""
@@ -86,91 +29,84 @@ class SessionManager:
         self.ipr_mapping_f = ""
         self.go_mapping_f = ""
 
-        self.sessions: Dict[str, Session] = {}
+        self.expiration_hours = expiration_hours
+        os.makedirs(self.results_base_dir, exist_ok=True)
+
         self.cleanup_thread = threading.Thread(target=self.cleanup_loop, daemon=True)
         self.cleanup_thread.start()
 
-    def new(self) -> Tuple[str, str]:
+    def get_session_id(self, query: List[Dict[str, str]]) -> str:
         """
-        Create a new session and return its ID and result path.
-
-        Returns:
-            Tuple[str, str]: ID and result path of the new session.
-        """
-        session = Session(self.results_base_dir)
-        self.sessions[session.session_id] = session
-        return session.session_id, session.result_path
-
-    def get(self, session_id) -> Optional[str]:
-        """
-        Retrieve the result path for a given session ID.
+        Generate a unique session ID based on the query.
 
         Args:
-            session_id (str): ID of the session to retrieve.
+            query (List[Dict[str, str]]): The query for which to generate a session ID.
 
         Returns:
-            Optional[str]: Result path if session is active and not expired, None otherwise.
+            str: The generated session ID.
         """
-        session = self.sessions.get(session_id)
+        query_json = json.dumps(query, sort_keys=True)
+        return hashlib.md5(query_json.encode()).hexdigest()
 
-        if not session:
-            return None
+    def get_or_create_session(self, query: List[Dict[str, str]]) -> Tuple[str, str]:
+        """
+        Get or create a session directory based on the query.
 
-        if session.is_expired():
-            self.remove(session_id)
-            return None
+        Args:
+            query (List[Dict[str, str]]): The query for which to get or create a session.
+
+        Returns:
+            tuple: The session ID and the session directory path.
+        """
+        session_id = self.get_session_id(query)
+        session_dir = os.path.join(self.results_base_dir, session_id)
+
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
         else:
-            session.update_activity()
-            return session.result_path
+            os.utime(session_dir, None)
 
-    def remove(self, session_id) -> bool:
+        return session_id, session_dir
+
+    def get_session_dir(self, session_id: str) -> Optional[str]:
         """
-        Remove a session by its ID.
+        Get the directory path of an existing session.
 
         Args:
-            session_id (str): ID of the session to remove.
+            session_id (str): The session ID for which to get the directory path.
 
         Returns:
-            bool: True if session was successfully removed, False otherwise.
+            str: The session directory path, or None if the session does not exist.
         """
-        shutil.rmtree(self.sessions[session_id].result_path)
-        if not (session := self.sessions.pop(session_id, None)):
-            return False
-        try:
-            os.rmdir(session.result_path)
-        except FileNotFoundError:
-            pass
-        return True
-
-    def clear_expired_sessions(self) -> None:
-        """Remove all expired sessions"""
-        expired_sessions = [
-            session_id
-            for session_id, session in self.sessions.items()
-            if session.is_expired()
-        ]
-        for session_id in expired_sessions:
-            self.remove(session_id)
-
-    def clear_all_sessions(self) -> None:
-        """Remove all sessions and associated result directories"""
-        shutil.rmtree(self.results_base_dir)
-        self.sessions = {}
+        session_dir = os.path.join(self.results_base_dir, session_id)
+        if os.path.exists(session_dir):
+            os.utime(session_dir, None)
+            return session_dir
+        return None
 
     def cleanup_loop(self) -> None:
-        """Periodically clean up expired sessions"""
+        """The main loop for periodically cleaning up expired sessions."""
         while True:
-            self.clear_expired_sessions()
-            time.sleep(10)
+            self.cleanup_expired_sessions()
+            time.sleep(3600)
 
-    def __exit__(self, signum, frame) -> None:
+    def cleanup_expired_sessions(self) -> None:
+        """Clean up sessions that have expired based on the expiration time."""
+        now = datetime.now()
+        for session_id in os.listdir(self.results_base_dir):
+            session_dir = os.path.join(self.results_base_dir, session_id)
+            mod_time = datetime.fromtimestamp(os.path.getmtime(session_dir))
+
+            if now - mod_time > timedelta(hours=self.expiration_hours):
+                shutil.rmtree(session_dir)
+
+    def __exit__(self, _, __) -> None:
         """Cleanup all sessions when exiting due to signal"""
-        self.clear_all_sessions()
+        shutil.rmtree(self.results_base_dir)
         exit(0)
 
 
-session_manager = SessionManager()
+query_manager = QueryManager()
 
-# Delete stored results on server shutdown
-signal.signal(signal.SIGINT, session_manager.__exit__)
-signal.signal(signal.SIGTERM, session_manager.__exit__)
+signal.signal(signal.SIGINT, query_manager.__exit__)
+signal.signal(signal.SIGTERM, query_manager.__exit__)

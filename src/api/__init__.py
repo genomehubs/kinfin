@@ -30,16 +30,16 @@ def run_server(
     from fastapi import FastAPI
 
     from api.endpoints import router
-    from api.sessions import session_manager
+    from api.sessions import query_manager
 
-    session_manager.results_base_dir = results_base_dir
-    session_manager.cluster_f = cluster_f
-    session_manager.sequence_ids_f = sequence_ids_f
-    session_manager.taxon_idx_mapping_file = taxon_idx_mapping_file
-    session_manager.nodesdb_f = nodesdb_f
-    session_manager.pfam_mapping_f = pfam_mapping_f
-    session_manager.ipr_mapping_f = ipr_mapping_f
-    session_manager.go_mapping_f = go_mapping_f
+    query_manager.results_base_dir = results_base_dir
+    query_manager.cluster_f = cluster_f
+    query_manager.sequence_ids_f = sequence_ids_f
+    query_manager.taxon_idx_mapping_file = taxon_idx_mapping_file
+    query_manager.nodesdb_f = nodesdb_f
+    query_manager.pfam_mapping_f = pfam_mapping_f
+    query_manager.ipr_mapping_f = ipr_mapping_f
+    query_manager.go_mapping_f = go_mapping_f
 
     app = FastAPI()
 
