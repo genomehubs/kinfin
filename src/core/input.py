@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple
 
 
 class ServeArgs:
@@ -26,7 +26,7 @@ class InputData:
         plot_tree: bool = False,
         min_proteomes: int = 2,
         test: str = "mannwhitneyu",
-        taxranks: List[str] = ["phylum", "order", "genus"],
+        taxranks: List[str] = None,
         repetitions: int = 30,
         fuzzy_count: int = 1,
         fuzzy_fraction: float = 0.75,
@@ -35,7 +35,9 @@ class InputData:
         plotsize: Tuple[float, float] = (24, 12),
         plot_format: str = "pdf",
         taxon_idx_mapping_file: Optional[str] = None,
-    ):
+    ) -> None:
+        if taxranks is None:
+            taxranks = ["phylum", "order", "genus"]
         if output_path:
             if not os.path.isabs(output_path):
                 output_path = os.path.abspath(output_path)
@@ -48,9 +50,8 @@ class InputData:
         self.species_ids_f = species_ids_file
         self.tree_f = tree_file
         self.functional_annotation_f = functional_annotation_f
-        if config_f.endswith(".json"):
-            if not taxon_idx_mapping_file:
-                raise ValueError("[ERROR] - taxon_idx_mapping not present")
+        if config_f.endswith(".json") and not taxon_idx_mapping_file:
+            raise ValueError("[ERROR] - taxon_idx_mapping not present")
         self.taxon_idx_mapping_file = taxon_idx_mapping_file
         self.nodesdb_f = nodesdb_f
         self.pfam_mapping_f = pfam_mapping_f

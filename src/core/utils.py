@@ -4,10 +4,9 @@ import logging
 import os
 import sys
 from math import log, sqrt
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Generator, List, Optional, Tuple, Union
 
 import scipy
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 
@@ -85,9 +84,10 @@ def yield_config_lines(
         if not taxon_idx_mapping_file:
             raise ValueError("[ERROR] - taxon_idx_mapping not present")
 
-        with open(taxon_idx_mapping_file, "r") as f_mapping, open(
-            config_f, "r"
-        ) as f_config:
+        with (
+            open(taxon_idx_mapping_file, "r") as f_mapping,
+            open(config_f, "r") as f_config,
+        ):
             taxon_idx_mapping = json.load(f_mapping)
             config_data = json.load(f_config)
             headers = ["IDX"] + list(config_data[0].keys())
@@ -97,10 +97,10 @@ def yield_config_lines(
                 idx = taxon_idx_mapping[item["TAXON"]]
                 row = [idx] + [item[key] for key in headers[1:]]
                 yield ",".join(row)
-        return
     else:
         yield from yield_file_lines(config_f)
-        return
+
+    return
 
 
 def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:

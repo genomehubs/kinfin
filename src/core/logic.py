@@ -1,19 +1,12 @@
-import json
+import logging
 import os
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple
 
 import ete3
 from ete3 import Tree, TreeNode
 
-from core.utils import (
-    progress,
-    read_fasta_len,
-    yield_config_lines,
-    yield_file_lines,
-)
-
-import logging
+from core.utils import progress, read_fasta_len, yield_config_lines, yield_file_lines
 
 logger = logging.getLogger("kinfin_logger")
 
@@ -117,7 +110,7 @@ def parse_attributes_from_config_data(
         - The 'TAXON' attribute is expected to be unique for each line.
     """
 
-    logger.info(f"[STATUS] - Parsing config data ...")
+    logger.info("[STATUS] - Parsing config data ...")
     attributes: List[str] = []
     level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
     proteomes: Set[str] = set()

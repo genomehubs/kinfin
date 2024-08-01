@@ -1,8 +1,8 @@
+import logging
 import os
-import shutil
 import time
 from collections import Counter, defaultdict
-from typing import Any, Dict, FrozenSet, Generator, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, FrozenSet, Generator, List, Set, Tuple, Union
 
 import matplotlib as mat
 import matplotlib.pyplot as plt
@@ -22,7 +22,6 @@ from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
 from core.proteins import ProteinCollection
 from core.utils import median, progress, statistic
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 mat.use("agg")
@@ -74,11 +73,6 @@ class DataFactory:
         self.dirs["main"] = output_path
         logger.info("[STATUS] - Output directories in")
         logger.info(f"\t{output_path}")
-        log_file_path = (
-            os.path.join(output_path, "kinfin.log")
-            if os.path.exists(output_path)
-            else None
-        )
         if not os.path.exists(output_path):
             logger.info("[STATUS] - Creating main output directory...")
             os.makedirs(output_path)
@@ -110,13 +104,12 @@ class DataFactory:
                 os.makedirs(node_chart_path)
                 self.dirs["tree_charts"] = node_chart_path
 
-            if self.inputData.plot_tree:
-                if not os.path.exists(node_header_path):
-                    logger.info(
-                        f"[STATUS] - Creating node headers directory: {node_header_path}"
-                    )
-                    os.makedirs(node_header_path)
-                    self.dirs["tree_headers"] = node_header_path
+            if self.inputData.plot_tree and not os.path.exists(node_header_path):
+                logger.info(
+                    f"[STATUS] - Creating node headers directory: {node_header_path}"
+                )
+                os.makedirs(node_header_path)
+                self.dirs["tree_headers"] = node_header_path
 
     def analyse_clusters(self) -> None:
         """

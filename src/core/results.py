@@ -1,8 +1,8 @@
+import logging
 import time
 
 from core.datastore import DataFactory
 from core.input import InputData
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 

@@ -1,7 +1,7 @@
+import logging
 import sys
 
 from core.utils import check_file
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 

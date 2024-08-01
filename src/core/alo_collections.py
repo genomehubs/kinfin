@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from typing import Any, Dict, List, Optional, Set
@@ -10,7 +11,6 @@ from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 

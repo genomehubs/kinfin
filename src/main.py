@@ -9,7 +9,6 @@ from cli.commands import parse_args
 from core.input import InputData, ServeArgs
 from core.utils import check_file
 
-
 if __name__ == "__main__":
 
     # Without these files, application won't start

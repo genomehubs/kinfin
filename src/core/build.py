@@ -1,9 +1,8 @@
-from collections import Counter, OrderedDict, defaultdict
 import json
+import logging
 import os
-from typing import Any, Dict, List, Optional, Set, Union
-
-from ete3 import Tree
+from collections import Counter, OrderedDict, defaultdict
+from typing import Dict, List, Optional, Set
 
 from core.alo_collections import AloCollection
 from core.clusters import Cluster, ClusterCollection
@@ -18,8 +17,6 @@ from core.logic import (
 )
 from core.proteins import Protein, ProteinCollection
 from core.utils import progress, yield_file_lines
-
-import logging
 
 logger = logging.getLogger("kinfin_logger")
 
@@ -91,8 +88,8 @@ def parse_cluster_file(
         "excluded_proteomes": defaultdict(int),
     }
 
-    output_filtered_file = os.path.join(output_dir, "filtered_orthogroups.txt")
-    stats_file = os.path.join(output_dir, "filtering_summary.json")
+    output_filtered_file = os.path.join(output_dir, "orthogroups.filtered.txt")
+    stats_file = os.path.join(output_dir, "summary.json")
 
     with open(cluster_f) as fh, open(output_filtered_file, "w") as ofh:
         for line in fh:
