@@ -26,7 +26,7 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -t, --tree_file <FILE>              Tree file in Newick format (taxon names must be the same as TAXON in config file)
 
         General options
-            -o, --outprefix <STR>               Output prefix
+            -o, --output_path <STR>               Output prefix
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
             --plot_tree                         Plot PDF of annotated phylogenetic tree (requires -t, full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
@@ -60,8 +60,8 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 
 import sys
-from os.path import isfile, join, exists, realpath, dirname
-from os import getcwd, mkdir, remove, environ
+from os.path import isfile, join, exists, realpath, dirname, isabs, abspath
+from os import getcwd, mkdir, remove, environ, makedirs
 import shutil
 import random
 import time
@@ -106,17 +106,6 @@ mat.rcParams.update({'font.size': 22})
 ########################################################################
 # General functions
 ########################################################################
-
-
-def retrieve_ftp(remote_f, local_f):
-    try:
-        print("[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f))
-        req = urlopen(remote_f)
-        with open(local_f, 'wb') as local_fh:
-            shutil.copyfileobj(req, local_fh)
-        req.close()
-    except IOError:
-        sys.exit("[ERROR] : '%s' could not be downloaded." % (remote_f))
 
 
 def check_file(infile):
@@ -472,7 +461,6 @@ class DataFactory():
         # add taxranks to rank
         for taxrank in inputObj.taxranks:
             attributes.append(taxrank)
-        self.nodesdb_file = nodesdb_f
         return attributes, level_by_attribute_by_proteome_id
 
     ###############################
@@ -480,30 +468,29 @@ class DataFactory():
     ###############################
 
     def setup_dirs(self, inputObj):
-        outprefix = inputObj.outprefix
+        output_path = inputObj.output_path
         self.dirs = {}
-        if outprefix:
-            if outprefix.endswith("/"):
-                result_path = "%skinfin_results" % (outprefix)
-            else:
-                result_path = "%s.kinfin_results" % (outprefix)
+        if output_path:
+            if not isabs(output_path):
+                output_path = abspath(output_path)
         else:
-            result_path = join(getcwd(), "kinfin_results")
-        self.dirs['main'] = result_path
-        print("[STATUS] - Output directories in \n\t%s" % (result_path))
-        if exists(result_path):
+            output_path = join(getcwd(), "kinfin_results")
+
+        self.dirs['main'] = output_path
+        print("[STATUS] - Output directories in \n\t%s" % (output_path))
+        if exists(output_path):
             print("[STATUS] - Directory exists. Deleting directory ...")
-            shutil.rmtree(result_path)
+            shutil.rmtree(output_path)
         print("[STATUS] - Creating directories ...")
-        mkdir(result_path)
+        makedirs(output_path)
         for attribute in aloCollection.attributes:
-            attribute_path = join(result_path, attribute)
+            attribute_path = join(output_path, attribute)
             self.dirs[attribute] = attribute_path
             if not exists(attribute_path):
                 print("\t%s" % (attribute_path))
                 mkdir(attribute_path)
         if aloCollection.tree_ete:
-            tree_path = join(result_path, "tree")
+            tree_path = join(output_path, "tree")
             node_chart_path = join(tree_path, "charts")
             node_header_path = join(tree_path, "headers")
             if not exists(tree_path):
@@ -610,7 +597,6 @@ class DataFactory():
             if not line.startswith("#"):
                 idx, fasta = line.split(": ")
                 fasta_by_ortho_id[idx] = fasta
-        self.species_ids_file = species_ids_f
         return fasta_by_ortho_id
 
     ###############################
@@ -626,7 +612,6 @@ class DataFactory():
             print("[STATUS]\t - Parsing FASTA %s" % (fasta_path))
             for header, length in readFastaLen(fasta_path):
                 fasta_len_by_protein_id[header] = length
-        self.fasta_dir = fasta_dir
         return fasta_len_by_protein_id
 
     ###############################
@@ -997,7 +982,20 @@ class DataFactory():
                             for domain_source in clusterCollection.domain_sources:
                                 # cluster_metrics_domains
                                 if domain_source in clusterObj.domain_counter_by_domain_source:
-                                    cluster_metrics_domains_line.append(";".join(["%s:%s" % (domain_id, count) for domain_id, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
+                                    sorted_counts = sorted(
+                                        [
+                                            f"{domain_id}:{count}"
+                                            for domain_id, count in clusterObj.domain_counter_by_domain_source[
+                                                domain_source
+                                            ].most_common()
+                                        ],
+                                        key=lambda x: (
+                                            x.split(":")[-1],
+                                            x.split(":")[-2],
+                                        ),
+                                    )
+                                    sorted_counts_str = ";".join(sorted_counts)
+                                    cluster_metrics_domains_line.append(sorted_counts_str)
                                     cluster_metrics_domains_line.append("{0:.3f}".format(clusterObj.domain_entropy_by_domain_source[domain_source]))
                                 else:
                                     cluster_metrics_domains_line.append("N/A")
@@ -1703,11 +1701,11 @@ class AloCollection():
             x_values = np.array(proteome_coverages)
             ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
             ax.set_xlim(-0.1, 1.1)
-            for tick in ax.xaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size - 2)
-                tick.label.set_rotation('vertical')
-            for tick in ax.yaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size - 2)
+            for tick in ax.xaxis.get_majorticklabels():
+                tick.set_fontsize(inputObj.plot_font_size - 2)
+                tick.set_rotation('vertical')
+            for tick in ax.yaxis.get_majorticklabels():
+                tick.set_fontsize(inputObj.plot_font_size - 2)
             ax.set_frame_on(False)
             ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
             ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
@@ -2145,8 +2143,8 @@ class InputObj():
         # FASTA files
         self.fasta_dir = args['--fasta_dir']
         self.check_if_fasta_dir_and_species_ids_f()
-        # outprefix
-        self.outprefix = args['--outprefix']
+        # output_path
+        self.output_path = args['--output_path']
         # proteins
         self.infer_singletons = args['--infer_singletons']
         # values: fuzzyness
@@ -2227,28 +2225,25 @@ class InputObj():
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "../data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
-                print("[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
-                retrieve_ftp(remote_f, pfam_mapping_f)
+                print("[ERROR] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Please run the install script to download")
+                sys.exit()
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
             ipr_mapping_f = join(dirname(realpath(__file__)), "../data/entry.list")
             if not isfile(ipr_mapping_f):
-                print("[WARN] - IPR-ID file 'data/entry.list' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
-                retrieve_ftp(remote_f, ipr_mapping_f)
+                print("[ERROR] - IPR-ID file 'data/entry.list' not found. Please run the install script to download")
+                sys.exit()
             self.ipr_mapping_f = ipr_mapping_f
             go_mapping_f = join(dirname(realpath(__file__)), "../data/interpro2go")
             if not isfile(go_mapping_f):
-                print("[WARN] - GO-ID file, but 'data/interpro2go' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
-                retrieve_ftp(remote_f, go_mapping_f)
+                print("[ERROR] - GO-ID file, but 'data/interpro2go' not found. Please run the install script to download")
+                sys.exit()
             self.go_mapping_f = go_mapping_f
 
     def check_that_ete_can_plot(self):
         if self.render_tree:
             try:
-                import PyQt4
+                import PyQt4 # type: ignore
             except ImportError:
                 sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
