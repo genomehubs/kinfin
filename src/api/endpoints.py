@@ -11,6 +11,9 @@ from pydantic import BaseModel
 from api.sessions import query_manager
 
 
+RUN_SUMMARY_FILEPATH = "summary.json"
+
+
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
 
@@ -107,6 +110,32 @@ async def initialize(input_data: InputSchema) -> JSONResponse:
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Internal Server Error: {str(e)}"
+        ) from e
+
+
+@router.get("/kinfin/run-summary")
+async def get_run_summary(session_id: str = Depends(header_scheme)):
+    try:
+        result_dir = query_manager.get_session_dir(session_id)
+        if not result_dir:
+            raise HTTPException(status_code=401, detail="Invalid Session ID provided")
+
+        file_path = os.path.join(result_dir, RUN_SUMMARY_FILEPATH)
+
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"{RUN_SUMMARY_FILEPATH} File Not Found",
+            )
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal Server Error: {str(e)}",
         ) from e
 
 
