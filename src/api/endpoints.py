@@ -156,7 +156,11 @@ async def get_plot(
                 detail=f"{plot_type} File Not Found",
             )
 
-        return FileResponse(file_path, media_type="image/png")
+        return FileResponse(
+            file_path,
+            media_type="image/png",
+            headers={"Content-Disposition": "inline"},
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
