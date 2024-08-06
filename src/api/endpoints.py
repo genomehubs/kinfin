@@ -44,7 +44,7 @@ async def run_cli_command(command: list):
     return stdout
 
 
-@router.post("/init")
+@router.post("/kinfin/init")
 async def initialize(input_data: InputSchema) -> JSONResponse:
     """
     Initialize the analysis process.
