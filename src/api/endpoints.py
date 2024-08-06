@@ -89,6 +89,8 @@ async def initialize(input_data: InputSchema) -> JSONResponse:
             query_manager.taxon_idx_mapping_file,
             "-o",
             result_dir,
+            "--plot_format",
+            "png",
         ]
 
         asyncio.create_task(run_cli_command(command))
