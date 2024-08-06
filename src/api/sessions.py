@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import signal
+import sys
 import threading
 import time
 from datetime import datetime, timedelta
@@ -19,7 +20,7 @@ class QueryManager:
 
     def __init__(self, expiration_hours: int = 24) -> None:
         """Initializes the QueryManager with the specified expiration time for sessions."""
-        self.results_base_dir = ""
+        self.results_base_dir = os.environ.get("RESULTS_BASE_DIR")
         self.cluster_f = ""
         self.sequence_ids_f = ""
         self.taxon_idx_mapping_file = ""
@@ -27,6 +28,8 @@ class QueryManager:
         self.pfam_mapping_f = ""
         self.ipr_mapping_f = ""
         self.go_mapping_f = ""
+        if self.results_base_dir is None or not os.path.isabs(self.results_base_dir):
+            sys.exit("[ERROR] RESULTS_BASE_DIR should be an absolute path.")
 
         self.expiration_hours = expiration_hours
         os.makedirs(self.results_base_dir, exist_ok=True)

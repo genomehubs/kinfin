@@ -3,7 +3,6 @@ from core.input import ServeArgs
 
 def run_server(
     args: ServeArgs,
-    results_base_dir: str,
     nodesdb_f: str,
     pfam_mapping_f: str,
     ipr_mapping_f: str,
@@ -17,7 +16,6 @@ def run_server(
 
     Parameters:
     - args [ServeArgs] : An object containing server configuration arguments, such as the port.
-    - results_base_dir [str] : Base directory for storing server results.
     - nodesdb_f [str] : File path to the nodesDB file.
     - pfam_mapping_f [str] : File path to the PFAM mapping file.
     - ipr_mapping_f [str] : File path to the InterPro mapping file.
@@ -32,7 +30,6 @@ def run_server(
     from api.endpoints import router
     from api.sessions import query_manager
 
-    query_manager.results_base_dir = results_base_dir
     query_manager.cluster_f = cluster_f
     query_manager.sequence_ids_f = sequence_ids_f
     query_manager.taxon_idx_mapping_file = taxon_idx_mapping_file

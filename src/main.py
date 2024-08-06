@@ -33,7 +33,6 @@ if __name__ == "__main__":
         cluster_f = os.environ.get("CLUSTER_FILE_PATH")
         sequence_ids_f = os.environ.get("SEQUENCE_IDS_FILE_PATH")
         taxon_idx_mapping_file = os.environ.get("TAXON_IDX_MAPPING_FILE_PATH")
-        results_base_dir = os.environ.get("RESULTS_BASE_DIR")
 
         # Without env variables being absolute paths, application won't start
         if cluster_f is None or not os.path.isabs(cluster_f):
@@ -42,8 +41,6 @@ if __name__ == "__main__":
             sys.exit("[ERROR] SEQUENCE_IDS_FILE_PATH should be an absolute path.")
         if taxon_idx_mapping_file is None or not os.path.isabs(taxon_idx_mapping_file):
             sys.exit("[ERROR] TAXON_IDX_MAPPING_FILE_PATH should be an absolute path.")
-        if results_base_dir is None or not os.path.isabs(results_base_dir):
-            sys.exit("[ERROR] RESULTS_BASE_DIR should be an absolute path.")
 
         try:
             check_file(cluster_f, install_kinfin=True)
@@ -60,11 +57,9 @@ if __name__ == "__main__":
             pfam_mapping_f=pfam_mapping_f,
             cluster_f=cluster_f,
             sequence_ids_f=sequence_ids_f,
-            results_base_dir=results_base_dir,
             taxon_idx_mapping_file=taxon_idx_mapping_file,
         )
     elif isinstance(args, InputData):
-        # run the cli script
         run_cli(args)
 
     else:
