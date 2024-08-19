@@ -86,7 +86,6 @@ def extract_attributes_and_taxon_sets(filepath: str):
     result = {"attributes": [], "taxon_set": defaultdict(list)}
     for file in files:
         filename = file.split("/")[-1]
-        print(filename)
         attribute = filename.split(".")[0]
         taxon_set = filename.split(".")[1]
         attributes.add(attribute)
