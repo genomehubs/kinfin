@@ -1,9 +1,6 @@
 import asyncio
-from collections import defaultdict
 import glob
-import re
-from typing import Dict, List
-import os
+from collections import defaultdict
 
 
 def read_status(status_file):
