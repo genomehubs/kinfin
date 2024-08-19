@@ -895,7 +895,7 @@ class DataFactory:
                         )
                         cafe_line += f"\t{total_proteins}"
                     cafe_output.append(cafe_line)
-            if len(cafe_output) > 0:
+            if cafe_output:
                 with open(cafe_f, "w") as cafe_fh:
                     logger.info(f"[STATUS] - Writing {cafe_f}")
                     cafe_output.sort()
@@ -972,7 +972,7 @@ class DataFactory:
                 ordered_line = [line_parts.get(col, "N/A") for col in header]
                 cluster_metrics_domains_output.append("\t".join(ordered_line))
 
-        if len(cluster_metrics_domains_output) > 0:
+        if cluster_metrics_domains_output:
             with open(cluster_metrics_domains_f, "w") as cluster_metrics_domains_fh:
                 logger.info(f"[STATUS] - Writing {cluster_metrics_domains_f}")
                 cluster_metrics_domains_output.sort()
@@ -1249,7 +1249,7 @@ class DataFactory:
                 ]:
                     attribute_metrics_output.append(self.__get_attribute_metrics(ALO))
 
-            if len(attribute_metrics_output) > 0:
+            if attribute_metrics_output:
                 with open(attribute_metrics_f, "w") as attribute_metrics_fh:
                     logger.info(f"[STATUS] - Writing {attribute_metrics_f}")
                     attribute_metrics_output.sort()
@@ -1342,7 +1342,7 @@ class DataFactory:
 
                 cluster_metrics_output.append("\t".join(cluster_metrics_line))
 
-            if len(cluster_metrics_output) > 0:
+            if cluster_metrics_output:
                 with open(cluster_metrics_f, "w") as cluster_metrics_fh:
                     logger.info(f"[STATUS] - Writing {cluster_metrics_f}")
                     cluster_metrics_output.sort()
@@ -1446,57 +1446,53 @@ class DataFactory:
                 cluster_metrics_ALO_f = os.path.join(
                     self.dirs[attribute], f"{attribute}.{level}.cluster_metrics.txt"
                 )
-                cluster_metrics_ALO_output = []
                 if ALO is None:
                     continue
-                cluster_metrics_ALO_output.extend(
-                    [
-                        "\t".join(
-                            [
-                                f"{cluster.cluster_id}",
-                                (
-                                    f"{ALO.cluster_status_by_cluster_id[cluster.cluster_id]}"
-                                    if ALO
-                                    else "N/A"
-                                ),
-                                (
-                                    f"{ALO.cluster_type_by_cluster_id[cluster.cluster_id]}"
-                                    if ALO
-                                    else "N/A"
-                                ),
-                                f"{cluster.protein_count}",
-                                f"{cluster.proteome_count}",
-                                f"{sum(cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][level])}",
-                                (
-                                    f"{ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]}"
-                                    if ALO
-                                    and ALO.cluster_mean_ALO_count_by_cluster_id[
-                                        cluster.cluster_id
-                                    ]
-                                    else "N/A"
-                                ),
-                                (
-                                    f"{ALO.cluster_mean_non_ALO_count_by_cluster_id[cluster.cluster_id]}"
-                                    if ALO
-                                    and ALO.cluster_mean_non_ALO_count_by_cluster_id[
-                                        cluster.cluster_id
-                                    ]
-                                    else "N/A"
-                                ),
-                                *self.__get_enrichment_data(ALO, cluster),
-                                "{0:.2f}".format(
-                                    cluster.proteome_coverage_by_level_by_attribute[
-                                        attribute
-                                    ][level]
-                                ),
-                                *self.__get_proteome_data(ALO, cluster),
-                            ]
-                        )
-                        for cluster in self.clusterCollection.cluster_list
-                    ]
-                )
-
-                if len(cluster_metrics_ALO_output) > 0:
+                cluster_metrics_ALO_output = [
+                    "\t".join(
+                        [
+                            f"{cluster.cluster_id}",
+                            (
+                                f"{ALO.cluster_status_by_cluster_id[cluster.cluster_id]}"
+                                if ALO
+                                else "N/A"
+                            ),
+                            (
+                                f"{ALO.cluster_type_by_cluster_id[cluster.cluster_id]}"
+                                if ALO
+                                else "N/A"
+                            ),
+                            f"{cluster.protein_count}",
+                            f"{cluster.proteome_count}",
+                            f"{sum(cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][level])}",
+                            (
+                                f"{ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]}"
+                                if ALO
+                                and ALO.cluster_mean_ALO_count_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                                else "N/A"
+                            ),
+                            (
+                                f"{ALO.cluster_mean_non_ALO_count_by_cluster_id[cluster.cluster_id]}"
+                                if ALO
+                                and ALO.cluster_mean_non_ALO_count_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                                else "N/A"
+                            ),
+                            *self.__get_enrichment_data(ALO, cluster),
+                            "{0:.2f}".format(
+                                cluster.proteome_coverage_by_level_by_attribute[
+                                    attribute
+                                ][level]
+                            ),
+                            *self.__get_proteome_data(ALO, cluster),
+                        ]
+                    )
+                    for cluster in self.clusterCollection.cluster_list
+                ]
+                if cluster_metrics_ALO_output:
                     with open(cluster_metrics_ALO_f, "w") as cluster_metrics_ALO_fh:
                         logger.info(f"[STATUS] - Writing {cluster_metrics_ALO_f}")
                         cluster_metrics_ALO_output.sort()
@@ -1585,7 +1581,7 @@ class DataFactory:
 
                                 cluster_1to1_ALO_output.append(cluster_1to1_ALO_line)
 
-                if len(cluster_1to1_ALO_output) > 0:
+                if cluster_1to1_ALO_output:
                     with open(cluster_1to1_ALO_f, "w") as cluster_1to1_ALO_fh:
                         logger.info(f"[STATUS] - Writing {cluster_1to1_ALO_f}")
                         cluster_1to1_ALO_output.sort()
@@ -2089,7 +2085,7 @@ class DataFactory:
                         background_representation_test_by_pair_by_attribute
                     )
 
-            if len(pairwise_representation_test_output) > 0:
+            if pairwise_representation_test_output:
                 with open(
                     pairwise_representation_test_f, "w"
                 ) as pairwise_representation_test_fh:
