@@ -120,7 +120,7 @@ def parse_attributes_from_config_data(
         if line.startswith("#"):
             if not attributes:
                 attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                if attributes[0] != "IDX" or attributes[1] != "TAXON":
+                if attributes[0] != "IDX" or attributes[1] != "taxon":
                     error_msg = f"[ERROR] - First/second element have to be IDX/TAXON.\n\t{attributes}"
                     raise ValueError(error_msg)
         elif line.strip():

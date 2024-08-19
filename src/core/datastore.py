@@ -706,7 +706,7 @@ class DataFactory:
         elif filetype == "cafe":
             cafe_header = ["#ID"]
             cafe_header.extend(
-                iter(sorted(self.aloCollection.ALO_by_level_by_attribute["TAXON"]))
+                iter(sorted(self.aloCollection.ALO_by_level_by_attribute["taxon"]))
             )
             return "\t".join(cafe_header)
         elif filetype == "cluster_1to1s_ALO":
@@ -735,7 +735,7 @@ class DataFactory:
                     self.aloCollection.ALO_by_level_by_attribute[attribute]
                 )
             ]
-            if attribute != "TAXON":
+            if attribute != "taxon":
                 cluster_metrics_header += [
                     f"{level}_median"
                     for level in sorted(
@@ -871,7 +871,7 @@ class DataFactory:
 
         This method iterates through attributes in self.aloCollection.attributes,
         retrieves protein counts by level for clusters in self.clusterCollection.cluster_list
-        that match the attribute "TAXON", and writes the data to a text file named
+        that match the attribute "taxon", and writes the data to a text file named
         'cluster_counts_by_taxon.txt' in the directory specified by self.dirs["main"].
 
         Raises:
@@ -882,9 +882,9 @@ class DataFactory:
             levels = sorted(
                 list(self.aloCollection.ALO_by_level_by_attribute[attribute])
             )
-            cafe_output = [self.__get_header_line("cafe", "TAXON")]
+            cafe_output = []
             for cluster in self.clusterCollection.cluster_list:
-                if attribute == "TAXON":
+                if attribute == "taxon":
                     cafe_line = f"{cluster.cluster_id}"
                     # cafe_line.append("None")
                     for _level in levels:
@@ -895,9 +895,11 @@ class DataFactory:
                         )
                         cafe_line += f"\t{total_proteins}"
                     cafe_output.append(cafe_line)
-            if len(cafe_output) > 1:
+            if len(cafe_output) > 0:
                 with open(cafe_f, "w") as cafe_fh:
                     logger.info(f"[STATUS] - Writing {cafe_f}")
+                    cafe_output.sort()
+                    cafe_output.insert(0, self.__get_header_line("cafe", "taxon"))
                     cafe_fh.write("\n".join(cafe_output) + "\n")
                 cafe_output = []
 
@@ -917,8 +919,8 @@ class DataFactory:
         cluster_metrics_domains_f = os.path.join(
             self.dirs["main"], "cluster_metrics_domains.txt"
         )
-        header = self.__get_header_line("cluster_metrics_domains", "TAXON").split("\t")
-        cluster_metrics_domains_output = ["\t".join(header)]
+        header = self.__get_header_line("cluster_metrics_domains", "taxon").split("\t")
+        cluster_metrics_domains_output = []
 
         if self.clusterCollection.functional_annotation_parsed:
             for cluster in self.clusterCollection.cluster_list:
@@ -970,9 +972,11 @@ class DataFactory:
                 ordered_line = [line_parts.get(col, "N/A") for col in header]
                 cluster_metrics_domains_output.append("\t".join(ordered_line))
 
-        if len(cluster_metrics_domains_output) > 1:
+        if len(cluster_metrics_domains_output) > 0:
             with open(cluster_metrics_domains_f, "w") as cluster_metrics_domains_fh:
                 logger.info(f"[STATUS] - Writing {cluster_metrics_domains_f}")
+                cluster_metrics_domains_output.sort()
+                cluster_metrics_domains_output.insert(0, "\t".join(header))
                 cluster_metrics_domains_fh.write(
                     "\n".join(cluster_metrics_domains_output) + "\n"
                 )
@@ -1140,10 +1144,7 @@ class DataFactory:
             None
         """
         output_by_domain_source: Dict[str, List[str]] = {
-            source: [
-                self.__get_header_line("cluster_metrics_domains_detailed", "TAXON")
-            ]
-            for source in self.clusterCollection.domain_sources
+            source: [] for source in self.clusterCollection.domain_sources
         }
 
         output_files: Dict[str, str] = {
@@ -1238,9 +1239,7 @@ class DataFactory:
             attribute_metrics_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.attribute_metrics.txt"
             )
-            attribute_metrics_output = [
-                self.__get_header_line("attribute_metrics", attribute)
-            ]
+            attribute_metrics_output = []
             levels = sorted(
                 list(self.aloCollection.ALO_by_level_by_attribute[attribute])
             )
@@ -1250,9 +1249,12 @@ class DataFactory:
                 ]:
                     attribute_metrics_output.append(self.__get_attribute_metrics(ALO))
 
-            if len(attribute_metrics_output) > 1:
+            if len(attribute_metrics_output) > 0:
                 with open(attribute_metrics_f, "w") as attribute_metrics_fh:
                     logger.info(f"[STATUS] - Writing {attribute_metrics_f}")
+                    attribute_metrics_output.sort()
+                    header_line = self.__get_header_line("attribute_metrics", attribute)
+                    attribute_metrics_output.insert(0, header_line)
                     attribute_metrics_fh.write(
                         "\n".join(attribute_metrics_output) + "\n"
                     )
@@ -1278,9 +1280,7 @@ class DataFactory:
             levels = sorted(
                 list(self.aloCollection.ALO_by_level_by_attribute[attribute])
             )
-            cluster_metrics_output = [
-                self.__get_header_line("cluster_metrics", attribute)
-            ]
+            cluster_metrics_output = []
             for cluster in self.clusterCollection.cluster_list:
                 cluster_metrics_line = [
                     str(cluster.cluster_id),
@@ -1314,7 +1314,7 @@ class DataFactory:
                     for _level in levels
                 )
 
-                if attribute != "TAXON":
+                if attribute != "taxon":
                     cluster_metrics_line.extend(
                         [
                             str(
@@ -1342,9 +1342,12 @@ class DataFactory:
 
                 cluster_metrics_output.append("\t".join(cluster_metrics_line))
 
-            if len(cluster_metrics_output) > 1:
+            if len(cluster_metrics_output) > 0:
                 with open(cluster_metrics_f, "w") as cluster_metrics_fh:
                     logger.info(f"[STATUS] - Writing {cluster_metrics_f}")
+                    cluster_metrics_output.sort()
+                    header_line = self.__get_header_line("cluster_metrics", attribute)
+                    cluster_metrics_output.insert(0, header_line)
                     cluster_metrics_fh.write("\n".join(cluster_metrics_output) + "\n")
                 cluster_metrics_output = []
 
@@ -1443,9 +1446,7 @@ class DataFactory:
                 cluster_metrics_ALO_f = os.path.join(
                     self.dirs[attribute], f"{attribute}.{level}.cluster_metrics.txt"
                 )
-                cluster_metrics_ALO_output = [
-                    self.__get_header_line("cluster_metrics_ALO", attribute)
-                ]
+                cluster_metrics_ALO_output = []
                 if ALO is None:
                     continue
                 cluster_metrics_ALO_output.extend(
@@ -1495,9 +1496,15 @@ class DataFactory:
                     ]
                 )
 
-                if len(cluster_metrics_ALO_output) > 1:
+                if len(cluster_metrics_ALO_output) > 0:
                     with open(cluster_metrics_ALO_f, "w") as cluster_metrics_ALO_fh:
                         logger.info(f"[STATUS] - Writing {cluster_metrics_ALO_f}")
+                        cluster_metrics_ALO_output.sort()
+
+                        header_line = self.__get_header_line(
+                            "cluster_metrics_ALO", attribute
+                        )
+                        cluster_metrics_ALO_output.insert(0, header_line)
                         cluster_metrics_ALO_fh.write(
                             "\n".join(cluster_metrics_ALO_output) + "\n"
                         )
@@ -1524,13 +1531,11 @@ class DataFactory:
                 cluster_1to1_ALO_f = os.path.join(
                     self.dirs[attribute], f"{attribute}.{level}.cluster_1to1s.txt"
                 )
-                cluster_1to1_ALO_output = [
-                    self.__get_header_line("cluster_1to1s_ALO", attribute)
-                ]
+                cluster_1to1_ALO_output = []
 
                 ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
 
-                if attribute != "TAXON" and ALO:
+                if attribute != "taxon" and ALO:
                     for (
                         cluster_type
                     ) in ALO.clusters_by_cluster_cardinality_by_cluster_type:
@@ -1580,9 +1585,14 @@ class DataFactory:
 
                                 cluster_1to1_ALO_output.append(cluster_1to1_ALO_line)
 
-                if len(cluster_1to1_ALO_output) > 1:
+                if len(cluster_1to1_ALO_output) > 0:
                     with open(cluster_1to1_ALO_f, "w") as cluster_1to1_ALO_fh:
                         logger.info(f"[STATUS] - Writing {cluster_1to1_ALO_f}")
+                        cluster_1to1_ALO_output.sort()
+                        header_line = self.__get_header_line(
+                            "cluster_1to1s_ALO", attribute
+                        )
+                        cluster_1to1_ALO_output.insert(0, header_line)
                         cluster_1to1_ALO_fh.write(
                             "\n".join(cluster_1to1_ALO_output) + "\n"
                         )
@@ -2027,9 +2037,7 @@ class DataFactory:
                 str, Dict[str, str]
             ] = {}
             background_representation_test_by_pair_by_attribute = {}
-            pairwise_representation_test_output = [
-                self.__get_header_line("pairwise_representation_test", attribute)
-            ]
+            pairwise_representation_test_output = []
             pairwise_representation_test_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.pairwise_representation_test.txt"
             )
@@ -2081,11 +2089,16 @@ class DataFactory:
                         background_representation_test_by_pair_by_attribute
                     )
 
-            if len(pairwise_representation_test_output) > 1:
+            if len(pairwise_representation_test_output) > 0:
                 with open(
                     pairwise_representation_test_f, "w"
                 ) as pairwise_representation_test_fh:
                     logger.info(f"[STATUS] - Writing {pairwise_representation_test_f}")
+                    pairwise_representation_test_output.sort()
+                    header_line = self.__get_header_line(
+                        "pairwise_representation_test", attribute
+                    )
+                    pairwise_representation_test_output.insert(0, header_line)
                     pairwise_representation_test_fh.write(
                         "\n".join(pairwise_representation_test_output) + "\n"
                     )

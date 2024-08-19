@@ -440,7 +440,7 @@ class AloCollection:
         random_list_of_proteome_ids = list(ALO.proteomes)
         random.shuffle(random_list_of_proteome_ids)
         for idx, proteome_id in enumerate(random_list_of_proteome_ids):
-            if proteome_ALO := self.ALO_by_level_by_attribute["TAXON"][proteome_id]:
+            if proteome_ALO := self.ALO_by_level_by_attribute["taxon"][proteome_id]:
                 seen_cluster_ids.update(
                     proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status[
                         "present"

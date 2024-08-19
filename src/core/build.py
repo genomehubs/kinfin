@@ -119,7 +119,7 @@ def parse_cluster_file(
                     protein = proteinCollection.proteins_by_protein_id[protein_id]
                     protein.clustered = True
                 cluster_list.append(cluster)
-
+                filtered_protein_ids.sort()
                 ofh.write(f"{cluster_id}: {', '.join(filtered_protein_ids)}\n")
                 stats["filtered_clusters"] += 1
 
