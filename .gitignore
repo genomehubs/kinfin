@@ -9,3 +9,9 @@ example/test.*
 build/
 dist/
 
+venv
+.test_data
+result
+.DS_Store
+.env
+data
