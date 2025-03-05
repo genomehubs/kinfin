@@ -440,7 +440,8 @@ class AloCollection:
         random_list_of_proteome_ids = list(ALO.proteomes)
         random.shuffle(random_list_of_proteome_ids)
         for idx, proteome_id in enumerate(random_list_of_proteome_ids):
-            if proteome_ALO := self.ALO_by_level_by_attribute["taxon"][proteome_id]:
+            key = "TAXON" if "TAXON" in self.ALO_by_level_by_attribute else "taxon"
+            if proteome_ALO := self.ALO_by_level_by_attribute[key][proteome_id]:
                 seen_cluster_ids.update(
                     proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status[
                         "present"
@@ -485,29 +486,44 @@ class AloCollection:
             str, Dict[str, Dict[int, List[int]]]
         ] = {}
         logger.info("[STATUS] - Generating rarefaction data ...")
-        for attribute in self.attributes:
-            for level in self.proteome_ids_by_level_by_attribute[attribute]:
-                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
-                if len(proteome_ids) == 1:
-                    continue
-
-                if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
-                    rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
-                if (
-                    level
-                    not in rarefaction_by_samplesize_by_level_by_attribute[attribute]
-                ):
-                    rarefaction_by_samplesize_by_level_by_attribute[attribute][
-                        level
-                    ] = {}
-                ALO = self.ALO_by_level_by_attribute[attribute][level]
-                if ALO is None:
-                    continue
-                for _ in range(repetitions):
-                    self.compute_repetition_for_rarefaction_curve(
-                        ALO=ALO,
-                        attribute=attribute,
-                        level=level,
-                        rarefaction_by_samplesize_by_level_by_attribute=rarefaction_by_samplesize_by_level_by_attribute,
+        try:
+            for attribute in self.attributes:
+                for level in self.proteome_ids_by_level_by_attribute[attribute]:
+                    logger.info(
+                        f"[STATUS] - Processing {attribute} at level {level} ..."
                     )
+                    proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
+                        level
+                    ]
+                    if len(proteome_ids) == 1:
+                        logger.info(
+                            f"[STATUS] - ... skipping {attribute} at level {level}"
+                        )
+
+                        continue
+
+                    if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
+                        rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
+                    if (
+                        level
+                        not in rarefaction_by_samplesize_by_level_by_attribute[
+                            attribute
+                        ]
+                    ):
+                        rarefaction_by_samplesize_by_level_by_attribute[attribute][
+                            level
+                        ] = {}
+                    ALO = self.ALO_by_level_by_attribute[attribute][level]
+                    if ALO is None:
+                        continue
+                    for _ in range(repetitions):
+                        self.compute_repetition_for_rarefaction_curve(
+                            ALO=ALO,
+                            attribute=attribute,
+                            level=level,
+                            rarefaction_by_samplesize_by_level_by_attribute=rarefaction_by_samplesize_by_level_by_attribute,
+                        )
+        except Exception as e:
+            logger.error(f"[ERROR] - {e}")
+            return {}
         return rarefaction_by_samplesize_by_level_by_attribute

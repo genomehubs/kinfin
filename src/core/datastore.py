@@ -111,6 +111,8 @@ class DataFactory:
                 os.makedirs(node_header_path)
                 self.dirs["tree_headers"] = node_header_path
 
+        logger.info("[STATUS] - Creating directories ... Done")
+
     def analyse_clusters(self) -> None:
         """
         Analyses clusters within the cluster collection.
@@ -735,7 +737,7 @@ class DataFactory:
                     self.aloCollection.ALO_by_level_by_attribute[attribute]
                 )
             ]
-            if attribute != "taxon":
+            if attribute.lower() != "taxon":
                 cluster_metrics_header += [
                     f"{level}_median"
                     for level in sorted(
@@ -884,7 +886,7 @@ class DataFactory:
             )
             cafe_output = []
             for cluster in self.clusterCollection.cluster_list:
-                if attribute == "taxon":
+                if attribute.lower() == "taxon":
                     cafe_line = f"{cluster.cluster_id}"
                     # cafe_line.append("None")
                     for _level in levels:
@@ -1314,7 +1316,7 @@ class DataFactory:
                     for _level in levels
                 )
 
-                if attribute != "taxon":
+                if attribute.lower() != "taxon":
                     cluster_metrics_line.extend(
                         [
                             str(
@@ -1531,7 +1533,7 @@ class DataFactory:
 
                 ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
 
-                if attribute != "taxon" and ALO:
+                if attribute.lower() != "taxon" and ALO:
                     for (
                         cluster_type
                     ) in ALO.clusters_by_cluster_cardinality_by_cluster_type:

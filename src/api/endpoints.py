@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from datetime import datetime
 from functools import wraps
@@ -24,6 +25,9 @@ from api.utils import (
     run_cli_command,
     sort_and_paginate_result,
 )
+
+LOGGER = logging.getLogger("uvicorn.error")
+LOGGER.setLevel(logging.DEBUG)
 
 RUN_SUMMARY_FILEPATH = "summary.json"
 COUNTS_FILEPATH = "cluster_counts_by_taxon.txt"
