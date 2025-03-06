@@ -94,7 +94,7 @@ def yield_config_lines(
             yield "#" + ",".join(headers)
 
             for item in config_data:
-                idx = taxon_idx_mapping[item["taxon"]]
+                idx = taxon_idx_mapping[item.get("taxon") or item.get("TAXON")]
                 row = [idx] + [item[key] for key in headers[1:]]
                 yield ",".join(row)
     else:

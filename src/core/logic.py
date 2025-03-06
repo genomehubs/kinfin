@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 from collections import defaultdict
@@ -38,11 +39,9 @@ def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:
             nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
         elif line.strip():
             nodes_count += 1
-            try:
+            with contextlib.suppress(Exception):
                 node, rank, name, parent = line.rstrip("\n").split("\t")
                 nodesdb[node] = {"rank": rank, "name": name, "parent": parent}
-            except Exception:
-                pass
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
@@ -110,44 +109,55 @@ def parse_attributes_from_config_data(
         - The 'TAXON' attribute is expected to be unique for each line.
     """
 
-    logger.info("[STATUS] - Parsing config data ...")
-    attributes: List[str] = []
-    level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
-    proteomes: Set[str] = set()
-    proteome_id_by_species_id: Dict[str, str] = {}
+    try:
+        logger.info("[STATUS] - Parsing config data ...")
+        attributes: List[str] = []
+        level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
+        proteomes: Set[str] = set()
+        proteome_id_by_species_id: Dict[str, str] = {}
 
-    for line in yield_config_lines(config_f, taxon_idx_mapping_file):
-        if line.startswith("#"):
-            if not attributes:
-                attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                if attributes[0] != "IDX" or attributes[1] != "taxon":
-                    error_msg = f"[ERROR] - First/second element have to be IDX/TAXON.\n\t{attributes}"
+        for line in yield_config_lines(config_f, taxon_idx_mapping_file):
+            if line.startswith("#"):
+                if not attributes:
+                    attributes = [x.strip() for x in line.lstrip("#").split(",")]
+                    if (
+                        attributes[0].upper() != "IDX"
+                        or attributes[1].upper() != "TAXON"
+                    ):
+                        error_msg = f"[ERROR] - First/second element have to be IDX/TAXON.\n\t{attributes}"
+                        logger.info(error_msg)
+                        raise ValueError(error_msg)
+            elif line.strip():
+                temp = line.split(",")
+
+                if len(temp) != len(attributes):
+                    error_msg = f"[ERROR] - number of columns in line differs from header\n\t{attributes}\n\t{temp}"
+                    logger.info(error_msg)
                     raise ValueError(error_msg)
-        elif line.strip():
-            temp = line.split(",")
 
-            if len(temp) != len(attributes):
-                error_msg = f"[ERROR] - number of columns in line differs from header\n\t{attributes}\n\t{temp}"
-                raise ValueError(error_msg)
+                if temp[1] in proteomes:
+                    error_msg = f"[ERROR] - 'TAXON' should be unique. {temp[0]} was encountered multiple times"  # fmt:skip
+                    logger.info(error_msg)
+                    raise ValueError(error_msg)
 
-            if temp[1] in proteomes:
-                error_msg = f"[ERROR] - 'TAXON' should be unique. {temp[0]} was encountered multiple times"  # fmt:skip
-                raise ValueError(error_msg)
+                species_id = temp[0]
+                proteome_id = temp[1]
+                proteomes.add(proteome_id)
+                proteome_id_by_species_id[species_id] = proteome_id
 
-            species_id = temp[0]
-            proteome_id = temp[1]
-            proteomes.add(proteome_id)
-            proteome_id_by_species_id[species_id] = proteome_id
-
-            level_by_attribute_by_proteome_id[proteome_id] = dict(zip(attributes, temp))
-            level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
-    attributes.insert(0, "all")  # append to front
-    return (
-        proteomes,
-        proteome_id_by_species_id,
-        attributes,
-        level_by_attribute_by_proteome_id,
-    )
+                level_by_attribute_by_proteome_id[proteome_id] = dict(
+                    zip(attributes, temp)
+                )
+                level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
+        attributes.insert(0, "all")  # append to front
+        return (
+            proteomes,
+            proteome_id_by_species_id,
+            attributes,
+            level_by_attribute_by_proteome_id,
+        )
+    except Exception as e:
+        logger.error(f"[ERROR] - {e}")
 
 
 # common
@@ -396,7 +406,7 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
 
 
 def compute_protein_ids_by_proteome(
-    proteomes_by_protein_id: Dict[str, str]
+    proteomes_by_protein_id: Dict[str, str],
 ) -> DefaultDict[str, Set[str]]:
     """
     Compute protein IDs grouped by proteome IDs.

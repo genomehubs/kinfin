@@ -91,37 +91,47 @@ def parse_cluster_file(
     output_filtered_file = os.path.join(output_dir, "orthogroups.filtered.txt")
     stats_file = os.path.join(output_dir, "summary.json")
 
-    with open(cluster_f) as fh, open(output_filtered_file, "w") as ofh:
-        for line in fh:
-            stats["total_clusters"] += 1
-            temp: List[str] = line.rstrip("\n").split(" ")
-            cluster_id, protein_ids = temp[0].replace(":", ""), temp[1:]
-            protein_ids = [protein_id for protein_id in protein_ids if protein_id]
+    logger.info(f"[STATUS] - Available proteomes: {available_proteomes}")
 
-            filtered_protein_ids = []
-            for protein_id in protein_ids:
-                proteome_id = protein_id.split(".")[0]  # Extract proteome ID
-                if proteome_id in available_proteomes:
-                    filtered_protein_ids.append(protein_id)
-                    stats["included_proteins"].append(protein_id)
-                    stats["included_proteomes"][proteome_id] += 1
-                else:
-                    stats["excluded_proteins"].append(protein_id)
-                    stats["excluded_proteomes"][proteome_id] += 1
+    try:
 
-            stats["total_proteins"] += len(protein_ids)
-            stats["filtered_proteins"] += len(filtered_protein_ids)
+        with open(cluster_f) as fh, open(output_filtered_file, "w") as ofh:
+            for line in fh:
+                stats["total_clusters"] += 1
+                temp: List[str] = line.rstrip("\n").split(" ")
+                cluster_id, protein_ids = temp[0].replace(":", ""), temp[1:]
+                protein_ids = [protein_id for protein_id in protein_ids if protein_id]
 
-            if filtered_protein_ids:
-                # Only create a cluster if there are proteins left after filtering
-                cluster = Cluster(cluster_id, filtered_protein_ids, proteinCollection)
-                for protein_id in filtered_protein_ids:
-                    protein = proteinCollection.proteins_by_protein_id[protein_id]
-                    protein.clustered = True
-                cluster_list.append(cluster)
-                filtered_protein_ids.sort()
-                ofh.write(f"{cluster_id}: {', '.join(filtered_protein_ids)}\n")
-                stats["filtered_clusters"] += 1
+                filtered_protein_ids = []
+                for protein_id in protein_ids:
+                    proteome_id = protein_id.split(".")[0]  # Extract proteome ID
+                    if proteome_id in available_proteomes:
+                        filtered_protein_ids.append(protein_id)
+                        stats["included_proteins"].append(protein_id)
+                        stats["included_proteomes"][proteome_id] += 1
+                    else:
+                        stats["excluded_proteins"].append(protein_id)
+                        stats["excluded_proteomes"][proteome_id] += 1
+
+                stats["total_proteins"] += len(protein_ids)
+                stats["filtered_proteins"] += len(filtered_protein_ids)
+
+                if filtered_protein_ids:
+                    # Only create a cluster if there are proteins left after filtering
+                    cluster = Cluster(
+                        cluster_id, filtered_protein_ids, proteinCollection
+                    )
+                    for protein_id in filtered_protein_ids:
+                        protein = proteinCollection.proteins_by_protein_id[protein_id]
+                        protein.clustered = True
+                    cluster_list.append(cluster)
+                    filtered_protein_ids.sort()
+                    ofh.write(f"{cluster_id}: {', '.join(filtered_protein_ids)}\n")
+                    stats["filtered_clusters"] += 1
+    except Exception as e:
+        logger.error("[ERROR] - Something has gone wrong in build.py")
+        logger.error(f"[ERROR] - Error parsing cluster file: {e}")
+        raise e
 
     stats["included_proteins_count"] = len(set(stats["included_proteins"]))
     stats["excluded_proteins_count"] = len(set(stats["excluded_proteins"]))
