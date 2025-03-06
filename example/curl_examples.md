@@ -12,17 +12,6 @@ curl -L http://molluscdb.cog.sanger.ac.uk/dev/kinfin/api_test_data.tar.gz > api_
 tar xf api_test_data.tar.gz && rm api_test_data.tar.gz
 ```
 
-## Set some variables
-
-```bash
-export KINFIN_PORT=4322
-export CLUSTER_FILE_PATH=$WORKDIR/api_test_data/Orthogroups.txt
-export SEQUENCE_IDS_FILE_PATH=$WORKDIR/api_test_data/kinfin.SequenceIDs.txt
-export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/api_test_data/taxon_idx_mapping.json
-export RESULTS_BASE_DIR=$WORKDIR/output
-export SESSION_INACTIVITY_THRESHOLD=24
-```
-
 ## Clone the KinFin repo
 
 ```bash
@@ -31,7 +20,13 @@ pip install -r requirements.txt
 ```
 
 ## Start the API
-```
+```bash
+export KINFIN_PORT=4322
+export CLUSTER_FILE_PATH=$WORKDIR/api_test_data/Orthogroups.txt
+export SEQUENCE_IDS_FILE_PATH=$WORKDIR/api_test_data/kinfin.SequenceIDs.txt
+export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/api_test_data/taxon_idx_mapping.json
+export RESULTS_BASE_DIR=$WORKDIR/output
+export SESSION_INACTIVITY_THRESHOLD=24
 ./src/main.py serve -p $KINFIN_PORT
 ```
 

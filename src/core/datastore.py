@@ -88,30 +88,35 @@ class DataFactory:
                 os.makedirs(attribute_path)
 
         if self.aloCollection.tree_ete is not None:
-            tree_path = os.path.join(output_path, "tree")
-            node_chart_path = os.path.join(tree_path, "charts")
-            node_header_path = os.path.join(tree_path, "headers")
-
-            if not os.path.exists(tree_path):
-                logger.info(f"[STATUS] - Creating tree directory: {tree_path}")
-                os.makedirs(tree_path)
-                self.dirs["tree"] = tree_path
-
-            if not os.path.exists(node_chart_path):
-                logger.info(
-                    f"[STATUS] - Creating node charts directory: {node_chart_path}"
-                )
-                os.makedirs(node_chart_path)
-                self.dirs["tree_charts"] = node_chart_path
-
-            if self.inputData.plot_tree and not os.path.exists(node_header_path):
-                logger.info(
-                    f"[STATUS] - Creating node headers directory: {node_header_path}"
-                )
-                os.makedirs(node_header_path)
-                self.dirs["tree_headers"] = node_header_path
-
+            self._create_tree_directories(output_path)
         logger.info("[STATUS] - Creating directories ... Done")
+
+    def _create_tree_directories(self, output_path):
+        tree_path = os.path.join(output_path, "tree")
+        node_chart_path = os.path.join(tree_path, "charts")
+        node_header_path = os.path.join(tree_path, "headers")
+
+        if not os.path.exists(tree_path):
+            self._extracted_from_setup_dirs_30(
+                "[STATUS] - Creating tree directory: ", tree_path, "tree"
+            )
+        if not os.path.exists(node_chart_path):
+            self._extracted_from_setup_dirs_30(
+                "[STATUS] - Creating node charts directory: ",
+                node_chart_path,
+                "tree_charts",
+            )
+        if self.inputData.plot_tree and not os.path.exists(node_header_path):
+            self._create_directory(
+                "[STATUS] - Creating node headers directory: ",
+                node_header_path,
+                "tree_headers",
+            )
+
+    def _create_directory(self, log_message, directory_path, dir_key):
+        logger.info(f"{log_message}{directory_path}")
+        os.makedirs(directory_path)
+        self.dirs[dir_key] = directory_path
 
     def analyse_clusters(self) -> None:
         """
@@ -1860,17 +1865,21 @@ class DataFactory:
         left, width = 0.1, 0.65
         bottom, height = 0.1, 0.65
         bottom_h = left + width + 0.02
-        rect_scatter = (left, bottom, width, height)
-        rect_histx = (left, bottom_h, width, 0.2)
-
-        axScatter = plt.axes(rect_scatter)
-        axScatter.set_facecolor("white")
-        axHistx = plt.axes(rect_histx)
-        axHistx.set_facecolor("white")
+        axScatter = self.__extracted_from___setup_plot_axes_(
+            left, bottom, width, height
+        )
+        axHistx = self.__extracted_from___setup_plot_axes_(left, bottom_h, width, 0.2)
         axHistx.xaxis.set_major_formatter(NullFormatter())
         axHistx.yaxis.set_major_formatter(NullFormatter())
 
         return axScatter, axHistx
+
+    # TODO Rename this here and in `__setup_plot_axes`
+    def __extracted_from___setup_plot_axes_(self, left, arg1, width, arg3):
+        rect_scatter = left, arg1, width, arg3
+        result = plt.axes(rect_scatter)
+        result.set_facecolor("white")
+        return result
 
     def __plot_data(
         self,

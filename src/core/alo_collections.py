@@ -387,12 +387,12 @@ class AloCollection:
         header_f_by_node_name = {}
         charts_f_by_node_name = {}
         for node in self.tree_ete.traverse("levelorder"):  # type: ignore
-            for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
-                node_clusters.append(
-                    "\t".join(
-                        [str(string) for string in list(synapomorphic_cluster_string)]
-                    )
+            node_clusters.extend(
+                "\t".join(
+                    [str(string) for string in list(synapomorphic_cluster_string)]
                 )
+                for synapomorphic_cluster_string in node.synapomorphic_cluster_strings
+            )
             node_stats_line = [
                 node.name,
                 node.apomorphic_cluster_counts["singletons"],  # type: ignore
@@ -488,22 +488,19 @@ class AloCollection:
         logger.info("[STATUS] - Generating rarefaction data ...")
         try:
             for attribute in self.attributes:
-                for level in self.proteome_ids_by_level_by_attribute[attribute]:
+                if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
+                    rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
+                for level, proteome_ids in self.proteome_ids_by_level_by_attribute[
+                    attribute
+                ].items():
                     logger.info(
                         f"[STATUS] - Processing {attribute} at level {level} ..."
                     )
-                    proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][
-                        level
-                    ]
                     if len(proteome_ids) == 1:
                         logger.info(
                             f"[STATUS] - ... skipping {attribute} at level {level}"
                         )
-
                         continue
-
-                    if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
-                        rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
                     if (
                         level
                         not in rarefaction_by_samplesize_by_level_by_attribute[
@@ -513,7 +510,7 @@ class AloCollection:
                         rarefaction_by_samplesize_by_level_by_attribute[attribute][
                             level
                         ] = {}
-                    ALO = self.ALO_by_level_by_attribute[attribute][level]
+                    ALO = self.ALO_by_level_by_attribute[attribute].get(level)
                     if ALO is None:
                         continue
                     for _ in range(repetitions):

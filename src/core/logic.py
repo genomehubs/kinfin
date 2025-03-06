@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 from collections import defaultdict
@@ -38,11 +39,9 @@ def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:
             nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
         elif line.strip():
             nodes_count += 1
-            try:
+            with contextlib.suppress(Exception):
                 node, rank, name, parent = line.rstrip("\n").split("\t")
                 nodesdb[node] = {"rank": rank, "name": name, "parent": parent}
-            except Exception:
-                pass
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
@@ -112,7 +111,6 @@ def parse_attributes_from_config_data(
 
     try:
         logger.info("[STATUS] - Parsing config data ...")
-        logger.info("[STATUS] - Hoping it works ...")
         attributes: List[str] = []
         level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
         proteomes: Set[str] = set()
@@ -159,8 +157,7 @@ def parse_attributes_from_config_data(
             level_by_attribute_by_proteome_id,
         )
     except Exception as e:
-        logger.info(f"[ERROR] - {e}")
-        raise e
+        logger.error(f"[ERROR] - {e}")
 
 
 # common
