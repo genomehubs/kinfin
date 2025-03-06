@@ -387,7 +387,7 @@ async def get_cluster_summary(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(config_f)
+        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
         if attribute and attribute not in valid_attributes:
@@ -513,7 +513,7 @@ async def get_attribute_summary(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(config_f)
+        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
         if attribute and attribute not in valid_attributes:
@@ -602,7 +602,7 @@ async def get_cluster_metrics(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(config_f)
+        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
         if attribute and attribute not in valid_attributes:
@@ -615,7 +615,7 @@ async def get_cluster_metrics(
                 status_code=400,
             )
 
-        valid_taxon_sets = valid_endpoints["taxon_sets"]
+        valid_taxon_sets = valid_endpoints["taxon_set"][attribute]
 
         if taxon_set and taxon_set not in valid_taxon_sets:
             return JSONResponse(
@@ -661,7 +661,6 @@ async def get_cluster_metrics(
 
         return JSONResponse(response.model_dump())
     except Exception as e:
-        print(e)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
@@ -699,7 +698,7 @@ async def get_pairwise_analysis(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(config_f)
+        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
         if attribute and attribute not in valid_attributes:
