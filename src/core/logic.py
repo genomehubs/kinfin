@@ -406,7 +406,7 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
 
 
 def compute_protein_ids_by_proteome(
-    proteomes_by_protein_id: Dict[str, str]
+    proteomes_by_protein_id: Dict[str, str],
 ) -> DefaultDict[str, Set[str]]:
     """
     Compute protein IDs grouped by proteome IDs.
