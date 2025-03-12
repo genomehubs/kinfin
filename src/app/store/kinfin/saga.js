@@ -189,12 +189,17 @@ function* getCountsByTaxonSaga(action) {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute } = action.payload;
+  const { attribute, page } = action.payload;
+  const data = {
+    attribute,
+    size: 10,
+    page,
+  };
   try {
-    const response = yield call(getClusterSummary, attribute);
+    const response = yield call(getClusterSummary, data);
 
     if (response.status == "success") {
-      yield put(getClusterSummarySuccess(response.data));
+      yield put(getClusterSummarySuccess(response));
       yield call(dispatchSuccessToast, "Cluster Summary fetched successfully!");
     } else {
       yield put(getClusterSummaryFailure(response));
