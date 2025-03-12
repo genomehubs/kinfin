@@ -19,6 +19,7 @@ const Dashboard = () => {
 
   return (
     <div className={styles.page}>
+      <h1>KinFin Analysis</h1>
       <AttributeSelector />
       <RunSummary />
       <div className={styles.chartsContainer}>
