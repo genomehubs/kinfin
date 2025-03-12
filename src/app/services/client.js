@@ -93,12 +93,13 @@ export const getAttributeSummary = async (data) => {
   }
 };
 
-export const getClusterMetrics = async (attribute, taxonSet) => {
+export const getClusterMetrics = async (data) => {
   try {
     const response = await apiClient.get(
-      `/cluster-metrics/${attribute}/${taxonSet}`,
+      `/cluster-metrics/${data.attribute}/${data.taxonSet}`,
       {
         headers: { "x-session-id": getSessionId() },
+        params: { page: data.page, size: data.size },
       }
     );
     return response.data;

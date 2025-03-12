@@ -14,6 +14,12 @@ const Home = () => {
     dispatch(AnalysisActions.getCountsByTaxon());
     dispatch(AnalysisActions.getClusterSummary({ attribute: "host" }));
     dispatch(AnalysisActions.getAttributeSummary({ attribute: "host" }));
+    dispatch(
+      AnalysisActions.getClusterMetrics({
+        attribute: "host",
+        taxonSet: "human",
+      })
+    );
   }, [dispatch]);
 
   const handleInitAnalysis = () => {

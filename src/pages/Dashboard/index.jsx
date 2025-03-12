@@ -8,6 +8,7 @@ import CountsByTaxonChart from "../../components/Charts/CountsByTaxon";
 import { useSelector } from "react-redux";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
+import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(true);
@@ -35,6 +36,14 @@ const Dashboard = () => {
           </div>
           <div className={styles.chartContainer}>
             <ClusterSummary />
+          </div>
+        </div>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <p className={styles.title}>Cluster Metrics</p>
+          </div>
+          <div className={styles.chartContainer}>
+            <ClusterMetrics />
           </div>
         </div>
       </div>

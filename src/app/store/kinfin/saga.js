@@ -250,12 +250,18 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet } = action.payload;
+  const { attribute, taxonSet, page } = action.payload;
+  const data = {
+    attribute,
+    taxonSet,
+    page,
+    size: 10,
+  };
   try {
-    const response = yield call(getClusterMetrics, attribute, taxonSet);
+    const response = yield call(getClusterMetrics, data);
 
     if (response.status == "success") {
-      yield put(getClusterMetricsSuccess(response.data));
+      yield put(getClusterMetricsSuccess(response));
       yield call(dispatchSuccessToast, "CLuster Metrics fetched successfully!");
     } else {
       yield put(getClusterMetricsFailure(response));
