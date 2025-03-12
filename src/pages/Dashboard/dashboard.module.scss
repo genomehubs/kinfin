@@ -1,0 +1,13 @@
+.page {
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // min-width: 100vw;
+  gap: 32px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 20px 180px;
+  flex-direction: column;
+}

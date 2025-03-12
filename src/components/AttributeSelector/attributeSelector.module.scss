@@ -1,0 +1,51 @@
+.container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+
+  justify-content: center;
+  .selectors {
+    display: flex;
+    align-items: center;
+    // width: 70%;
+    flex: 1;
+    gap: 32px;
+    .selectContainer {
+      display: flex;
+      flex-direction: column;
+      // flex: 1;
+      width: 30%;
+
+      .dropdown {
+        padding: 8px 20px;
+        border: none;
+        outline: none;
+        border-radius: 4px;
+        background-color: #313336;
+        cursor: pointer;
+      }
+    }
+  }
+  .buttonContainer {
+    // width: 30%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .applyButton {
+    }
+    .clearButton {
+      background: none;
+      // border: 1px solid #fff;
+    }
+  }
+}
