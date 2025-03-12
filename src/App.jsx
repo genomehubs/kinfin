@@ -1,4 +1,4 @@
-// import "./App.css";
+import "./App.module.scss";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ToastContainer } from "react-toastify";

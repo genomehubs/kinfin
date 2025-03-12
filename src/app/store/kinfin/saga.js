@@ -213,12 +213,17 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute } = action.payload;
+  const { attribute, page } = action.payload;
+  const data = {
+    attribute,
+    page,
+    size: 10,
+  };
   try {
-    const response = yield call(getAttributeSummary, attribute);
+    const response = yield call(getAttributeSummary, data);
 
     if (response.status == "success") {
-      yield put(getAttributeSummarySuccess(response.data));
+      yield put(getAttributeSummarySuccess(response));
       yield call(
         dispatchSuccessToast,
         "Attribute Summary fetched successfully!"

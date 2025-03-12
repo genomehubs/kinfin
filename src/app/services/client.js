@@ -77,11 +77,15 @@ export const getClusterSummary = async (attribute) => {
   }
 };
 
-export const getAttributeSummary = async (attribute) => {
+export const getAttributeSummary = async (data) => {
   try {
-    const response = await apiClient.get(`/attribute-summary/${attribute}`, {
-      headers: { "x-session-id": getSessionId() },
-    });
+    const response = await apiClient.get(
+      `/attribute-summary/${data.attribute}`,
+      {
+        headers: { "x-session-id": getSessionId() },
+        params: { page: data.page, size: data.size }, // Pass pagination parameters
+      }
+    );
     return response.data;
   } catch (error) {
     throw error;

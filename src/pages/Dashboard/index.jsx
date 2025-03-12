@@ -6,6 +6,7 @@ import Modal from "../../components/UIElements/Modal";
 import AttributeSelector from "../../components/AttributeSelector";
 import CountsByTaxonChart from "../../components/Charts/CountsByTaxon";
 import { useSelector } from "react-redux";
+import AttributeSummary from "../../components/Charts/AttributeSummary";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(true);
@@ -18,6 +19,14 @@ const Dashboard = () => {
     <div className={styles.page}>
       <AttributeSelector />
       <RunSummary />
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <p className={styles.title}>Attribute Summary</p>
+        </div>
+        <div className={styles.chartContainer}>
+          <AttributeSummary />
+        </div>
+      </div>
       {/* <ClusterSummary /> */}
 
       {/* <CountsByTaxonChart data={countsByTaxonData} /> */}
