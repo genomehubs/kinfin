@@ -3,11 +3,12 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+  margin-left: 8px;
 }
 
 .legendColorBox {
-  width: 15px;
-  height: 15px;
+  width: 8px;
+  height: 8px;
   display: inline-block;
   border-radius: 3px;
 }
@@ -17,5 +18,4 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  gap: 4px !important;
 }

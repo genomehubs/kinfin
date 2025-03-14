@@ -110,13 +110,56 @@ const ClusterAndProteinDistributionPerTaxonSet = () => {
         tooltip.style("opacity", 0);
         d3.select(this).style("opacity", 1);
       });
+    // ✅ Apply zoom to the group, not the whole SVG
+    const zoom = d3
+      .zoom()
+      .scaleExtent([1, 5]) // Min 1x, Max 5x zoom
+      .translateExtent([
+        [0, 0],
+        [width, height],
+      ])
+      .on("zoom", (event) => {
+        const newXScale = event.transform.rescaleX(xScale);
 
+        // Update the x-axis with new scale
+        g.select(".x-axis").call(d3.axisBottom(newXScale));
+
+        // Update bars with new X positions
+        g.selectAll("rect")
+          .attr("x", (d) => newXScale(d.data.taxonSet))
+          .attr("width", newXScale.bandwidth());
+      });
+
+    // ✅ Call zoom on the main group, not the SVG
+    svg.call(zoom);
+
+    // ✅ Prevent default scrolling behavior
+    svg.on("wheel", (event) => event.preventDefault());
     // Add axes
     g.append("g")
       .attr("transform", `translate(0,${height})`)
+      .attr("class", "x-axis") // Add class for selection
       .call(d3.axisBottom(xScale));
 
     g.append("g").call(d3.axisLeft(yScale));
+    // Add x-axis label
+    g.append("text")
+      .attr("x", width / 2)
+      .attr("y", height + margin.bottom - 30) // Position below the x-axis
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "14px")
+      .text("Taxon Set");
+
+    // Add y-axis label
+    g.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", -margin.left + 15) // Adjust left margin
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "14px")
+      .text("Cluster Count");
 
     // Update legend
     const legendContainer = d3.select(legendRef.current);
@@ -140,7 +183,7 @@ const ClusterAndProteinDistributionPerTaxonSet = () => {
 
   return (
     <div ref={wrapperRef} className={styles.chartContainer}>
-      <svg ref={svgRef} width="100%" height={350} />
+      <svg ref={svgRef} width="100%" height={380} />
       <div ref={legendRef} className={styles.legendContainer} />
     </div>
   );
