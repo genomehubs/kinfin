@@ -56,8 +56,8 @@ const AttributeSelector = () => {
     setSelectedTaxon("");
     dispatch(
       AnalysisActions.setSelectedAttributeTaxonset({
-        attribute: null,
-        taxonset: null,
+        attribute: "all",
+        taxonset: "all",
       })
     ); // Clear Redux state
   };

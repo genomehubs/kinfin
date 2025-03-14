@@ -1,0 +1,21 @@
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.legendColorBox {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.legendContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 4px !important;
+}

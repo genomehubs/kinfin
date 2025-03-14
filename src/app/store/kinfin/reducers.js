@@ -57,7 +57,7 @@ const initialState = {
     loading: false,
     error: null,
   },
-  selectedAttributeTaxonset: { attribute: null, taxonset: null },
+  selectedAttributeTaxonset: { attribute: "all", taxonset: "all" },
 };
 
 const analysisReducer = (state = initialState, action) => {

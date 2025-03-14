@@ -1,22 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./dashboard.module.scss";
+import * as AnalysisActions from "../../app/store/kinfin/actions";
+
 import { RunSummary } from "../../components";
 // import ClusterSummary from "../../components/CLusterSummary";
 import Modal from "../../components/UIElements/Modal";
 import AttributeSelector from "../../components/AttributeSelector";
 import CountsByTaxonChart from "../../components/Charts/CountsByTaxon";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
 import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
+import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/ClusterAndProteinDistributionPerTaxonSet";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(true);
+  const dispatch = useDispatch();
   const countsByTaxonData = useSelector(
     (state) => state?.analysis?.countsByTaxon?.data
   );
+  const selectedAttributeTaxonset = useSelector(
+    (state) => state?.analysis?.selectedAttributeTaxonset
+  );
+  useEffect(() => {
+    dispatch(AnalysisActions.getRunStatus());
+    dispatch(AnalysisActions.getAvailableAttributesTaxonsets());
+    dispatch(AnalysisActions.getRunSummary());
+    dispatch(AnalysisActions.getCountsByTaxon());
+    dispatch(
+      AnalysisActions.getClusterSummary({
+        attribute: selectedAttributeTaxonset?.attribute,
+      })
+    );
+    dispatch(
+      AnalysisActions.getAttributeSummary({
+        attribute: selectedAttributeTaxonset?.attribute,
+      })
+    );
+    dispatch(
+      AnalysisActions.getClusterMetrics({
+        attribute: selectedAttributeTaxonset?.attribute,
+        taxonSet: selectedAttributeTaxonset?.taxonset,
+      })
+    );
+  }, [dispatch, selectedAttributeTaxonset]);
   console.log("🚀 ~ Dashboard ~ countsByTaxonData:", countsByTaxonData);
 
   return (
@@ -63,6 +92,16 @@ const Dashboard = () => {
           </div>
           <div className={styles.chartContainer}>
             <AllRarefactionCurve />
+          </div>
+        </div>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <p className={styles.title}>
+              Cluster & Protein Distribution Per Taxon
+            </p>
+          </div>
+          <div className={styles.chartContainer}>
+            <ClusterAndProteinDistributionPerTaxonSet />
           </div>
         </div>
       </div>
