@@ -48,6 +48,7 @@ import {
   getAttributeSummary,
   getClusterMetrics,
   getPairwiseAnalysis,
+  getPlot,
 } from "../../services/client";
 
 function* initAnalysisSaga(action) {
@@ -306,6 +307,25 @@ function* getPairwiseAnalysisSaga(action) {
   } finally {
   }
 }
+
+function* getPlotsSaga() {
+  try {
+    const [allRarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
+      call(getPlot, "all-rarefaction-curve"),
+      call(getPlot, "cluster-size-distribution"),
+    ]);
+
+    yield put(
+      getPlotSuccess({
+        allRarefactionCurve: allRarefactionCurveBlob,
+        clusterSizeDistribution: clusterSizeDistributionBlob,
+      })
+    );
+  } catch (error) {
+    yield put(getPlotFailure(error));
+    yield call(dispatchErrorToast, "Failed to fetch plots");
+  }
+}
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
 }
@@ -313,6 +333,9 @@ export function* watchGetRunStatusSaga() {
   yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
 }
 
+export function* watchGetPlotsSaga() {
+  yield takeEvery(GET_PLOT, getPlotsSaga);
+}
 export function* watchGetPairwiseAnalysisSaga() {
   yield takeEvery(GET_PAIRWISE_ANALYSIS, getPairwiseAnalysisSaga);
 }
@@ -349,6 +372,7 @@ function* analysisSaga() {
     fork(watchGetAttributeSummarySaga),
     fork(watchGetClusterMetricsSaga),
     fork(watchGetPairwiseAnalysisSaga),
+    fork(watchGetPlotsSaga),
   ]);
 }
 

@@ -52,7 +52,11 @@ const initialState = {
   attributeSummary: { data: null, loading: false, error: null },
   clusterMetrics: { data: null, loading: false, error: null },
   pairwiseAnalysis: { data: null, loading: false, error: null },
-  plot: { data: null, loading: false, error: null },
+  plot: {
+    data: { allRefractionCurve: null, clusterSizeDistribution: null },
+    loading: false,
+    error: null,
+  },
   selectedAttributeTaxonset: { attribute: null, taxonset: null },
 };
 
