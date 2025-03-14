@@ -14,6 +14,7 @@ import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
 import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/ClusterAndProteinDistributionPerTaxonSet";
+import ClusterAbsenceAcrossTaxonSets from "../../components/Charts/ClusterAbsenceAcrossTaxonSets";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(true);
@@ -102,6 +103,14 @@ const Dashboard = () => {
           </div>
           <div className={styles.chartContainer}>
             <ClusterAndProteinDistributionPerTaxonSet />
+          </div>
+        </div>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <p className={styles.title}>Cluster Absence Across Taxon Sets</p>
+          </div>
+          <div className={styles.chartContainer}>
+            <ClusterAbsenceAcrossTaxonSets />
           </div>
         </div>
       </div>
