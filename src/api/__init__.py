@@ -42,7 +42,7 @@ def run_server(
 
     app = FastAPI()
 
-    ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")]
 
     app.add_middleware(
     CORSMiddleware,
