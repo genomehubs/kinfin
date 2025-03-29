@@ -746,7 +746,6 @@ async def get_pairwise_analysis(
 
         result = parse_pairwise_file(filepath, taxon_1, taxon_2)
 
-       
         if isinstance(result, list):
             result = {str(i): item for i, item in enumerate(result)}
 
@@ -781,6 +780,7 @@ async def get_pairwise_analysis(
             ).model_dump(),
             status_code=500,
         )
+
 
 @router.get("/kinfin/plot/{plot_type}")
 @check_kinfin_session
