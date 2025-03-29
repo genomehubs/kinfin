@@ -748,7 +748,6 @@ async def get_pairwise_analysis(
 
         if isinstance(result, list):
             result = {str(i): item for i, item in enumerate(result)}
-
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,

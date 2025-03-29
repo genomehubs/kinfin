@@ -24,13 +24,14 @@ def run_server(
     - taxon_idx_mapping_file [str] : File path to the taxon index mapping file.
     - sequence_ids_f [str] : File path to the sequence IDs file.
     """
-    import uvicorn
     import os
+
+    import uvicorn
     from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
 
     from api.endpoints import router
     from api.sessions import query_manager
-    from fastapi.middleware.cors import CORSMiddleware
 
     query_manager.cluster_f = cluster_f
     query_manager.sequence_ids_f = sequence_ids_f
@@ -42,15 +43,20 @@ def run_server(
 
     app = FastAPI()
 
-    ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")]
+    ALLOWED_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(
+            ","
+        )
+    ]
 
     app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS, 
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"], 
-    allow_headers=["*"],  
-)
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
     @app.get("/")
     def hello():
