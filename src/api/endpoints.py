@@ -308,6 +308,10 @@ async def get_counts_by_tanon(
     max_count: Optional[int] = Query(None),
     include_taxons: Optional[str] = Query(None),
     exclude_taxons: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    sort_order: Optional[str] = Query("asc"),
+    page: Optional[int] = Query(1),
+    size: Optional[int] = Query(10),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -334,11 +338,22 @@ async def get_counts_by_tanon(
             max_count,
         )
 
+        paginated_result, total_pages = sort_and_paginate_result(
+            result,
+            sort_by,
+            sort_order,
+            page,
+            size,
+        )
+
         response = ResponseSchema(
             status="success",
             message="Cluster counts by Taxon retrieved successfully",
-            data=result,
+            data=paginated_result,
             query=str(request.url),
+            current_page=page,
+            entries_per_page=size,
+            total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
     except Exception as e:
@@ -766,6 +781,7 @@ async def get_pairwise_analysis(
             ).model_dump(),
             status_code=500,
         )
+
 @router.get("/kinfin/plot/{plot_type}")
 @check_kinfin_session
 async def get_plot(
