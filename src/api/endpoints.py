@@ -328,10 +328,10 @@ async def get_counts_by_tanon(
             filepath,
             include_clusters,
             exclude_clusters,
-            min_count,
-            max_count,
             include_taxons,
             exclude_taxons,
+            min_count,
+            max_count,
         )
 
         response = ResponseSchema(
