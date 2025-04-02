@@ -308,6 +308,10 @@ async def get_counts_by_tanon(
     max_count: Optional[int] = Query(None),
     include_taxons: Optional[str] = Query(None),
     exclude_taxons: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    sort_order: Optional[str] = Query("asc"),
+    page: Optional[int] = Query(1),
+    size: Optional[int] = Query(10),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -328,17 +332,28 @@ async def get_counts_by_tanon(
             filepath,
             include_clusters,
             exclude_clusters,
-            min_count,
-            max_count,
             include_taxons,
             exclude_taxons,
+            min_count,
+            max_count,
+        )
+
+        paginated_result, total_pages = sort_and_paginate_result(
+            result,
+            sort_by,
+            sort_order,
+            page,
+            size,
         )
 
         response = ResponseSchema(
             status="success",
             message="Cluster counts by Taxon retrieved successfully",
-            data=result,
+            data=paginated_result,
             query=str(request.url),
+            current_page=page,
+            entries_per_page=size,
+            total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
     except Exception as e:
@@ -683,6 +698,10 @@ async def get_pairwise_analysis(
     session_id: str = Depends(header_scheme),
     taxon_1: Optional[str] = Query(None),
     taxon_2: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    sort_order: Optional[str] = Query("asc"),
+    page: Optional[int] = Query(1),
+    size: Optional[int] = Query(10),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -718,7 +737,7 @@ async def get_pairwise_analysis(
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"{COUNTS_FILEPATH} File Not Found",
+                    message=f"{PAIRWISE_ANALYSIS_FILE} File Not Found",
                     error="File does not exist",
                     query=str(request.url),
                 ).model_dump(),
@@ -727,14 +746,28 @@ async def get_pairwise_analysis(
 
         result = parse_pairwise_file(filepath, taxon_1, taxon_2)
 
+        if isinstance(result, list):
+            result = {str(i): item for i, item in enumerate(result)}
+        paginated_result, total_pages = sort_and_paginate_result(
+            result,
+            sort_by,
+            sort_order,
+            page,
+            size,
+        )
+
         response = ResponseSchema(
             status="success",
-            message="Cluster summary retrieved successfully",
-            data=result,
+            message="Pairwise analysis retrieved successfully",
+            data=paginated_result,
             query=str(request.url),
+            current_page=page,
+            entries_per_page=size,
+            total_pages=total_pages,
         )
 
         return JSONResponse(response.model_dump())
+
     except Exception as e:
         print(e)
         return JSONResponse(
