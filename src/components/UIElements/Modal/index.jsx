@@ -6,14 +6,22 @@ const Modal = ({ isOpen, onClose, children, noClose = false, title = "" }) => {
   if (!isOpen) return null;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div
+      data-testid="modal-overlay"
+      className={styles.modalOverlay}
+      onClick={onClose}
+    >
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <p className={styles.title}>{title}</p>
           {!noClose && (
-            <p className={styles.closeButton} onClick={onClose}>
+            <button
+              aria-label="Close modal"
+              className={styles.closeButton}
+              onClick={onClose}
+            >
               <IoMdClose />
-            </p>
+            </button>
           )}
         </div>
         <div>{children}</div>
