@@ -1,4 +1,4 @@
-import styles from "./taxonCountPerTaxonSet.module.scss";
+import styles from "./TaxonCountPerTaxonSet.module.scss";
 
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";

@@ -1,5 +1,5 @@
 import React from "react";
-import styles from "./runSummary.module.scss";
+import styles from "./RunSummary.module.scss";
 import { useSelector } from "react-redux";
 
 const RunSummary = () => {

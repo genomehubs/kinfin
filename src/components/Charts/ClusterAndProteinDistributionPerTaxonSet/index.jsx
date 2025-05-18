@@ -1,4 +1,4 @@
-import styles from "./clusterAndProteinDistributionPerTaxonSet.module.scss";
+import styles from "./ClusterAndProteinDistributionPerTaxonSet.module.scss";
 
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";

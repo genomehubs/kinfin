@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import ReactPaginate from "react-paginate";
 import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
-import styles from "./clusterMetrics.module.scss";
+import styles from "./ClusterMetrics.module.scss";
 import { useSelector } from "react-redux";
 import * as AnalysisActions from "../../../app/store/kinfin/actions";
 

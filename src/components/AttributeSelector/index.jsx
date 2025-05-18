@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as AnalysisActions from "../../app/store/kinfin/actions";
-import styles from "./attributeSelector.module.scss";
+import styles from "./AttributeSelector.module.scss";
 const AttributeSelector = () => {
   const dispatch = useDispatch();
 

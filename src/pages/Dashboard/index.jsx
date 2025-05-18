@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import styles from "./dashboard.module.scss";
+import styles from "./Dashboard.module.scss";
 import * as AnalysisActions from "../../app/store/kinfin/actions";
 
 import { RunSummary } from "../../components";

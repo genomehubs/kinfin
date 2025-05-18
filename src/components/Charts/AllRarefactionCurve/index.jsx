@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import styles from "./allRarefactionCurve.module.scss";
+import styles from "./AllRarefactionCurve.module.scss";
 import * as AnalysisActions from "../../../app/store/kinfin/actions";
 import { useDispatch, useSelector } from "react-redux";
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import styles from "./countsByTaxon.module.scss"; // SCSS for styling
+import styles from "./CountsByTaxon.module.scss"; // SCSS for styling
 
 const CountsByTaxonChart = ({ data }) => {
   const chartRef = useRef();

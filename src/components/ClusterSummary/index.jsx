@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import styles from "./clusterSummary.module.scss";
+import styles from "./ClusterSummary.module.scss";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useSelector } from "react-redux";
 

@@ -1,4 +1,4 @@
-import styles from "./clusterAbsenceAcrossTaxonSets.module.scss";
+import styles from "./ClusterAbsenceAcrossTaxonSets.module.scss";
 
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
