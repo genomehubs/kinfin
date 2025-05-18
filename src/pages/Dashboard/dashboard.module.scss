@@ -25,6 +25,17 @@
       border-radius: 12px;
       .header {
         padding: 0px 12px;
+        display: flex;
+        align-items: center;
+        .enlargeButton {
+          outline: none;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+        }
         .title {
           margin: 0;
         }
