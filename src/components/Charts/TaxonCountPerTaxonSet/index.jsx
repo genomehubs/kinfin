@@ -56,7 +56,7 @@ const TaxonCountPerTaxonSet = () => {
       .attr("height", (d) => height - yScale(d.count))
       .attr("width", xScale.bandwidth())
       .attr("fill", "steelblue")
-      .on("mouseover", function (event, d) {
+      .on("mouseover", function () {
         d3.select(this).attr("fill", "darkblue");
       })
       .on("mouseout", function () {

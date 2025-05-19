@@ -2,7 +2,7 @@ import React from "react";
 import { useSortBy, useTable } from "react-table";
 import styles from "./TableComponent.module.scss";
 
-const TableComponent = ({ columns, data, className, onRowClick, loading }) => {
+const TableComponent = ({ columns, data, onRowClick, loading }) => {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     useTable(
       {

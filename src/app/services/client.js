@@ -14,119 +14,76 @@ const apiClient = axios.create({
 });
 
 export const initAnalysis = async (config) => {
-  try {
-    const response = await apiClient.post("/init", { config });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post("/init", { config });
+  return response.data;
 };
 
 export const getStatus = async () => {
-  try {
-    const response = await apiClient.get("/status", {
-      headers: { "x-session-id": getSessionId() },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get("/status", {
+    headers: { "x-session-id": getSessionId() },
+  });
+  return response.data;
 };
 
 export const getRunSummary = async () => {
-  try {
-    const response = await apiClient.get("/run-summary", {
-      headers: { "x-session-id": getSessionId() },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get("/run-summary", {
+    headers: { "x-session-id": getSessionId() },
+  });
+  return response.data;
 };
 
 export const getAvailableAttributes = async () => {
-  try {
-    const response = await apiClient.get("/available-attributes-taxonsets", {
-      headers: { "x-session-id": getSessionId() },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get("/available-attributes-taxonsets", {
+    headers: { "x-session-id": getSessionId() },
+  });
+  return response.data;
 };
 
 export const getCountsByTaxon = async () => {
-  try {
-    const response = await apiClient.get("/counts-by-taxon", {
-      headers: { "x-session-id": getSessionId() },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get("/counts-by-taxon", {
+    headers: { "x-session-id": getSessionId() },
+  });
+  return response.data;
 };
 
 export const getClusterSummary = async (data) => {
-  try {
-    const response = await apiClient.get(`/cluster-summary/${data.attribute}`, {
-      headers: { "x-session-id": getSessionId() },
-      params: { page: data.page, size: data.size },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/cluster-summary/${data.attribute}`, {
+    headers: { "x-session-id": getSessionId() },
+    params: { page: data.page, size: data.size },
+  });
+  return response.data;
 };
 
 export const getAttributeSummary = async (data) => {
-  try {
-    const response = await apiClient.get(
-      `/attribute-summary/${data.attribute}`,
-      {
-        headers: { "x-session-id": getSessionId() },
-        params: { page: data.page, size: data.size }, // Pass pagination parameters
-      }
-    );
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/attribute-summary/${data.attribute}`, {
+    headers: { "x-session-id": getSessionId() },
+    params: { page: data.page, size: data.size }, // Pass pagination parameters
+  });
+  return response.data;
 };
 
 export const getClusterMetrics = async (data) => {
-  try {
-    const response = await apiClient.get(
-      `/cluster-metrics/${data.attribute}/${data.taxonSet}`,
-      {
-        headers: { "x-session-id": getSessionId() },
-        params: { page: data.page, size: data.size },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(
+    `/cluster-metrics/${data.attribute}/${data.taxonSet}`,
+    {
+      headers: { "x-session-id": getSessionId() },
+      params: { page: data.page, size: data.size },
+    }
+  );
+  return response.data;
 };
 
 export const getPairwiseAnalysis = async (attribute) => {
-  try {
-    const response = await apiClient.get(`/pairwise-analysis/${attribute}`, {
-      headers: { "x-session-id": getSessionId() },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/pairwise-analysis/${attribute}`, {
+    headers: { "x-session-id": getSessionId() },
+  });
+  return response.data;
 };
 
 export const getPlot = async (plotType) => {
-  try {
-    const response = await apiClient.get(`/plot/${plotType}`, {
-      headers: { "x-session-id": getSessionId() },
-      responseType: "blob",
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/plot/${plotType}`, {
+    headers: { "x-session-id": getSessionId() },
+    responseType: "blob",
+  });
+  return response.data;
 };

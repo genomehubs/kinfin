@@ -51,7 +51,7 @@ import {
   getPlot,
 } from "../../services/client";
 
-function* initAnalysisSaga(action) {
+function* initAnalysisSaga() {
   try {
     const config = [
       { taxon: "CBRIG", clade: "CBRIG", host: "outgroup" },
@@ -97,7 +97,7 @@ function* initAnalysisSaga(action) {
   }
 }
 
-function* getRunStatusSaga(action) {
+function* getRunStatusSaga() {
   try {
     const response = yield call(getStatus);
     console.log("🚀 ~ function*getRunStatusSaga ~ response:", response);
@@ -117,10 +117,9 @@ function* getRunStatusSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch run status"
     );
-  } finally {
   }
 }
-function* getAvailableAttributesSaga(action) {
+function* getAvailableAttributesSaga() {
   try {
     const response = yield call(getAvailableAttributes);
 
@@ -140,10 +139,9 @@ function* getAvailableAttributesSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch attributes"
     );
-  } finally {
   }
 }
-function* getRunSummarySaga(action) {
+function* getRunSummarySaga() {
   try {
     const response = yield call(getRunSummary);
 
@@ -163,10 +161,9 @@ function* getRunSummarySaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch run summary"
     );
-  } finally {
   }
 }
-function* getCountsByTaxonSaga(action) {
+function* getCountsByTaxonSaga() {
   try {
     const response = yield call(getCountsByTaxon);
 
@@ -186,7 +183,6 @@ function* getCountsByTaxonSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch Counts by taxon"
     );
-  } finally {
   }
 }
 function* getClusterSummarySaga(action) {
@@ -215,7 +211,6 @@ function* getClusterSummarySaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch Cluster Summary"
     );
-  } finally {
   }
 }
 function* getAttributeSummarySaga(action) {
@@ -247,7 +242,6 @@ function* getAttributeSummarySaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch Attribute Summary"
     );
-  } finally {
   }
 }
 function* getClusterMetricsSaga(action) {
@@ -277,7 +271,6 @@ function* getClusterMetricsSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch CLuster Metrics"
     );
-  } finally {
   }
 }
 function* getPairwiseAnalysisSaga(action) {
@@ -304,7 +297,6 @@ function* getPairwiseAnalysisSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch Pairwise Analysis"
     );
-  } finally {
   }
 }
 
