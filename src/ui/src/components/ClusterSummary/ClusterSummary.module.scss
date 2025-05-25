@@ -1,0 +1,54 @@
+.container {
+  width: 100%;
+  padding: 20px;
+  background-color: #313336;
+  border-radius: 8px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+  }
+
+  th {
+    background-color: #313336;
+    font-weight: bold;
+  }
+}
+
+.expandedRow {
+  background-color: #313336;
+
+  .details {
+    padding: 10px;
+    text-align: left;
+  }
+}
+
+.pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  button {
+    padding: 8px 12px;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:disabled {
+      background-color: #313336;
+      cursor: not-allowed;
+    }
+  }
+}
