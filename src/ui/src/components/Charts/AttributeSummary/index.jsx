@@ -23,7 +23,6 @@ const AttributeSummary = () => {
   const pageCount = useSelector(
     (state) => state?.analysis?.attributeSummary?.data?.total_pages
   );
-  console.log("🚀 ~ AttributeSummary ~ pageCount:", pageCount);
 
   const columns = [
     {

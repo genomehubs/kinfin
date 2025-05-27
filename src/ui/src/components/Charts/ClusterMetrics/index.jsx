@@ -27,7 +27,6 @@ const ClusterMetrics = () => {
   const pageCount = useSelector(
     (state) => state?.analysis?.clusterMetrics?.data?.total_pages
   );
-  console.log("🚀 ~ clusterMetrics ~ pageCount:", pageCount);
 
   const columns = [
     {

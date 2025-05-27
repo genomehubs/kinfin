@@ -14,7 +14,9 @@ const ClusterAndProteinDistributionPerTaxonSet = () => {
   );
 
   useEffect(() => {
-    if (!data || !wrapperRef.current) return;
+    if (!data || !wrapperRef.current) {
+      return;
+    }
 
     // Set dimensions based on parent container
     const containerWidth = wrapperRef.current.clientWidth;

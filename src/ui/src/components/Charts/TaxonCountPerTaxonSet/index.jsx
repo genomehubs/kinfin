@@ -12,10 +12,11 @@ const TaxonCountPerTaxonSet = () => {
   const data = useSelector(
     (state) => state?.analysis?.attributeSummary?.data?.data
   );
-  console.log("🚀 ~ TaxonCountPerTaxonSet ~ data:", data);
 
   useEffect(() => {
-    if (!data || !wrapperRef.current) return;
+    if (!data || !wrapperRef.current) {
+      return;
+    }
 
     const containerWidth = wrapperRef.current.clientWidth;
     const margin = { top: 20, right: 30, bottom: 40, left: 50 };
@@ -26,7 +27,6 @@ const TaxonCountPerTaxonSet = () => {
       taxonSet: key,
       count: parseInt(data[key].TAXON_count, 10),
     }));
-    console.log("🚀 ~ formattedData ~ formattedData:", formattedData);
 
     const xScale = d3
       .scaleBand()

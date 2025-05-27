@@ -14,7 +14,9 @@ const ClusterAbsenceAcrossTaxonSets = () => {
   );
 
   useEffect(() => {
-    if (!data || !wrapperRef.current) return;
+    if (!data || !wrapperRef.current) {
+      return;
+    }
 
     const containerWidth = wrapperRef.current.clientWidth;
     const margin = { top: 20, right: 30, bottom: 80, left: 60 };

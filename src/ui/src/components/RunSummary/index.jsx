@@ -4,7 +4,6 @@ import { useSelector } from "react-redux";
 
 const RunSummary = () => {
   const data = useSelector((state) => state?.analysis?.runSummary?.data);
-  console.log("🚀 ~ RunSummary ~ data:", data);
 
   const stats = [
     { label: "Total Clusters", value: data?.total_clusters },

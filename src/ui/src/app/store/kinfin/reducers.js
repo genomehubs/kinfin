@@ -53,7 +53,7 @@ const initialState = {
   clusterMetrics: { data: null, loading: false, error: null },
   pairwiseAnalysis: { data: null, loading: false, error: null },
   plot: {
-    data: { allRefractionCurve: null, clusterSizeDistribution: null },
+    data: { allRarefactionCurve: null, clusterSizeDistribution: null },
     loading: false,
     error: null,
   },

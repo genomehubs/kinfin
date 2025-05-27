@@ -23,7 +23,6 @@ const ClusterSummary = () => {
   const pageCount = useSelector(
     (state) => state?.analysis?.clusterSummary?.data?.total_pages
   );
-  console.log("🚀 ~ AttributeSummary ~ pageCount:", pageCount);
 
   const columns = [
     {

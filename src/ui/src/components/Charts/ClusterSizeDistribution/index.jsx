@@ -17,8 +17,6 @@ const ClusterSizeDistribution = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    console.log("🚀 clusterSizeBlob type:", clusterSizeBlob);
-
     if (clusterSizeBlob instanceof Blob) {
       const objectUrl = URL.createObjectURL(clusterSizeBlob);
       setBlobUrl(objectUrl);

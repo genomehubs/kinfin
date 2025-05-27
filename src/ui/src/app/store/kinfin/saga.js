@@ -75,7 +75,7 @@ function* initAnalysisSaga() {
       { taxon: "LOA1", clade: "LOA1", host: "human" },
     ];
     const response = yield call(initAnalysis, config);
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
       yield call(dispatchSuccessToast, "Analysis initialized successfully!");
     } else {
@@ -86,7 +86,6 @@ function* initAnalysisSaga() {
       );
     }
   } catch (err) {
-    console.log("🚀 ~ function*initAnalysisSaga ~ err:", err);
     yield put(initAnalysisFailure(err));
     yield call(
       dispatchErrorToast,
@@ -100,8 +99,8 @@ function* initAnalysisSaga() {
 function* getRunStatusSaga() {
   try {
     const response = yield call(getStatus);
-    console.log("🚀 ~ function*getRunStatusSaga ~ response:", response);
-    if (response.status == "success") {
+
+    if (response.status === "success") {
       yield put(getRunStatusSuccess(response.data));
       yield call(dispatchSuccessToast, "Run status fetched successfully!");
     } else {
@@ -123,7 +122,7 @@ function* getAvailableAttributesSaga() {
   try {
     const response = yield call(getAvailableAttributes);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getAvailableAttributesTaxonsetsSuccess(response.data));
       yield call(dispatchSuccessToast, "Attributes fetched successfully!");
     } else {
@@ -145,7 +144,7 @@ function* getRunSummarySaga() {
   try {
     const response = yield call(getRunSummary);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getRunSummarySuccess(response.data));
       yield call(dispatchSuccessToast, "Run Summary fetched successfully!");
     } else {
@@ -167,7 +166,7 @@ function* getCountsByTaxonSaga() {
   try {
     const response = yield call(getCountsByTaxon);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getCountsByTaxonSuccess(response.data));
       yield call(dispatchSuccessToast, "Counts by taxon fetched successfully!");
     } else {
@@ -195,7 +194,7 @@ function* getClusterSummarySaga(action) {
   try {
     const response = yield call(getClusterSummary, data);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getClusterSummarySuccess(response));
       yield call(dispatchSuccessToast, "Cluster Summary fetched successfully!");
     } else {
@@ -223,7 +222,7 @@ function* getAttributeSummarySaga(action) {
   try {
     const response = yield call(getAttributeSummary, data);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getAttributeSummarySuccess(response));
       yield call(
         dispatchSuccessToast,
@@ -255,21 +254,21 @@ function* getClusterMetricsSaga(action) {
   try {
     const response = yield call(getClusterMetrics, data);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getClusterMetricsSuccess(response));
-      yield call(dispatchSuccessToast, "CLuster Metrics fetched successfully!");
+      yield call(dispatchSuccessToast, "Cluster Metrics fetched successfully!");
     } else {
       yield put(getClusterMetricsFailure(response));
       yield call(
         dispatchErrorToast,
-        response?.error || "Failed to fetch CLuster Metrics"
+        response?.error || "Failed to fetch Cluster Metrics"
       );
     }
   } catch (err) {
     yield put(getClusterMetricsFailure(err));
     yield call(
       dispatchErrorToast,
-      err?.response?.data?.error || "Failed to fetch CLuster Metrics"
+      err?.response?.data?.error || "Failed to fetch Cluster Metrics"
     );
   }
 }
@@ -278,7 +277,7 @@ function* getPairwiseAnalysisSaga(action) {
   try {
     const response = yield call(getPairwiseAnalysis, attribute);
 
-    if (response.status == "success") {
+    if (response.status === "success") {
       yield put(getPairwiseAnalysisSuccess(response.data));
       yield call(
         dispatchSuccessToast,

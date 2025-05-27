@@ -3,7 +3,9 @@ import styles from "./Modal.module.scss";
 import { IoMdClose } from "react-icons/io";
 
 const Modal = ({ isOpen, onClose, children, noClose = false, title = "" }) => {
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div

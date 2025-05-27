@@ -13,10 +13,6 @@ const AttributeSelector = () => {
   const persistedSelection = useSelector(
     (state) => state?.analysis?.selectedAttributeTaxonset
   );
-  console.log(
-    "🚀 ~ AttributeSelector ~ persistedSelection:",
-    persistedSelection
-  );
 
   // Initialize state with persisted values
   const [selectedAttribute, setSelectedAttribute] = useState("");
@@ -41,7 +37,6 @@ const AttributeSelector = () => {
 
   const handleApply = () => {
     if (selectedAttribute && selectedTaxon) {
-      console.log("hi");
       dispatch(
         AnalysisActions.setSelectedAttributeTaxonset({
           attribute: selectedAttribute,

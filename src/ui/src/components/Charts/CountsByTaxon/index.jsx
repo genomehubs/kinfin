@@ -6,7 +6,9 @@ const CountsByTaxonChart = ({ data }) => {
   const chartRef = useRef();
 
   useEffect(() => {
-    if (!data || Object.keys(data).length === 0) return;
+    if (!data || Object.keys(data).length === 0) {
+      return;
+    }
 
     // Set dimensions
     const margin = { top: 50, right: 30, bottom: 80, left: 60 };
