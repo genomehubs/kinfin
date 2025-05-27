@@ -1,7 +1,6 @@
 import axios from "axios";
 
-const KINFIN_PORT = 8000;
-const KINFIN_HOST = `http://127.0.0.1:${KINFIN_PORT}/kinfin`;
+const KINFIN_HOST = import.meta.env.VITE_KINFIN_HOST;
 
 const getSessionId = () =>
   localStorage.getItem("session_id") || "6599179a64accf331ffe653db00a0e24";
