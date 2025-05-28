@@ -1,0 +1,38 @@
+.container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start; /* Ensures all items align properly */
+  gap: 32px;
+}
+
+.statContainer {
+  background-color: #313336;
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: 12vw;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-direction: column;
+}
+
+/* Ensure last row items align from the start */
+.container::after {
+  content: "";
+  flex: 1 1 12vw; /* Adjusts spacing in the last row */
+  visibility: hidden;
+}
+
+/* Text styling inside statContainer */
+.statContainer .data {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.statContainer .dataName {
+  font-size: 18px;
+  margin: 0;
+}
