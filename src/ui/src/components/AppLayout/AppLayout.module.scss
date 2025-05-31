@@ -1,0 +1,31 @@
+.appLayout {
+  display: flex;
+  height: 100vh;
+
+  .childContainer {
+    flex: 1;
+    height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: margin-left 0.3s ease;
+    margin-left: 240px;
+    box-sizing: border-box;
+
+    &.closed {
+      margin-left: 0;
+    }
+
+    > div {
+      width: 100%;
+    }
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #8b8e94;
+    }
+  }
+}

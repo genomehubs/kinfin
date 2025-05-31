@@ -1,0 +1,152 @@
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background-color: #1e1e1e;
+  border-right: 1px solid #2d2d2d;
+  color: #e0e0e0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+
+  &.closed {
+    transform: translateX(-100%);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #2d2d2d;
+
+  h2 {
+    font-size: 1.2rem;
+    color: #4d90fe;
+    margin: 0;
+  }
+
+  .toggleBtn {
+    background: transparent;
+    border: none;
+    font-size: 1.4rem;
+    color: #4d90fe;
+    cursor: pointer;
+  }
+}
+
+.menu {
+  flex: 1;
+  // padding: 1rem;
+
+  .defaultSection {
+    // padding: 0.5rem 1rem;
+  }
+
+  .newAnalysis {
+    font-weight: bold;
+    color: #4d90fe;
+    // padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s;
+
+    &:hover {
+      background-color: #252525;
+    }
+  }
+
+  .divider {
+    height: 1px;
+    background-color: #2d2d2d;
+    margin: 0.5rem 0;
+  }
+
+  .otherSection {
+    // You can add padding or styles here if needed
+  }
+
+  .menuItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    overflow: hidden;
+
+    &:hover {
+      background-color: #252525;
+
+      .downloadIcon {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    .label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.95rem;
+    }
+
+    .downloadIcon {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease;
+      color: #4d90fe;
+      font-size: 1rem;
+    }
+
+    svg {
+      font-size: 1.1rem;
+      color: #4d90fe;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.bottom {
+  padding: 1rem;
+  border-top: 1px solid #2d2d2d;
+}
+
+.floatingToggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  background: #4d90fe;
+  color: #121212;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  z-index: 1100;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+}
+.menuItem.newAnalysis {
+  // background-color: #2b2b2b;
+  font-weight: bold;
+  color: #ffffff;
+
+  &:hover {
+    background-color: #3a3a3a;
+  }
+
+  .label {
+    color: #4d90fe;
+  }
+}
