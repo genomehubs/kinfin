@@ -130,6 +130,33 @@ const FileUpload = () => {
     }
   };
 
+  // Function to handle header editing
+  const handleHeaderEdit = (oldHeader, newHeader) => {
+    if (!parsedData || !Array.isArray(parsedData) || oldHeader === newHeader) {
+      return;
+    }
+
+    // Update all rows to use the new header key while preserving order
+    const updatedData = parsedData.map((row) => {
+      if (row.hasOwnProperty(oldHeader)) {
+        const newRow = {};
+        // Iterate through keys in original order and rename the matching key
+        Object.keys(row).forEach((key) => {
+          if (key === oldHeader) {
+            newRow[newHeader] = row[key];
+          } else {
+            newRow[key] = row[key];
+          }
+        });
+        return newRow;
+      }
+      return row;
+    });
+
+    setParsedData(updatedData);
+    setJsonText(JSON.stringify(updatedData, null, 2));
+  };
+
   const renderTable = () => {
     if (!Array.isArray(parsedData)) {
       return <p>Data is not in tabular format.</p>;
@@ -145,7 +172,33 @@ const FileUpload = () => {
         <thead>
           <tr>
             {headers.map((head) => (
-              <th key={head}>{head}</th>
+              <th key={head}>
+                <div
+                  contentEditable={true}
+                  suppressContentEditableWarning={true}
+                  onBlur={(e) => {
+                    const newHeader = e.target.textContent.trim();
+                    if (newHeader && newHeader !== head) {
+                      handleHeaderEdit(head, newHeader);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.target.blur();
+                    }
+                  }}
+                  style={{
+                    minWidth: "100px",
+                    padding: "4px",
+                    outline: "none",
+                    borderRadius: "2px",
+                    cursor: "text",
+                  }}
+                >
+                  {head}
+                </div>
+              </th>
             ))}
           </tr>
         </thead>
