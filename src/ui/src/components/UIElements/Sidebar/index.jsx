@@ -1,18 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
-import { FiMenu, FiLogOut, FiDownload } from "react-icons/fi";
+import { FiMenu, FiDownload } from "react-icons/fi";
+import { GoKebabHorizontal } from "react-icons/go";
+import { useSelector } from "react-redux";
 
 const Sidebar = ({ open, setOpen }) => {
   const defaultItem = { label: "New Analysis", isNew: true };
-  const otherItems = [
-    { label: "Nematode Host Associations" },
-    { label: "Bacterial Pathogenicity Study" },
-    { label: "Plant Environmental Adaptation" },
-  ];
+  const analysisConfigs = useSelector(
+    (state) => state.analysis.storeConfig.data
+  );
+  const analysisList = Object.values(analysisConfigs);
 
   return (
     <>
-      <div className={`${styles.sidebar} ${!open ? styles.closed : ""}`}>
+      <div className={`${styles.sidebar} ${open ? "" : styles.closed}`}>
         <div className={styles.top}>
           <h2>Kinfin</h2>
           <button className={styles.toggleBtn} onClick={() => setOpen(false)}>
@@ -21,24 +22,27 @@ const Sidebar = ({ open, setOpen }) => {
         </div>
 
         <div className={styles.menu}>
-          {/* Default single item section */}
+          {/* Default item */}
           <div className={styles.defaultSection}>
             <div className={`${styles.menuItem} ${styles.newAnalysis}`}>
               <span className={styles.label}>{defaultItem.label}</span>
             </div>
           </div>
 
-          {/* Divider line */}
           <div className={styles.divider}></div>
 
-          {/* Other menu items section */}
+          {/* Analysis list */}
           <div className={styles.otherSection}>
-            {otherItems.map((item, idx) => (
-              <div key={idx} className={styles.menuItem}>
-                <span className={styles.label}>{item.label}</span>
-                <FiDownload className={styles.downloadIcon} />
-              </div>
-            ))}
+            {analysisList.length === 0 ? (
+              <div className={styles.emptyState}>No saved analyses</div>
+            ) : (
+              analysisList.map((item) => (
+                <div key={item.id} className={styles.menuItem}>
+                  <span className={styles.label}>{item.name}</span>
+                  <GoKebabHorizontal className={styles.downloadIcon} />
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

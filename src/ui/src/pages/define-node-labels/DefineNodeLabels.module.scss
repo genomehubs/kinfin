@@ -1,9 +1,22 @@
 .page {
-  // width: calc(100% - 240px);
-  box-sizing: border-box;
-  display: flex;
   min-height: 100vh;
-  align-items: center;
-  justify-content: center;
   background-color: #1e1e1e;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px;
+}
+
+.bottomSection {
+  margin-top: auto;
+  padding: 20px;
+
+  width: 100%;
+}
+.initButton {
+  width: 100%;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 1rem;
 }

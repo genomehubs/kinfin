@@ -26,7 +26,7 @@ const VALID_TAXONS = [
   "LOA1",
 ];
 
-const FileUpload = () => {
+const FileUpload = ({ onDataChange }) => {
   const [selectedName, setSelectedName] = useState("");
   const [parsedData, setParsedData] = useState(null);
   const [viewMode, setViewMode] = useState("json");
@@ -38,15 +38,24 @@ const FileUpload = () => {
   const handleClick = () => {
     fileInputRef.current.click();
   };
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange(parsedData);
+    }
+  }, [parsedData, onDataChange]);
 
   const validateTaxons = (data) => {
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) {
+      return [];
+    }
     const invalids = [];
     data.forEach((row, idx) => {
       const taxonKey = Object.keys(row).find(
         (k) => k.toLowerCase() === "taxon"
       );
-      if (!taxonKey) return;
+      if (!taxonKey) {
+        return;
+      }
       const taxonValue = row[taxonKey];
       if (!VALID_TAXONS.includes(taxonValue)) {
         invalids.push({ index: idx, taxon: taxonValue });

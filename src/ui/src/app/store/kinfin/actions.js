@@ -40,6 +40,8 @@ import {
   GET_PLOT_FAILURE,
   GET_PLOT_RESET,
   SET_SELECTED_ATTRIBUTE_TAXONSET,
+  STORE_CONFIG,
+  STORE_CONFIG_RESET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -235,4 +237,13 @@ export const getPlotReset = () => ({
 export const setSelectedAttributeTaxonset = (data) => ({
   type: SET_SELECTED_ATTRIBUTE_TAXONSET,
   payload: data,
+});
+
+export const storeConfig = (data) => ({
+  type: STORE_CONFIG,
+  payload: data,
+});
+
+export const storeConfigReset = () => ({
+  type: STORE_CONFIG_RESET,
 });

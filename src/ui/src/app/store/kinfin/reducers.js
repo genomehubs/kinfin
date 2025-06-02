@@ -40,6 +40,8 @@ import {
   GET_PLOT_FAILURE,
   GET_PLOT_RESET,
   SET_SELECTED_ATTRIBUTE_TAXONSET,
+  STORE_CONFIG,
+  STORE_CONFIG_RESET,
 } from "./actionTypes";
 
 const initialState = {
@@ -58,6 +60,9 @@ const initialState = {
     error: null,
   },
   selectedAttributeTaxonset: { attribute: "all", taxonset: "all" },
+  storeConfig: {
+    data: null,
+  },
 };
 
 const analysisReducer = (state = initialState, action) => {
@@ -259,6 +264,27 @@ const analysisReducer = (state = initialState, action) => {
         selectedAttributeTaxonset: {
           attribute: action.payload.attribute,
           taxonset: action.payload.taxonset,
+        },
+      };
+
+    case STORE_CONFIG: {
+      const { id, name, jsonData } = action.payload;
+      return {
+        ...state,
+        storeConfig: {
+          data: {
+            ...state.storeConfig.data,
+            [id]: { id, name, jsonData },
+          },
+        },
+      };
+    }
+
+    case STORE_CONFIG_RESET:
+      return {
+        ...state,
+        storeConfig: {
+          data: {},
         },
       };
 
