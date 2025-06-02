@@ -7,9 +7,9 @@ import { useSelector } from "react-redux";
 const Sidebar = ({ open, setOpen }) => {
   const defaultItem = { label: "New Analysis", isNew: true };
   const analysisConfigs = useSelector(
-    (state) => state.analysis.storeConfig.data
+    (state) => state?.analysis?.storeConfig?.data
   );
-  const analysisList = Object.values(analysisConfigs);
+  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
   return (
     <>
@@ -33,10 +33,10 @@ const Sidebar = ({ open, setOpen }) => {
 
           {/* Analysis list */}
           <div className={styles.otherSection}>
-            {analysisList.length === 0 ? (
+            {analysisList?.length === 0 ? (
               <div className={styles.emptyState}>No saved analyses</div>
             ) : (
-              analysisList.map((item) => (
+              analysisList?.map((item) => (
                 <div key={item.id} className={styles.menuItem}>
                   <span className={styles.label}>{item.name}</span>
                   <GoKebabHorizontal className={styles.downloadIcon} />
