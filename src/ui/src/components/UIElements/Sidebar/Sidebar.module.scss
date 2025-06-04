@@ -1,9 +1,9 @@
 .sidebar {
   width: 240px;
   height: 100vh;
-  background-color: #1e1e1e;
-  border-right: 1px solid #2d2d2d;
-  color: #e0e0e0;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  color: var(--text-color);
   position: fixed;
   top: 0;
   left: 0;
@@ -148,5 +148,19 @@
 
   .label {
     color: #4d90fe;
+  }
+}
+.toggleTheme {
+  background: var(--accent-color);
+  color: var(--bg-color);
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.3s;
+
+  &:hover {
+    opacity: 0.85;
   }
 }

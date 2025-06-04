@@ -3,8 +3,10 @@ import styles from "./Sidebar.module.scss";
 import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
 import { useSelector } from "react-redux";
+import { useTheme } from "../../../hooks/useTheme";
 
 const Sidebar = ({ open, setOpen }) => {
+  const { theme, toggleTheme } = useTheme();
   const defaultItem = { label: "New Analysis", isNew: true };
   const analysisConfigs = useSelector(
     (state) => state?.analysis?.storeConfig?.data
@@ -44,6 +46,11 @@ const Sidebar = ({ open, setOpen }) => {
               ))
             )}
           </div>
+        </div>
+        <div className={styles.bottom}>
+          <button onClick={toggleTheme} className={styles.toggleTheme}>
+            Switch to {theme === "light" ? "Dark" : "Light"} Mode
+          </button>
         </div>
       </div>
 

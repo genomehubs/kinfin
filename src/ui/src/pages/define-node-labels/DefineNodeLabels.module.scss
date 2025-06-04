@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background-color: #1e1e1e;
+  background-color: var(--preview-bg);
 
   display: flex;
   flex-direction: column;

@@ -140,9 +140,42 @@
   }
 }
 
-body {
-  margin: 0;
-}
 * {
   box-sizing: border-box;
+}
+
+:root {
+  --bg-color: #ffffff;
+  --text-color: #121212;
+  --accent-color: #4d90fe;
+  --sidebar-bg: #f4f4f4;
+  --menu-hover: #e0e0e0;
+  --border-color: #cccccc;
+  --preview-bg: #f9f9f9;
+  --table-border: #cccccc;
+  --th-bg: #eeeeee;
+  --icon-color: #4d90fe;
+  --alt-row: #f5f5f5;
+}
+
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #e0e0e0;
+  --accent-color: #4d90fe;
+  --sidebar-bg: #1e1e1e;
+  --menu-hover: #252525;
+  --border-color: #2d2d2d;
+  --preview-bg: #1a1a1a;
+  --table-border: #444;
+  --th-bg: #333;
+  --icon-color: #4d90fe;
+  --alt-row: #222;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }

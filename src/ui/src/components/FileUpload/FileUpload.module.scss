@@ -6,38 +6,42 @@
   padding: 2rem;
   background: #121212;
   border-radius: 20px;
-  outline: 1px solid blue;
+  outline: 1px solid var(--accent-color);
+  width: 100%;
+  margin: auto;
+  color: #e0e0e0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .uploadBox {
   width: 100%;
   max-width: 420px;
   text-align: center;
-  border: 3px dashed #2d2d2d;
+  border: 3px dashed var(--border-color);
   padding: 2rem 1.5rem;
   border-radius: 16px;
   position: relative;
-  background: #1e1e1e;
-
+  background: var(--sidebar-bg);
+  margin: 0 auto 2rem;
   cursor: pointer;
   transition: border 0.3s, background 0.3s;
 }
 
 .uploadBox:hover {
-  border-color: #4d90fe;
-  background: #252525;
+  border-color: var(--accent-color);
+  background: var(--menu-hover);
 }
 
 .icon {
   font-size: 40px;
   opacity: 0.9;
   margin-bottom: 1rem;
-  color: #4d90fe;
+  color: var(--icon-color);
 }
 
 h3 {
   font-size: 1.1rem;
-  color: #e0e0e0;
+  color: var(--text-color);
   margin: 0;
 }
 
@@ -61,46 +65,27 @@ input[type="file"] {
 .preview {
   margin-top: 2rem;
   width: 100%;
-  max-width: 800px;
-  background-color: #1a1a1a;
-  color: #f0f0f0;
+  background-color: var(--preview-bg);
+  color: var(--text-color);
   padding: 1rem;
   border-radius: 10px;
   font-size: 0.85rem;
-  max-height: 400px;
   overflow: auto;
   white-space: pre-wrap;
 }
 
 .preview h4 {
   margin-bottom: 0.5rem;
-  color: #87cefa;
-}
-.preview {
-  margin-top: 2rem;
-  width: 100%;
-  max-width: 800px;
-  background-color: #1a1a1a;
-  color: #f0f0f0;
-  padding: 1rem;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  max-height: 400px;
-  overflow: auto;
-  white-space: pre-wrap;
-}
-
-.preview h4 {
-  margin-bottom: 0.5rem;
-  color: #87cefa;
+  color: var(--accent-color);
 }
 
 .toggleButtons {
   margin-bottom: 1rem;
+  text-align: center;
   button {
     background: transparent;
-    border: 1.5px solid #4d90fe;
-    color: #4d90fe;
+    border: 1.5px solid var(--accent-color);
+    color: var(--accent-color);
     padding: 0.3rem 0.8rem;
     margin-right: 0.5rem;
     border-radius: 6px;
@@ -108,36 +93,39 @@ input[type="file"] {
     font-weight: 600;
     transition: all 0.3s ease;
     &:hover {
-      background-color: #4d90fe;
-      color: #121212;
+      background-color: var(--accent-color);
+      color: var(--bg-color);
     }
   }
 
   .active {
-    background-color: #4d90fe;
-    color: #121212;
+    background-color: var(--accent-color);
+    color: var(--bg-color);
   }
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  color: #f0f0f0;
+  color: var(--text-color);
+  margin-top: 1rem;
 }
 
 th,
 td {
-  border: 1px solid #333;
+  border: 1px solid var(--table-border);
   padding: 8px 10px;
   text-align: left;
+  font-family: monospace;
 }
 
 th {
-  background-color: #333;
+  background-color: var(--th-bg);
+  color: var(--text-color);
 }
 
 tr:nth-child(even) {
-  background-color: #222;
+  background-color: var(--alt-row);
 }
 
 .invalidTaxonCell {
@@ -147,104 +135,13 @@ tr:nth-child(even) {
   border-radius: 4px;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-}
-
-.table th,
-.table td {
-  border: 1px solid #444;
-  padding: 8px;
-  text-align: left;
-  font-family: monospace;
-}
-
-.table th {
-  background-color: #333;
-  color: #eee;
-}
-
-.wrapper {
-  width: 100%;
-  max-width: 900px;
-  margin: auto;
-  padding: 2rem;
-  background: #121212;
-  border-radius: 20px;
-  color: #e0e0e0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.uploadBox {
-  max-width: 420px;
-  margin: 0 auto 2rem;
-  text-align: center;
-  border: 3px dashed #2d2d2d;
-  padding: 2rem 1.5rem;
-  border-radius: 16px;
-  background: #1e1e1e;
-  cursor: pointer;
-  transition: border 0.3s, background 0.3s;
-}
-
-.uploadBox:hover {
-  border-color: #4d90fe;
-  background: #252525;
-}
-
-.icon {
-  font-size: 40px;
-  opacity: 0.9;
-  margin-bottom: 1rem;
-}
-
-h3 {
-  font-size: 1.2rem;
-  margin-bottom: 0.3rem;
-}
-
-p {
-  font-size: 0.9rem;
-  color: #888;
-  margin-top: 0;
-}
-
-input[type="file"] {
-  display: block;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.preview {
-  max-width: 100%;
-}
-
-.toggleButtons {
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.toggleButtons button {
-  background: #333;
-  color: #ccc;
-  border: none;
-  padding: 10px 20px;
-}
-
 .jsonTextarea {
   width: 100%;
   box-sizing: border-box;
   height: 300px;
-  background: #222;
-  color: #f0f0f0;
-  border: 1px solid #444;
+  background: var(--sidebar-bg);
+  color: var(--text-color);
+  border: 1px solid var(--table-border);
   border-radius: 6px;
   padding: 10px;
   font-family: monospace;

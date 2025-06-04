@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "./App.module.scss";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
@@ -7,6 +7,10 @@ import { store } from "./app/store/index";
 import { Dashboard, Home, DefineNodeLabels } from "./pages";
 
 function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+  }, []);
   return (
     <React.StrictMode>
       <Provider store={store}>
