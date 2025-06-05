@@ -268,13 +268,15 @@ const analysisReducer = (state = initialState, action) => {
       };
 
     case STORE_CONFIG: {
-      const { id, name, jsonData } = action.payload;
+      const { sessionId, name, config } = action.payload;
+      const existingData = state.storeConfig?.data || {};
       return {
         ...state,
         storeConfig: {
+          ...state.storeConfig,
           data: {
-            ...state.storeConfig.data,
-            [id]: { id, name, jsonData },
+            ...existingData,
+            [sessionId]: { sessionId, name, config },
           },
         },
       };

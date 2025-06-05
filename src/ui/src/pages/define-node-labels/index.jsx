@@ -33,37 +33,16 @@ const DefineNodeLabels = () => {
 
   // Handle submission inside the modal:
   const handleSubmit = () => {
-    // Simple validation: name must be non-empty
     if (!userName.trim()) {
       setNameError("Name is required.");
       return;
     }
-
-    const id = uuidv4();
     const payload = {
-      id,
       name: userName.trim(),
-      jsonData: parsedData,
+      config: parsedData,
     };
-
-    // Save into localStorage under a key, e.g. “kinfin_<UUID>”
-    try {
-      // localStorage.setItem(`kinfin_${id}`, JSON.stringify(payload));
-      dispatch(AnalysisActions.storeConfig(payload));
-      dispatch(AnalysisActions.initAnalysis({ config: parsedData }));
-      // Optionally: you can also keep a running index or list of IDs;
-      // e.g. push `kinfin_${id}` into an array in localStorage if you need to enumerate later.
-    } catch (e) {
-      console.error("Failed to save to localStorage:", e);
-      alert(
-        "Could not save data locally. Make sure storage quota is available."
-      );
-      return;
-    }
-
-    // Close modal after saving
+    dispatch(AnalysisActions.initAnalysis(payload));
     setModalOpen(false);
-    alert(`Saved successfully! Your Analysis ID is:\n${id}`);
   };
 
   return (

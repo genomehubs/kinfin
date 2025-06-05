@@ -33,6 +33,7 @@ import {
   getAvailableAttributesTaxonsetsFailure,
   getRunSummaryFailure,
   getRunSummarySuccess,
+  storeConfig,
 } from "./actions";
 import {
   dispatchErrorToast,
@@ -55,11 +56,17 @@ const POLL_INTERVAL = 5000; // 5 seconds
 const MAX_POLL_DURATION = 5 * 60 * 1000; // 5 minutes in ms
 
 function* initAnalysisSaga(action) {
-  const { config } = action.payload;
+  const { name, config } = action.payload;
   try {
     const response = yield call(initAnalysis, config);
     if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
+      const payloadForIndexDBStorage = {
+        name,
+        config,
+        sessionId: response.data.session_id,
+      };
+      yield put(storeConfig(payloadForIndexDBStorage));
       yield call(dispatchSuccessToast, "Analysis initialized successfully!");
     } else {
       yield put(initAnalysisFailure(response));
@@ -74,8 +81,6 @@ function* initAnalysisSaga(action) {
       dispatchErrorToast,
       err?.response?.data?.error?.message || "Failed to initialize analysis"
     );
-  } finally {
-    // yield put(setLoading(false));
   }
 }
 
