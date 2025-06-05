@@ -3,12 +3,12 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: flex-start; /* Ensures all items align properly */
+  justify-content: flex-start;
   gap: 32px;
 }
 
 .statContainer {
-  background-color: #313336;
+  background-color: var(--sidebar-bg);
   padding: 8px 12px;
   border-radius: 8px;
   width: 12vw;
@@ -16,23 +16,24 @@
   align-items: flex-start;
   justify-content: flex-start;
   flex-direction: column;
+  color: var(--text-color);
 }
 
-/* Ensure last row items align from the start */
 .container::after {
   content: "";
-  flex: 1 1 12vw; /* Adjusts spacing in the last row */
+  flex: 1 1 12vw;
   visibility: hidden;
 }
 
-/* Text styling inside statContainer */
 .statContainer .data {
   font-size: 32px;
   font-weight: 600;
   margin: 0;
+  color: var(--text-color);
 }
 
 .statContainer .dataName {
   font-size: 18px;
   margin: 0;
+  color: var(--text-color);
 }

@@ -1,12 +1,12 @@
 .appLayout {
   display: flex;
-  height: 100vh;
+  // height: 100vh;
 
   .childContainer {
     flex: 1;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+    // min-height: 100vh;
+    // display: flex;
+    // flex-direction: column;
     overflow-x: hidden;
     overflow-y: auto;
     transition: margin-left 0.3s ease;
@@ -19,14 +19,6 @@
 
     > div {
       width: 100%;
-    }
-
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: #8b8e94;
     }
   }
 }

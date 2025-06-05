@@ -1,13 +1,11 @@
 .page {
-  color: #fff;
+  color: var(--text-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  // min-width: 100vw;
   gap: 32px;
   width: 100%;
   box-sizing: border-box;
-  min-height: 100vh;
   padding: 20px 180px;
   flex-direction: column !important;
 
@@ -16,33 +14,39 @@
     align-items: center;
     flex-wrap: wrap;
     width: 100%;
-    // justify-content: center;
     gap: 12px;
+
     .container {
       width: 30%;
       padding: 12px;
-      border: 1px solid rgba(81, 81, 81, 1);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
+      background-color: var(--bg-color);
+
       .header {
         padding: 0px 12px;
         display: flex;
         align-items: center;
+
         .enlargeButton {
           outline: none;
           border: none;
           background: transparent;
+          color: var(--text-color);
           cursor: pointer;
           font-size: 18px;
           display: flex;
           align-items: center;
         }
+
         .title {
           margin: 0;
+          color: var(--text-color);
         }
       }
+
       .chartContainer {
         width: 100%;
-
         max-height: 400px;
         min-height: 400px;
         overflow: auto;
@@ -51,27 +55,29 @@
     }
   }
 }
+
 .pageHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between; // pushes title left and selector right
+  justify-content: space-between;
   padding: 16px 180px;
-  background: #313336;
+  background: var(--sidebar-bg);
   box-sizing: border-box;
   position: sticky;
   top: 0;
   width: 100%;
   z-index: 1000;
-  border-bottom: 1px solid rgba(81, 81, 81, 1);
+  border-bottom: 1px solid var(--border-color);
 
   .pageTitle {
     font-size: 1.75em;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-color);
     white-space: nowrap;
     margin: 0;
   }
 }
+
 @media (max-width: 992px) {
   .pageHeader {
     flex-direction: column;

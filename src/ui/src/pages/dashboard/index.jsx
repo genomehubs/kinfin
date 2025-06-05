@@ -115,7 +115,7 @@ const Dashboard = () => {
         </Modal>
 
         <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>KinFin Analysis</h1>
+          {/* <h1 className={styles.pageTitle}>KinFin Analysis</h1> */}
           <AttributeSelector />
         </div>
 
