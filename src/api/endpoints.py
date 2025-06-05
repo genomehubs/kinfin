@@ -508,19 +508,16 @@ async def get_available_attributes_and_taxon_sets(
 async def get_valid_taxons_api(
     request: Request,
     page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1),
+    size: int = Query(10, ge=1, le=100),
 ):
     try:
-        taxons = parse_valid_taxons_file(query_manager.taxon_idx_mapping_file)
-        
+        taxons = await asyncio.to_thread(parse_valid_taxons_file, query_manager.taxon_idx_mapping_file)
         items = list(taxons.items())
         total_items = len(items)
         total_pages = (total_items + size - 1) // size
-        
         start = (page - 1) * size
         end = start + size
         paginated_items = dict(items[start:end])
-        
         response = ResponseSchema(
             status="success",
             message="List of valid taxons fetched",
@@ -531,9 +528,8 @@ async def get_valid_taxons_api(
             total_pages=total_pages,
         )
         return JSONResponse(response.model_dump(), status_code=200)
-    
     except Exception as e:
-        print(e)
+        LOGGER.error("Error fetching valid taxons", exc_info=True)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
