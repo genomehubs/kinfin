@@ -1,6 +1,6 @@
 import csv
 from typing import Optional, Set, Union
-
+import json
 
 def read_tsv_file(filepath: str, delimiter: str = "\t"):
     try:
@@ -245,3 +245,7 @@ def parse_pairwise_file(filepath: str, taxon_1: Optional[str], taxon_2: Optional
         result.append(row)
 
     return result
+
+def parse_valid_taxons_file(filepath: str) -> dict:
+    with open(filepath, "r") as f:
+        return json.load(f)
