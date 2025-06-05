@@ -9,7 +9,7 @@
   box-sizing: border-box;
   min-height: 100vh;
   padding: 20px 180px;
-  flex-direction: column;
+  flex-direction: column !important;
 
   .chartsContainer {
     display: flex;

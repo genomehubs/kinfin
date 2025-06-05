@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Dashboard.module.scss";
 import * as AnalysisActions from "../../app/store/kinfin/actions";
+import AppLayout from "../../components/AppLayout";
 
 import { RunSummary } from "../../components";
 import Modal from "../../components/UIElements/Modal";
@@ -13,11 +14,17 @@ import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/Cl
 import ClusterAbsenceAcrossTaxonSets from "../../components/Charts/ClusterAbsenceAcrossTaxonSets";
 import TaxonCountPerTaxonSet from "../../components/Charts/TaxonCountPerTaxonSet";
 import { IoOpenOutline } from "react-icons/io5";
+import { useParams } from "react-router-dom";
 
 const Dashboard = () => {
   const [enlargedChart, setEnlargedChart] = useState(null);
   const dispatch = useDispatch();
-
+  const { sessionId } = useParams();
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem("currentSessionId", sessionId);
+    }
+  }, [sessionId]);
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.analysis?.selectedAttributeTaxonset
   );
@@ -43,7 +50,7 @@ const Dashboard = () => {
         taxonSet: selectedAttributeTaxonset?.taxonset,
       })
     );
-  }, [dispatch, selectedAttributeTaxonset]);
+  }, [dispatch, selectedAttributeTaxonset, sessionId]);
 
   const handleEnlarge = (chartName) => setEnlargedChart(chartName);
 
@@ -98,40 +105,42 @@ const Dashboard = () => {
 
   return (
     <>
-      <Modal
-        isOpen={!!enlargedChart}
-        onClose={closeModal}
-        title={modalTitleMap[enlargedChart] || ""}
-      >
-        {renderModalContent()}
-      </Modal>
+      <AppLayout>
+        <Modal
+          isOpen={!!enlargedChart}
+          onClose={closeModal}
+          title={modalTitleMap[enlargedChart] || ""}
+        >
+          {renderModalContent()}
+        </Modal>
 
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>KinFin Analysis</h1>
-        <AttributeSelector />
-      </div>
-
-      <div className={styles.page}>
-        <RunSummary />
-        <div className={styles.chartsContainer}>
-          {Object.entries(modalTitleMap).map(([key, label]) => (
-            <div key={key} className={styles.container}>
-              <div className={styles.header}>
-                <button
-                  className={styles.enlargeButton}
-                  onClick={() => handleEnlarge(key)}
-                >
-                  <IoOpenOutline />
-                </button>
-                <p className={styles.title}>{label}</p>
-              </div>
-              <div className={styles.chartContainer}>
-                {renderDashboardChart(key)}
-              </div>
-            </div>
-          ))}
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>KinFin Analysis</h1>
+          <AttributeSelector />
         </div>
-      </div>
+
+        <div className={styles.page}>
+          <RunSummary />
+          <div className={styles.chartsContainer}>
+            {Object.entries(modalTitleMap).map(([key, label]) => (
+              <div key={key} className={styles.container}>
+                <div className={styles.header}>
+                  <button
+                    className={styles.enlargeButton}
+                    onClick={() => handleEnlarge(key)}
+                  >
+                    <IoOpenOutline />
+                  </button>
+                  <p className={styles.title}>{label}</p>
+                </div>
+                <div className={styles.chartContainer}>
+                  {renderDashboardChart(key)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
     </>
   );
 };

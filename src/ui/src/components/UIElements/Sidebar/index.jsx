@@ -4,9 +4,11 @@ import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
 import { useSelector } from "react-redux";
 import { useTheme } from "../../../hooks/useTheme";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
   const analysisConfigs = useSelector(
     (state) => state?.analysis?.storeConfig?.data
@@ -39,7 +41,11 @@ const Sidebar = ({ open, setOpen }) => {
               <div className={styles.emptyState}>No saved analyses</div>
             ) : (
               analysisList?.map((item) => (
-                <div key={item.id} className={styles.menuItem}>
+                <div
+                  key={item.sessionId}
+                  className={styles.menuItem}
+                  onClick={() => navigate(`/${item.sessionId}/dashboard`)} // or define-node-labels
+                >
                   <span className={styles.label}>{item.name}</span>
                   <GoKebabHorizontal className={styles.downloadIcon} />
                 </div>

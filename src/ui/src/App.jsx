@@ -17,7 +17,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/:sessionId/dashboard" element={<Dashboard />} />
             <Route path="/define-node-labels" element={<DefineNodeLabels />} />
           </Routes>
         </Router>
