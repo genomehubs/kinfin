@@ -81,8 +81,9 @@
     transition: background 0.2s;
     overflow: hidden;
 
-    &:hover {
-      background-color: #252525;
+    &:hover,
+    &.active {
+      background-color: var(--menu-hover);
 
       .downloadIcon {
         opacity: 1;
@@ -162,5 +163,28 @@
 
   &:hover {
     opacity: 0.85;
+  }
+}
+
+.tooltipContent {
+  border-radius: 6px;
+  padding: 0px;
+  display: flex;
+  flex-direction: column;
+  // background: white;
+  gap: 4px;
+  .tooltipItem {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 2px;
+    font-size: 0.95rem;
+    color: var(--text-color) !important;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #252525;
+    }
   }
 }
