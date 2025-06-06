@@ -1,18 +1,53 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import styles from "./Sidebar.module.scss";
 import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
-import { useSelector } from "react-redux";
+
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate } from "react-router-dom";
 import Tooltip from "rc-tooltip";
 import "rc-tooltip/assets/bootstrap.css";
 import { AiFillDelete } from "react-icons/ai";
-
+import Modal from "../Modal";
 import { MdOutlineEdit } from "react-icons/md";
+import { useDispatch, useSelector } from "react-redux";
+import * as AnalysisActions from "../../../app/store/kinfin/actions";
+
+const downloadAsTSV = (analysis) => {
+  const { name, config, sessionId } = analysis;
+
+  if (!config || typeof config !== "object") {
+    return;
+  }
+
+  const keys = Object.keys(config[0] || {});
+  const tsvRows = [
+    keys.join("\t"),
+    ...config.map((row) =>
+      keys.map((k) => (row[k] !== undefined ? row[k] : "")).join("\t")
+    ),
+  ];
+  const blob = new Blob([tsvRows.join("\n")], {
+    type: "text/tab-separated-values",
+  });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${name || sessionId}.tsv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
+  const dispatch = useDispatch();
+
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const [userName, setUserName] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [sessionIdClicked, setSessionIdClicked] = useState("");
   const [visibleTooltip, setVisibleTooltip] = useState(null);
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
@@ -22,21 +57,21 @@ const Sidebar = ({ open, setOpen }) => {
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target)) {
-        setVisibleTooltip(null);
-      }
-    };
-
-    if (visibleTooltip !== null) {
-      document.addEventListener("mousedown", handleClickOutside);
+  const handleSubmit = () => {
+    if (!userName.trim()) {
+      setNameError("Name is required.");
+      return;
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+    const payload = {
+      newName: userName.trim(),
+      sessionId: sessionIdClicked,
     };
-  }, [visibleTooltip]);
+
+    dispatch(AnalysisActions.renameConfig(payload));
+    setNameError("");
+    setUserName("");
+    setModalOpen(false);
+  };
 
   return (
     <>
@@ -72,22 +107,28 @@ const Sidebar = ({ open, setOpen }) => {
                   className={`${styles.menuItem} ${
                     visibleTooltip === item.sessionId ? styles.active : ""
                   }`}
-                  onClick={() => navigate(`/${item.sessionId}/dashboard`)} // or define-node-labels
+                  onClick={() => navigate(`/${item.sessionId}/dashboard`)}
                 >
                   <span className={styles.label}>{item.name}</span>
                   <div className={styles.refContainer} ref={tooltipRef}>
                     <Tooltip
                       placement="rightTop"
+                      styles={{
+                        root: { pointerEvents: "auto" },
+                      }}
+                      onVisibleChange={(visible) => {
+                        if (!visible) {
+                          setVisibleTooltip(null);
+                        }
+                      }}
+                      trigger={["click"]}
                       overlay={
                         <div className={styles.tooltipContent}>
                           <div
                             className={styles.tooltipItem}
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log(
-                                "Download clicked for:",
-                                item.sessionId
-                              );
+                              downloadAsTSV(item);
                             }}
                           >
                             <FiDownload className={styles.icon} /> Download
@@ -100,6 +141,7 @@ const Sidebar = ({ open, setOpen }) => {
                                 "Rename clicked for:",
                                 item.sessionId
                               );
+                              setModalOpen(true);
                             }}
                           >
                             <MdOutlineEdit />
@@ -109,6 +151,9 @@ const Sidebar = ({ open, setOpen }) => {
                             className={styles.tooltipItem}
                             onClick={(e) => {
                               e.stopPropagation();
+                              dispatch(
+                                AnalysisActions.deleteConfig(sessionIdClicked)
+                              );
                               console.log(
                                 "Delete clicked for:",
                                 item.sessionId
@@ -122,12 +167,14 @@ const Sidebar = ({ open, setOpen }) => {
                       }
                       visible={visibleTooltip === item.sessionId}
                       showArrow={false}
-                      trigger={[]}
+                      defaultVisible={false}
                     >
                       <GoKebabHorizontal
                         className={styles.downloadIcon}
                         onClick={(e) => {
                           e.stopPropagation();
+                          setSessionIdClicked(item.sessionId);
+                          setUserName(item.name);
                           setVisibleTooltip((prev) =>
                             prev === item.sessionId ? null : item.sessionId
                           );
@@ -146,7 +193,59 @@ const Sidebar = ({ open, setOpen }) => {
           </button>
         </div>
       </div>
-
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Initialize Analysis"
+      >
+        <div style={{ padding: "1rem" }}>
+          <label htmlFor="analysis-name" style={{ fontWeight: 500 }}>
+            Enter a name for this analysis:
+          </label>
+          <input
+            id="analysis-name"
+            type="text"
+            value={userName}
+            onChange={(e) => {
+              setUserName(e.target.value);
+              if (nameError) setNameError("");
+            }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "8px",
+              marginTop: "4px",
+              marginBottom: nameError ? "4px" : "16px",
+              border: nameError ? "1px solid #e74c3c" : "1px solid #ccc",
+              borderRadius: "4px",
+            }}
+          />
+          {nameError && (
+            <p
+              style={{
+                color: "#e74c3c",
+                margin: "0 0 16px 0",
+                fontSize: "0.875rem",
+              }}
+            >
+              {nameError}
+            </p>
+          )}
+          <button
+            onClick={handleSubmit}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#3498db",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            Submit
+          </button>
+        </div>
+      </Modal>
       {!open && (
         <button className={styles.floatingToggle} onClick={() => setOpen(true)}>
           <FiMenu />

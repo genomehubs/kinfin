@@ -42,6 +42,8 @@ import {
   SET_SELECTED_ATTRIBUTE_TAXONSET,
   STORE_CONFIG,
   STORE_CONFIG_RESET,
+  RENAME_CONFIG,
+  DELETE_CONFIG,
 } from "./actionTypes";
 
 const initialState = {
@@ -278,6 +280,38 @@ const analysisReducer = (state = initialState, action) => {
             ...existingData,
             [sessionId]: { sessionId, name, config },
           },
+        },
+      };
+    }
+    case RENAME_CONFIG: {
+      const { sessionId, newName } = action.payload;
+      const existing = state.storeConfig.data || {};
+      if (!existing[sessionId]) {
+        return state;
+      }
+
+      return {
+        ...state,
+        storeConfig: {
+          ...state.storeConfig,
+          data: {
+            ...existing,
+            [sessionId]: {
+              ...existing[sessionId],
+              name: newName,
+            },
+          },
+        },
+      };
+    }
+    case DELETE_CONFIG: {
+      const sessionId = action.payload;
+      const { [sessionId]: _, ...remaining } = state.storeConfig.data || {};
+      return {
+        ...state,
+        storeConfig: {
+          ...state.storeConfig,
+          data: remaining,
         },
       };
     }

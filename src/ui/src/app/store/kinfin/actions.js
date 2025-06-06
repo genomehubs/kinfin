@@ -42,6 +42,8 @@ import {
   SET_SELECTED_ATTRIBUTE_TAXONSET,
   STORE_CONFIG,
   STORE_CONFIG_RESET,
+  RENAME_CONFIG,
+  DELETE_CONFIG,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -246,4 +248,13 @@ export const storeConfig = (data) => ({
 
 export const storeConfigReset = () => ({
   type: STORE_CONFIG_RESET,
+});
+
+export const renameConfig = (data) => ({
+  type: RENAME_CONFIG,
+  payload: data,
+});
+export const deleteConfig = (data) => ({
+  type: DELETE_CONFIG,
+  payload: data,
 });
