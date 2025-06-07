@@ -259,7 +259,7 @@ const FileUpload = ({ onDataChange }) => {
           <p className={styles.icon}>
             <MdOutlineFileUpload />
           </p>
-          <h3>{selectedName || "Click box to upload"}</h3>
+          <h3>{selectedName || "Click box to upload config"}</h3>
           <p>Maximum file size 10MB</p>
           <input
             type="file"

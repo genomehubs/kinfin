@@ -1,26 +1,19 @@
-// src/pages/DefineNodeLabels/DefineNodeLabels.jsx
 import React, { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
 import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload"; // adjust the path if needed
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import * as AnalysisActions from "../../app/store/kinfin/actions";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
-  // State for parsed JSON data coming from FileUpload
   const [parsedData, setParsedData] = useState(null);
 
-  // State to control modal visibility
   const [modalOpen, setModalOpen] = useState(false);
-  // State to hold the “name” input inside the modal
   const [userName, setUserName] = useState("");
-  // State to show any validation error in the modal
   const [nameError, setNameError] = useState("");
 
-  // When the “Initialize Kinfin Analysis” button is clicked:
   const openModal = () => {
     if (!parsedData) {
       alert("Please upload and validate your JSON first.");
@@ -31,7 +24,6 @@ const DefineNodeLabels = () => {
     setModalOpen(true);
   };
 
-  // Handle submission inside the modal:
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
@@ -50,11 +42,13 @@ const DefineNodeLabels = () => {
       <div className={styles.page}>
         <FileUpload onDataChange={setParsedData} />
 
-        <div className={styles.bottomSection}>
-          <button className={styles.initButton} onClick={openModal}>
-            Initialize Kinfin Analysis
-          </button>
-        </div>
+        {parsedData && (
+          <div className={styles.bottomSection}>
+            <button className={styles.initButton} onClick={openModal}>
+              Initialize Kinfin Analysis
+            </button>
+          </div>
+        )}
 
         <Modal
           isOpen={modalOpen}

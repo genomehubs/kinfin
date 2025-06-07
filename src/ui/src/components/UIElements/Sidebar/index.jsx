@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import styles from "./Sidebar.module.scss";
 import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
-
+import { FaSun, FaMoon } from "react-icons/fa";
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate } from "react-router-dom";
 import Tooltip from "rc-tooltip";
@@ -131,7 +131,7 @@ const Sidebar = ({ open, setOpen }) => {
                               downloadAsTSV(item);
                             }}
                           >
-                            <FiDownload className={styles.icon} /> Download
+                            <FiDownload /> Download
                           </div>
                           <div
                             className={styles.tooltipItem}
@@ -187,10 +187,37 @@ const Sidebar = ({ open, setOpen }) => {
             )}
           </div>
         </div>
+
         <div className={styles.bottom}>
-          <button onClick={toggleTheme} className={styles.toggleTheme}>
-            Switch to {theme === "light" ? "Dark" : "Light"} Mode
-          </button>
+          <Tooltip
+            placement="rightTop"
+            trigger={["click"]}
+            overlay={
+              <div className={styles.tooltipTheme}>
+                <div className={styles.themeHeading}>
+                  <p>Switch Appearance</p>
+                  <FaMoon />
+                </div>
+                <div className={styles.toggleWrapper} onClick={toggleTheme}>
+                  <span className={styles.toggleText}>Dark Mode</span>
+                  <div
+                    className={`${styles.toggle} ${
+                      theme === "dark" ? styles.active : ""
+                    }`}
+                  >
+                    <div className={styles.icon}>
+                      {theme === "dark" ? <FaMoon /> : <FaSun />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+            showArrow={false}
+          >
+            <div className={styles.themeTrigger}>
+              {theme === "dark" ? <FaMoon /> : <FaSun />} Theme
+            </div>
+          </Tooltip>
         </div>
       </div>
       <Modal

@@ -145,8 +145,12 @@
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   font-size: 0.95rem;
+  margin: 0;
   transition: background 0.3s;
 
   &:hover {
@@ -211,4 +215,96 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+.bottom {
+  display: flex;
+
+  padding: 12px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--background-color);
+}
+
+.themeTrigger {
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+.tooltipTheme {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.themeTooltipOverlay {
+  z-index: 9999;
+}
+.themeHeading {
+  display: flex;
+  gap: 32px;
+  width: 100%;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  p {
+    margin: 0;
+  }
+}
+.toggleWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.toggle {
+  width: 50px;
+  height: 26px;
+  border-radius: 50px;
+  background-color: #ccc;
+  position: relative;
+  transition: background-color 0.3s;
+}
+
+.toggle.active {
+  background-color: var(--accent-color);
+}
+
+.icon {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.3s ease;
+
+  svg {
+    font-size: 14px;
+    color: var(--primary-color);
+  }
+}
+
+.toggle.active .icon {
+  left: 26px;
+}
+
+.toggleText {
+  font-weight: 500;
+  color: var(--text-color);
 }
