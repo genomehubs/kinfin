@@ -9,12 +9,10 @@ const AttributeSelector = () => {
     (state) => state?.analysis?.availableAttributesTaxonsets?.data
   );
 
-  // Get persisted values from Redux
   const persistedSelection = useSelector(
     (state) => state?.analysis?.selectedAttributeTaxonset
   );
 
-  // Initialize state with persisted values
   const [selectedAttribute, setSelectedAttribute] = useState("");
   const [selectedTaxon, setSelectedTaxon] = useState("");
 
@@ -23,12 +21,12 @@ const AttributeSelector = () => {
       setSelectedAttribute(persistedSelection.attribute || "");
       setSelectedTaxon(persistedSelection.taxonset || "");
     }
-  }, [persistedSelection]); // Run when persistedSelection changes
+  }, [persistedSelection]);
 
   const handleAttributeChange = (e) => {
     const attribute = e.target.value;
     setSelectedAttribute(attribute);
-    setSelectedTaxon(""); // Reset taxon selection when attribute changes
+    setSelectedTaxon("");
   };
 
   const handleTaxonChange = (e) => {
@@ -54,7 +52,7 @@ const AttributeSelector = () => {
         attribute: "all",
         taxonset: "all",
       })
-    ); // Clear Redux state
+    );
   };
 
   return (

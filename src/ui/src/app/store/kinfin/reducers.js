@@ -63,7 +63,7 @@ const initialState = {
   },
   selectedAttributeTaxonset: { attribute: "all", taxonset: "all" },
   storeConfig: {
-    data: null,
+    data: {},
   },
 };
 

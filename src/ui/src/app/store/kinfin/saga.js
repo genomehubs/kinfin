@@ -1,5 +1,5 @@
 import { takeEvery, fork, put, all, call } from "redux-saga/effects";
-// import { fetchData, postData } from "@/app/services/client";
+
 import {
   INIT_ANALYSIS,
   GET_RUN_STATUS,
@@ -51,9 +51,6 @@ import {
   getPairwiseAnalysis,
   getPlot,
 } from "../../services/client";
-
-const POLL_INTERVAL = 5000; // 5 seconds
-const MAX_POLL_DURATION = 5 * 60 * 1000; // 5 minutes in ms
 
 function* initAnalysisSaga(action) {
   const { name, config } = action.payload;

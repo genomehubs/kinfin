@@ -11,7 +11,7 @@ const ClusterMetrics = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const handlePageChange = (e) => {
     const newPage = e.selected + 1;
-    setCurrentPage(newPage); // Update state
+    setCurrentPage(newPage);
     dispatch(
       AnalysisActions.getClusterMetrics({
         attribute: "host",

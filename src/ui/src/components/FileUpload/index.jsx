@@ -75,7 +75,9 @@ const FileUpload = ({ onDataChange }) => {
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setSelectedName(file.name);
     const ext = file.name.split(".").pop().toLowerCase();
@@ -127,7 +129,7 @@ const FileUpload = ({ onDataChange }) => {
   };
 
   const handleJsonChange = (e) => {
-    const value = e.target.value;
+    const { value } = e.target;
     setJsonText(value);
 
     try {

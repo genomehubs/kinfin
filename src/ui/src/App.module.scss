@@ -158,6 +158,7 @@
   --tooltip-text: #121212;
   --tooltip-border: #cccccc;
   --tooltip-shadow: rgba(0, 0, 0, 0.1);
+  --error-color: #ff4c4c;
 }
 
 [data-theme="dark"] {
@@ -177,6 +178,7 @@
   --tooltip-text: #e0e0e0;
   --tooltip-border: #444444;
   --tooltip-shadow: rgba(0, 0, 0, 0.4);
+  --error-color: #ff4c4c;
 }
 
 body {

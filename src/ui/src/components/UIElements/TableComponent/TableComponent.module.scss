@@ -34,7 +34,7 @@
         z-index: 6;
         letter-spacing: -1px;
         padding: 12px 20px;
-        background-color: var(--bg-color);
+        background-color: var(--th-bg);
         border-bottom: 1px solid var(--table-border);
         font-size: 18px;
 
@@ -100,7 +100,6 @@
   }
 }
 
-// Skeleton styles
 .skeletonBody {
   background-color: inherit;
 }

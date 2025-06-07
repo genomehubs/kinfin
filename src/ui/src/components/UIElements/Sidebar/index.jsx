@@ -198,8 +198,8 @@ const Sidebar = ({ open, setOpen }) => {
         onClose={() => setModalOpen(false)}
         title="Initialize Analysis"
       >
-        <div style={{ padding: "1rem" }}>
-          <label htmlFor="analysis-name" style={{ fontWeight: 500 }}>
+        <div className={styles.container}>
+          <label htmlFor="analysis-name" className={styles.label}>
             Enter a name for this analysis:
           </label>
           <input
@@ -208,40 +208,14 @@ const Sidebar = ({ open, setOpen }) => {
             value={userName}
             onChange={(e) => {
               setUserName(e.target.value);
-              if (nameError) setNameError("");
+              if (nameError) {
+                setNameError("");
+              }
             }}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "8px",
-              marginTop: "4px",
-              marginBottom: nameError ? "4px" : "16px",
-              border: nameError ? "1px solid #e74c3c" : "1px solid #ccc",
-              borderRadius: "4px",
-            }}
+            className={`${styles.input} ${nameError ? styles.error : ""}`}
           />
-          {nameError && (
-            <p
-              style={{
-                color: "#e74c3c",
-                margin: "0 0 16px 0",
-                fontSize: "0.875rem",
-              }}
-            >
-              {nameError}
-            </p>
-          )}
-          <button
-            onClick={handleSubmit}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#3498db",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          {nameError && <p className={styles.errorMessage}>{nameError}</p>}
+          <button onClick={handleSubmit} className={styles.submitButton}>
             Submit
           </button>
         </div>

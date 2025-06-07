@@ -11,7 +11,7 @@ const AttributeSummary = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const handlePageChange = (e) => {
     const newPage = e.selected + 1;
-    setCurrentPage(newPage); // Update state
+    setCurrentPage(newPage);
     dispatch(
       AnalysisActions.getAttributeSummary({ attribute: "host", page: newPage })
     );

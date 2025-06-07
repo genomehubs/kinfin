@@ -1,7 +1,7 @@
 .container {
   display: flex;
   align-items: flex-end;
-  gap: 24px; // spacing between selector groups
+  gap: 24px;
 
   .selectors {
     display: flex;
@@ -44,7 +44,7 @@
     }
 
     .applyButton {
-      background-color: var(--text-color);
+      background-color: var(--accent-color);
       color: var(--bg-color);
     }
 
