@@ -4,7 +4,7 @@
 
   thead {
     tr {
-      color: #8b8e94;
+      color: var(--text-color);
       font-style: normal;
       font-weight: 400;
       letter-spacing: -1px;
@@ -25,7 +25,7 @@
       }
 
       th {
-        color: #8b8e94;
+        color: var(--text-color);
         font-style: normal;
         font-weight: 400;
         position: sticky;
@@ -34,8 +34,8 @@
         z-index: 6;
         letter-spacing: -1px;
         padding: 12px 20px;
-        background-color: #0d0d0e;
-        border-bottom: 1px solid #5a5b60;
+        background-color: var(--th-bg);
+        border-bottom: 1px solid var(--table-border);
         font-size: 18px;
 
         &::after {
@@ -45,14 +45,9 @@
           left: 0;
           width: 100%;
           height: 1px;
-          background-color: #5a5b60;
+          background-color: var(--table-border);
           z-index: 7;
         }
-
-        // white-space: normal;
-        // word-wrap: break-word;
-        // word-break: break-word;
-        // overflow-wrap: break-word;
 
         &:first-child {
           text-align: left;
@@ -71,15 +66,13 @@
   }
 
   td {
-    color: #9b9b9b;
+    color: var(--text-color);
     font-style: normal;
     font-weight: 400;
     white-space: nowrap;
     background-color: inherit;
     font-size: 18px;
 
-    > div {
-    }
     > div,
     img {
       background-color: inherit;
@@ -89,8 +82,9 @@
   tbody {
     tr:nth-child(odd) {
       border-radius: 10px;
-      background: #202121;
+      background: var(--alt-row);
     }
+
     &.noData {
       tr:nth-child(odd) {
         background: inherit;
@@ -99,6 +93,7 @@
       text-align: left;
       background: inherit;
     }
+
     tr {
       transition: ease-in-out 200ms;
     }
@@ -116,7 +111,12 @@
 .skeletonBlock {
   height: 16px;
   width: 80%;
-  background: linear-gradient(90deg, #3a3a3a 25%, #4e4e4e 50%, #3a3a3a 75%);
+  background: linear-gradient(
+    90deg,
+    var(--border-color) 25%,
+    var(--table-border) 50%,
+    var(--border-color) 75%
+  );
   background-size: 200% 100%;
   border-radius: 4px;
   animation: shimmer 2.5s infinite linear;

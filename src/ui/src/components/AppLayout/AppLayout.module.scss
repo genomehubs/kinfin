@@ -1,0 +1,20 @@
+.appLayout {
+  display: flex;
+
+  .childContainer {
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: margin-left 0.3s ease;
+    margin-left: 240px;
+    box-sizing: border-box;
+
+    &.closed {
+      margin-left: 0;
+    }
+
+    > div {
+      width: 100%;
+    }
+  }
+}

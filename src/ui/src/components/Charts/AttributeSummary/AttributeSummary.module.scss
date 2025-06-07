@@ -4,12 +4,6 @@
   align-items: left;
   justify-content: flex-start;
   font-size: 14px;
-
-  //   white-space: nowrap;
-  //   overflow: hidden;
-  //   text-overflow: ellipsis;
-  //   max-width: 200px;
-  //   position: relative;
 }
 
 .pagination {
@@ -37,11 +31,11 @@
 
     &.selected {
       color: #f1f1f1;
-      border: 1px solid #f1f1f1; // Add border here
-      background: #5a5b60; // Optional: Add background to highlight selection
+      border: 1px solid #f1f1f1;
+      background: #5a5b60;
 
       a {
-        border: none; // Remove border from `<a>` to prevent conflict
+        border: none;
         color: #fff !important;
       }
     }

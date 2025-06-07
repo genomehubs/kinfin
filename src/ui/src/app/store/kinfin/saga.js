@@ -1,5 +1,5 @@
 import { takeEvery, fork, put, all, call } from "redux-saga/effects";
-// import { fetchData, postData } from "@/app/services/client";
+
 import {
   INIT_ANALYSIS,
   GET_RUN_STATUS,
@@ -33,6 +33,7 @@ import {
   getAvailableAttributesTaxonsetsFailure,
   getRunSummaryFailure,
   getRunSummarySuccess,
+  storeConfig,
 } from "./actions";
 import {
   dispatchErrorToast,
@@ -51,32 +52,18 @@ import {
   getPlot,
 } from "../../services/client";
 
-function* initAnalysisSaga() {
+function* initAnalysisSaga(action) {
+  const { name, config } = action.payload;
   try {
-    const config = [
-      { taxon: "CBRIG", clade: "CBRIG", host: "outgroup" },
-      { taxon: "DMEDI", clade: "DMEDI", host: "human" },
-      { taxon: "LSIGM", clade: "n16", host: "other" },
-      { taxon: "AVITE", clade: "n16", host: "other" },
-      { taxon: "CELEG", clade: "CELEG", host: "outgroup" },
-      { taxon: "EELAP", clade: "n16", host: "other" },
-      { taxon: "OOCHE2", clade: "OOCHE2", host: "other" },
-      { taxon: "OFLEX", clade: "n11", host: "other" },
-      { taxon: "LOA2", clade: "n15", host: "human" },
-      { taxon: "SLABI", clade: "SLABI", host: "other" },
-      { taxon: "BMALA", clade: "n15", host: "human" },
-      { taxon: "DIMMI", clade: "n11", host: "other" },
-      { taxon: "WBANC2", clade: "n15", host: "human" },
-      { taxon: "TCALL", clade: "TCALL", host: "other" },
-      { taxon: "OOCHE1", clade: "n11", host: "other" },
-      { taxon: "BPAHA", clade: "n15", host: "other" },
-      { taxon: "OVOLV", clade: "n11", host: "human" },
-      { taxon: "WBANC1", clade: "WBANC1", host: "human" },
-      { taxon: "LOA1", clade: "LOA1", host: "human" },
-    ];
     const response = yield call(initAnalysis, config);
     if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
+      const payloadForIndexDBStorage = {
+        name,
+        config,
+        sessionId: response.data.session_id,
+      };
+      yield put(storeConfig(payloadForIndexDBStorage));
       yield call(dispatchSuccessToast, "Analysis initialized successfully!");
     } else {
       yield put(initAnalysisFailure(response));
@@ -91,8 +78,6 @@ function* initAnalysisSaga() {
       dispatchErrorToast,
       err?.response?.data?.error?.message || "Failed to initialize analysis"
     );
-  } finally {
-    // yield put(setLoading(false));
   }
 }
 

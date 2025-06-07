@@ -9,7 +9,6 @@ const ClusterSizeDistribution = () => {
     (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
   );
 
-  // Store blob URL in local state
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
@@ -22,7 +21,7 @@ const ClusterSizeDistribution = () => {
       setBlobUrl(objectUrl);
 
       return () => {
-        URL.revokeObjectURL(objectUrl); // Clean up
+        URL.revokeObjectURL(objectUrl);
       };
     } else {
       console.error("❌ clusterSizeBlob is not a Blob:", clusterSizeBlob);

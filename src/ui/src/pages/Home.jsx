@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import * as AnalysisActions from "../app/store/kinfin/actions";
 
 const Home = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate(); // Initialize navigate function
+  const navigate = useNavigate();
 
   useEffect(() => {
     dispatch(AnalysisActions.getRunStatus());

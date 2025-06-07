@@ -5,7 +5,7 @@
 
   thead {
     tr {
-      color: #8b8e94;
+      color: var(--text-color);
 
       font-style: normal;
       font-weight: 400;
@@ -29,18 +29,16 @@
       }
 
       th {
-        color: #8b8e94;
-
+        color: var(--text-color);
         font-style: normal;
         font-weight: 400;
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 6;
         letter-spacing: -1px;
         padding: 15px;
-        background-color: #0d0d0e;
-        border-bottom: 1px solid #5a5b60;
-        z-index: 6;
+        background-color: var(--th-bg);
+        border-bottom: 1px solid var(--table-border);
 
         &:first-child {
           text-align: left;
@@ -50,8 +48,6 @@
   }
 
   tr {
-    // text-align: center;
-
     position: relative;
 
     &::before {
@@ -60,8 +56,7 @@
   }
 
   td {
-    color: #9b9b9b;
-
+    color: var(--text-color);
     font-style: normal;
     font-weight: 400;
     padding: 12px 16px !important;
@@ -71,19 +66,19 @@
     > div {
       padding: 16px 4px;
     }
+
     > div,
     img {
       background-color: inherit;
     }
-    // &:first-child {
-    //   text-align: center;
-    // }
   }
+
   tbody {
     tr:nth-child(odd) {
       border-radius: 10px;
-      background: #202121;
+      background: var(--alt-row);
     }
+
     &.noData {
       tr:nth-child(odd) {
         background: inherit;
@@ -92,6 +87,7 @@
       text-align: left;
       background: inherit;
     }
+
     tr {
       transition: ease-in-out 200ms;
     }
@@ -113,12 +109,12 @@
   width: calc(100% - 50px);
   position: sticky;
   bottom: 0;
-  background: #fff; // Ensures it's visible if the background is not white
+  background: var(--bg-color);
   padding: 10px 0;
-  z-index: 10; // Keeps it above other elements
+  z-index: 10;
 
   li {
-    color: #5a5b60;
+    color: var(--text-color);
     font-size: 16px;
     font-style: normal;
     font-weight: 400;
@@ -127,19 +123,102 @@
     cursor: pointer;
 
     &.selected {
-      color: #f1f1f1;
+      color: var(--text-color);
+
       a {
-        border: 1px solid #f1f1f1;
+        border: 1px solid var(--text-color);
       }
     }
 
     a {
-      border: 1px solid #5a5b60;
+      border: 1px solid var(--table-border);
       padding: 8px 10px;
     }
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-color: #ffffff;
+  --text-color: #121212;
+  --accent-color: #4d90fe;
+  --sidebar-bg: #f4f4f4;
+  --menu-hover: #e0e0e0;
+  --border-color: #cccccc;
+  --preview-bg: #f9f9f9;
+  --table-border: #cccccc;
+  --th-bg: #eeeeee;
+  --icon-color: #4d90fe;
+  --alt-row: #f5f5f5;
+  --scrollbar-thumb: #cccccc;
+  --tooltip-bg: #ffffff;
+  --tooltip-text: #121212;
+  --tooltip-border: #cccccc;
+  --tooltip-shadow: rgba(0, 0, 0, 0.1);
+  --error-color: #ff4c4c;
+}
+
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #e0e0e0;
+  --accent-color: #4d90fe;
+  --sidebar-bg: #1e1e1e;
+  --menu-hover: #252525;
+  --border-color: #2d2d2d;
+  --preview-bg: #1a1a1a;
+  --table-border: #444;
+  --th-bg: #333;
+  --icon-color: #4d90fe;
+  --alt-row: #222;
+  --scrollbar-thumb: #5a5b60;
+  --tooltip-bg: #2a2a2a;
+  --tooltip-text: #e0e0e0;
+  --tooltip-border: #444444;
+  --tooltip-shadow: rgba(0, 0, 0, 0.4);
+  --error-color: #ff4c4c;
+}
+
 body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
   margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:global {
+  .rc-tooltip-inner {
+    background-color: var(--tooltip-bg) !important;
+    color: var(--tooltip-text) !important;
+    border: 1px solid var(--tooltip-border) !important;
+    padding: 6px 8px !important;
+    border-radius: 6px !important;
+    font-size: 13px;
+  }
+
+  .rc-tooltip {
+    z-index: 1100;
+  }
 }
