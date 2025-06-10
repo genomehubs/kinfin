@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setSelectedAttributeTaxonset } from "../../app/store/kinfin/actions";
+import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
 import styles from "./AttributeSelector.module.scss";
 const AttributeSelector = () => {
   const dispatch = useDispatch();
@@ -10,7 +10,7 @@ const AttributeSelector = () => {
   );
 
   const persistedSelection = useSelector(
-    (state) => state?.analysis?.selectedAttributeTaxonset
+    (state) => state?.config?.selectedAttributeTaxonset
   );
 
   const [selectedAttribute, setSelectedAttribute] = useState("");

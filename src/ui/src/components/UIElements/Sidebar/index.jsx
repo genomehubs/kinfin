@@ -11,7 +11,7 @@ import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
 import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { renameConfig, deleteConfig } from "../../../app/store/kinfin/actions";
+import { renameConfig, deleteConfig } from "../../../app/store/config/actions";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -52,7 +52,7 @@ const Sidebar = ({ open, setOpen }) => {
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
   const analysisConfigs = useSelector(
-    (state) => state?.analysis?.storeConfig?.data
+    (state) => state?.config?.storeConfig?.data
   );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);

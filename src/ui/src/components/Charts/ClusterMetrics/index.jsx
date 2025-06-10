@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
 import styles from "./ClusterMetrics.module.scss";
 import { useSelector } from "react-redux";
-import { getClusterMetrics } from "../../../app/store/kinfin/actions";
+import { getClusterMetrics } from "../../../app/store/analysis/actions";
 
 const ClusterMetrics = () => {
   const dispatch = useDispatch();

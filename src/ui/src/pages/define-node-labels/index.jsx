@@ -4,7 +4,7 @@ import FileUpload from "../../components/FileUpload"; // adjust the path if need
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
 import { useDispatch } from "react-redux";
-import { initAnalysis } from "../../app/store/kinfin/actions";
+import { initAnalysis } from "../../app/store/config/actions";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();

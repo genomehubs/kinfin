@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Dashboard.module.scss";
 import {
-  getRunStatus,
   getAvailableAttributesTaxonsets,
   getRunSummary,
   getCountsByTaxon,
   getClusterSummary,
   getAttributeSummary,
   getClusterMetrics,
-} from "../../app/store/kinfin/actions";
+} from "../../app/store/analysis/actions";
+import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
 
 import { RunSummary } from "../../components";
@@ -34,7 +34,7 @@ const Dashboard = () => {
     }
   }, [sessionId]);
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.analysis?.selectedAttributeTaxonset
+    (state) => state?.config?.selectedAttributeTaxonset
   );
 
   useEffect(() => {

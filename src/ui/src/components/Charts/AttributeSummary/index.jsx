@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
 import styles from "./AttributeSummary.module.scss";
 import { useSelector } from "react-redux";
-import { getAttributeSummary } from "../../../app/store/kinfin/actions";
+import { getAttributeSummary } from "../../../app/store/analysis/actions";
 
 const AttributeSummary = () => {
   const dispatch = useDispatch();

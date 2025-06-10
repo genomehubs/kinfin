@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styles from "./AllRarefactionCurve.module.scss";
-import { getPlot } from "../../../app/store/kinfin/actions";
+import { getPlot } from "../../../app/store/analysis/actions";
 import { useDispatch, useSelector } from "react-redux";
 
 const AllRarefactionCurve = () => {

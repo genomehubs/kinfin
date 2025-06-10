@@ -2,15 +2,14 @@ import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
-  getRunStatus,
   getAvailableAttributesTaxonsets,
   getRunSummary,
   getCountsByTaxon,
   getClusterSummary,
   getAttributeSummary,
   getClusterMetrics,
-  initAnalysis,
-} from "../app/store/kinfin/actions";
+} from "../app/store/analysis/actions";
+import { getRunStatus, initAnalysis } from "../app/store/config/actions";
 
 const Home = () => {
   const dispatch = useDispatch();
