@@ -14,7 +14,7 @@ function App() {
   return (
     <React.StrictMode>
       <Provider store={store}>
-        <title>Kinfin</title>
+        <title>KinFin</title>
         <Router>
           <Routes>
             <Route path="/" element={<Home />} />

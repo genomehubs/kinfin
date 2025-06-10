@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./FileUpload.module.scss";
 import { MdOutlineFileUpload } from "react-icons/md";
-import * as XLSX from "xlsx";
+import { read, utils } from "xlsx";
 import Papa from "papaparse";
 
 const VALID_TAXONS = [
@@ -86,9 +86,9 @@ const FileUpload = ({ onDataChange }) => {
     if (["xls", "xlsx"].includes(ext)) {
       reader.onload = (e) => {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
+        const json = utils.sheet_to_json(sheet);
         setParsedData(json);
         setJsonText(JSON.stringify(json, null, 2));
         setJsonError("");

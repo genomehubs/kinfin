@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Dashboard.module.scss";
-import * as AnalysisActions from "../../app/store/kinfin/actions";
+import {
+  getRunStatus,
+  getAvailableAttributesTaxonsets,
+  getRunSummary,
+  getCountsByTaxon,
+  getClusterSummary,
+  getAttributeSummary,
+  getClusterMetrics,
+} from "../../app/store/kinfin/actions";
 import AppLayout from "../../components/AppLayout";
 
 import { RunSummary } from "../../components";
@@ -30,22 +38,22 @@ const Dashboard = () => {
   );
 
   useEffect(() => {
-    dispatch(AnalysisActions.getRunStatus());
-    dispatch(AnalysisActions.getAvailableAttributesTaxonsets());
-    dispatch(AnalysisActions.getRunSummary());
-    dispatch(AnalysisActions.getCountsByTaxon());
+    dispatch(getRunStatus());
+    dispatch(getAvailableAttributesTaxonsets());
+    dispatch(getRunSummary());
+    dispatch(getCountsByTaxon());
     dispatch(
-      AnalysisActions.getClusterSummary({
+      getClusterSummary({
         attribute: selectedAttributeTaxonset?.attribute,
       })
     );
     dispatch(
-      AnalysisActions.getAttributeSummary({
+      getAttributeSummary({
         attribute: selectedAttributeTaxonset?.attribute,
       })
     );
     dispatch(
-      AnalysisActions.getClusterMetrics({
+      getClusterMetrics({
         attribute: selectedAttributeTaxonset?.attribute,
         taxonSet: selectedAttributeTaxonset?.taxonset,
       })

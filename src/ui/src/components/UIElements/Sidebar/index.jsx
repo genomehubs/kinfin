@@ -11,7 +11,7 @@ import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
 import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import * as AnalysisActions from "../../../app/store/kinfin/actions";
+import { renameConfig, deleteConfig } from "../../../app/store/kinfin/actions";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -67,7 +67,7 @@ const Sidebar = ({ open, setOpen }) => {
       sessionId: sessionIdClicked,
     };
 
-    dispatch(AnalysisActions.renameConfig(payload));
+    dispatch(renameConfig(payload));
     setNameError("");
     setUserName("");
     setModalOpen(false);
@@ -77,7 +77,7 @@ const Sidebar = ({ open, setOpen }) => {
     <>
       <div className={`${styles.sidebar} ${open ? "" : styles.closed}`}>
         <div className={styles.top}>
-          <h2>Kinfin</h2>
+          <h2>KinFin</h2>
           <button className={styles.toggleBtn} onClick={() => setOpen(false)}>
             <FiMenu />
           </button>
@@ -151,9 +151,7 @@ const Sidebar = ({ open, setOpen }) => {
                             className={styles.tooltipItem}
                             onClick={(e) => {
                               e.stopPropagation();
-                              dispatch(
-                                AnalysisActions.deleteConfig(sessionIdClicked)
-                              );
+                              dispatch(deleteConfig(sessionIdClicked));
                               console.log(
                                 "Delete clicked for:",
                                 item.sessionId

@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
 import styles from "./AttributeSummary.module.scss";
 import { useSelector } from "react-redux";
-import * as AnalysisActions from "../../../app/store/kinfin/actions";
+import { getAttributeSummary } from "../../../app/store/kinfin/actions";
 
 const AttributeSummary = () => {
   const dispatch = useDispatch();
@@ -12,9 +12,7 @@ const AttributeSummary = () => {
   const handlePageChange = (e) => {
     const newPage = e.selected + 1;
     setCurrentPage(newPage);
-    dispatch(
-      AnalysisActions.getAttributeSummary({ attribute: "host", page: newPage })
-    );
+    dispatch(getAttributeSummary({ attribute: "host", page: newPage }));
   };
 
   const data = useSelector(

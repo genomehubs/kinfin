@@ -1,6 +1,6 @@
-# 🧬 Kinfin UI – Local Setup Guide
+# 🧬 KinFin UI – Local Setup Guide
 
-This repository provides the frontend interface for **Kinfin**, which allows users to run and visualize biological analyses. This guide outlines how to set up and run Kinfin UI and backend locally, using test data.
+This repository provides the frontend interface for **KinFin**, which allows users to run and visualize biological analyses. This guide outlines how to set up and run KinFin UI and backend locally, using test data.
 
 ---
 
@@ -37,7 +37,7 @@ rm api_test_data.tar.gz
 
 ## 🧪 3. Setup and Start the Backend API
 
-In a new terminal navigate back to the Kinfin root directory and install Python dependencies:
+In a new terminal navigate back to the KinFin root directory and install Python dependencies:
 
 ```bash
 cd ~/kinfin
@@ -57,13 +57,13 @@ export SESSION_INACTIVITY_THRESHOLD=24  # Files retained for 24 hours
 ./src/main.py serve -p $KINFIN_PORT
 ```
 
-## ⚙️ 4. Setup the Frontend (Kinfin UI)
+## ⚙️ 4. Setup the Frontend (KinFin UI)
 
 Open a new terminal and start the frontend:
 
 ```bash
 cd src/ui
-npm install --legacy-peer-deps
+npm install
 ```
 
 Create a .env file based on .env.dist:

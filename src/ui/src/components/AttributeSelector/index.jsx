@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import * as AnalysisActions from "../../app/store/kinfin/actions";
+import { setSelectedAttributeTaxonset } from "../../app/store/kinfin/actions";
 import styles from "./AttributeSelector.module.scss";
 const AttributeSelector = () => {
   const dispatch = useDispatch();
@@ -36,7 +36,7 @@ const AttributeSelector = () => {
   const handleApply = () => {
     if (selectedAttribute && selectedTaxon) {
       dispatch(
-        AnalysisActions.setSelectedAttributeTaxonset({
+        setSelectedAttributeTaxonset({
           attribute: selectedAttribute,
           taxonset: selectedTaxon,
         })
@@ -48,7 +48,7 @@ const AttributeSelector = () => {
     setSelectedAttribute("");
     setSelectedTaxon("");
     dispatch(
-      AnalysisActions.setSelectedAttributeTaxonset({
+      setSelectedAttributeTaxonset({
         attribute: "all",
         taxonset: "all",
       })

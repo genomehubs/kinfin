@@ -4,7 +4,7 @@ import FileUpload from "../../components/FileUpload"; // adjust the path if need
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
 import { useDispatch } from "react-redux";
-import * as AnalysisActions from "../../app/store/kinfin/actions";
+import { initAnalysis } from "../../app/store/kinfin/actions";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
@@ -33,7 +33,7 @@ const DefineNodeLabels = () => {
       name: userName.trim(),
       config: parsedData,
     };
-    dispatch(AnalysisActions.initAnalysis(payload));
+    dispatch(initAnalysis(payload));
     setModalOpen(false);
   };
 
