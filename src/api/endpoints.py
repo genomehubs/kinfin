@@ -504,7 +504,7 @@ async def get_available_attributes_and_taxon_sets(
         )
 
 
-@router.get("/kinfin/valid-taxons", response_model=ResponseSchema)
+@router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
 async def get_valid_taxons_api(
     request: Request,
     page: int = Query(1, ge=1),
