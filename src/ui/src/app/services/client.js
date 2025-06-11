@@ -18,9 +18,9 @@ export const initAnalysis = async (config) => {
   return response.data;
 };
 
-export const getStatus = async () => {
+export const getStatus = async (sessionId = getSessionId()) => {
   const response = await apiClient.get("/status", {
-    headers: { "x-session-id": getSessionId() },
+    headers: { "x-session-id": sessionId },
   });
   return response.data;
 };

@@ -12,6 +12,7 @@ import {
   STORE_CONFIG_RESET,
   RENAME_CONFIG,
   DELETE_CONFIG,
+  SET_POLLING_LOADING,
 } from "./actionTypes";
 
 const initialState = {
@@ -21,6 +22,7 @@ const initialState = {
   storeConfig: {
     data: {},
   },
+  pollingLoading: false,
 };
 
 const configReducer = (state = initialState, action) => {
@@ -123,6 +125,11 @@ const configReducer = (state = initialState, action) => {
         storeConfig: {
           data: {},
         },
+      };
+    case SET_POLLING_LOADING:
+      return {
+        ...state,
+        pollingLoading: action.payload,
       };
 
     default:

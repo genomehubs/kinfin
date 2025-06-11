@@ -5,9 +5,11 @@ import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
 import { useDispatch } from "react-redux";
 import { initAnalysis } from "../../app/store/config/actions";
+import { useNavigate } from "react-router-dom";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [parsedData, setParsedData] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -32,6 +34,7 @@ const DefineNodeLabels = () => {
     const payload = {
       name: userName.trim(),
       config: parsedData,
+      navigate,
     };
     dispatch(initAnalysis(payload));
     setModalOpen(false);

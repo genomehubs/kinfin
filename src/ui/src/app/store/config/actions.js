@@ -12,6 +12,7 @@ import {
   STORE_CONFIG_RESET,
   RENAME_CONFIG,
   DELETE_CONFIG,
+  SET_POLLING_LOADING,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -73,4 +74,9 @@ export const renameConfig = (data) => ({
 export const deleteConfig = (data) => ({
   type: DELETE_CONFIG,
   payload: data,
+});
+
+export const setPollingLoading = (isLoading) => ({
+  type: SET_POLLING_LOADING,
+  payload: isLoading,
 });
