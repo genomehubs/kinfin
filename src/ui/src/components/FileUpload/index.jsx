@@ -3,28 +3,7 @@ import styles from "./FileUpload.module.scss";
 import { MdOutlineFileUpload } from "react-icons/md";
 import { read, utils } from "xlsx";
 import Papa from "papaparse";
-
-const VALID_TAXONS = [
-  "CBRIG",
-  "DMEDI",
-  "LSIGM",
-  "AVITE",
-  "CELEG",
-  "EELAP",
-  "OOCHE2",
-  "OFLEX",
-  "LOA2",
-  "SLABI",
-  "BMALA",
-  "DIMMI",
-  "WBANC2",
-  "TCALL",
-  "OOCHE1",
-  "BPAHA",
-  "OVOLV",
-  "WBANC1",
-  "LOA1",
-];
+import { useSelector } from "react-redux";
 
 const FileUpload = ({ onDataChange }) => {
   const [selectedName, setSelectedName] = useState("");
@@ -34,6 +13,10 @@ const FileUpload = ({ onDataChange }) => {
   const [jsonError, setJsonError] = useState("");
   const [invalidTaxons, setInvalidTaxons] = useState([]);
   const fileInputRef = useRef(null);
+  const validProteomeIds = useSelector(
+    (state) => state.config.validProteomeIds.data
+  );
+  const VALID_PROTEOME_IDS = Object.keys(validProteomeIds || {});
 
   const handleClick = () => {
     fileInputRef.current.click();
@@ -57,7 +40,7 @@ const FileUpload = ({ onDataChange }) => {
         return;
       }
       const taxonValue = row[taxonKey];
-      if (!VALID_TAXONS.includes(taxonValue)) {
+      if (!VALID_PROTEOME_IDS.includes(taxonValue)) {
         invalids.push({ index: idx, taxon: taxonValue });
       }
     });

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
 import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
@@ -11,7 +11,11 @@ import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
 import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { renameConfig, deleteConfig } from "../../../app/store/config/actions";
+import {
+  renameConfig,
+  deleteConfig,
+  getValidProteomeIds,
+} from "../../../app/store/config/actions";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -54,8 +58,13 @@ const Sidebar = ({ open, setOpen }) => {
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data
   );
+
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
+
+  useEffect(() => {
+    dispatch(getValidProteomeIds());
+  }, []);
 
   const handleSubmit = () => {
     if (!userName.trim()) {

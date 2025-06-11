@@ -12,6 +12,10 @@ import {
   STORE_CONFIG_RESET,
   RENAME_CONFIG,
   DELETE_CONFIG,
+  GET_VALID_PROTEOME_IDS,
+  GET_VALID_PROTEOME_IDS_SUCCESS,
+  GET_VALID_PROTEOME_IDS_FAILURE,
+  GET_VALID_PROTEOME_IDS_RESET,
 } from "./actionTypes";
 
 const initialState = {
@@ -21,6 +25,7 @@ const initialState = {
   storeConfig: {
     data: {},
   },
+  validProteomeIds: { data: null, loading: false, error: null },
 };
 
 const configReducer = (state = initialState, action) => {
@@ -123,6 +128,29 @@ const configReducer = (state = initialState, action) => {
         storeConfig: {
           data: {},
         },
+      };
+    case GET_VALID_PROTEOME_IDS:
+      return {
+        ...state,
+        validProteomeIds: { data: null, loading: true, error: null },
+      };
+
+    case GET_VALID_PROTEOME_IDS_SUCCESS:
+      return {
+        ...state,
+        validProteomeIds: { data: action.payload, loading: false, error: null },
+      };
+
+    case GET_VALID_PROTEOME_IDS_FAILURE:
+      return {
+        ...state,
+        validProteomeIds: { data: null, loading: false, error: action.payload },
+      };
+
+    case GET_VALID_PROTEOME_IDS_RESET:
+      return {
+        ...state,
+        validProteomeIds: initialState.validProteomeIds,
       };
 
     default:
