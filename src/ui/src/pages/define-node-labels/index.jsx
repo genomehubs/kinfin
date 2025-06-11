@@ -3,15 +3,21 @@ import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload"; // adjust the path if needed
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { initAnalysis } from "../../app/store/config/actions";
 import { useNavigate } from "react-router-dom";
+
+// MUI components
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [parsedData, setParsedData] = useState(null);
 
+  const pollingLoading = useSelector((state) => state.config.pollingLoading);
+
+  const [parsedData, setParsedData] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
@@ -83,6 +89,24 @@ const DefineNodeLabels = () => {
             </button>
           </div>
         </Modal>
+        <Backdrop
+          sx={{
+            color: "#fff",
+            zIndex: (theme) => theme.zIndex.modal + 1,
+            flexDirection: "column",
+            gap: 2,
+          }}
+          open={pollingLoading}
+        >
+          <CircularProgress color="inherit" />
+          <div
+            style={{ fontSize: "1.1rem", textAlign: "center", maxWidth: 300 }}
+          >
+            Initialization is in progress. <br />
+            It might take 2–3 minutes. <br />
+            Please wait…
+          </div>
+        </Backdrop>
       </div>
     </AppLayout>
   );

@@ -78,8 +78,10 @@ function* initAnalysisSaga(action) {
         sessionId: response.data.session_id,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
-      yield call(dispatchSuccessToast, "Analysis initialized successfully!");
-
+      yield call(
+        dispatchSuccessToast,
+        "KinFin analysis has started. Please wait..."
+      );
       yield fork(pollRunStatusSaga, response.data.session_id, navigate); // start polling
     } else {
       yield put(initAnalysisFailure(response));
