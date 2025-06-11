@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
 import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
@@ -11,7 +11,12 @@ import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
 import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { renameConfig, deleteConfig } from "../../../app/store/config/actions";
+import {
+  renameConfig,
+  deleteConfig,
+  getBatchStatus,
+} from "../../../app/store/config/actions";
+import { Box } from "@mui/material";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -44,7 +49,6 @@ const Sidebar = ({ open, setOpen }) => {
   const dispatch = useDispatch();
 
   const [modalOpen, setModalOpen] = useState(false);
-
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
   const [sessionIdClicked, setSessionIdClicked] = useState("");
@@ -57,6 +61,15 @@ const Sidebar = ({ open, setOpen }) => {
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
 
+  const hasFetchedStatusRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasFetchedStatusRef.current && analysisList?.length) {
+      const sessionIds = analysisList.map((item) => item.sessionId);
+      dispatch(getBatchStatus({ sessionIds }));
+      hasFetchedStatusRef.current = true;
+    }
+  }, [analysisList]);
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
@@ -109,6 +122,16 @@ const Sidebar = ({ open, setOpen }) => {
                   }`}
                   onClick={() => navigate(`/${item.sessionId}/dashboard`)}
                 >
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      backgroundColor: item.status ? "#2ecc71" : "#ee2f42",
+                      marginRight: "8px",
+                      flexShrink: 0,
+                    }}
+                  />
                   <span className={styles.label}>{item.name}</span>
                   <div className={styles.refContainer} ref={tooltipRef}>
                     <Tooltip
