@@ -25,6 +25,13 @@ export const getStatus = async (sessionId = getSessionId()) => {
   return response.data;
 };
 
+export const getBatchStatus = async (sessionIds = []) => {
+  const response = await apiClient.post("/status", sessionIds, {
+    headers: { "Content-Type": "application/json" },
+  });
+  return response.data;
+};
+
 export const getRunSummary = async () => {
   const response = await apiClient.get("/run-summary", {
     headers: { "x-session-id": getSessionId() },

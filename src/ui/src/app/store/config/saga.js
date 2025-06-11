@@ -1,5 +1,5 @@
 import { takeEvery, fork, put, all, call, delay } from "redux-saga/effects";
-import { INIT_ANALYSIS, GET_RUN_STATUS } from "./actionTypes";
+import { INIT_ANALYSIS, GET_RUN_STATUS, GET_BATCH_STATUS } from "./actionTypes";
 
 import {
   initAnalysisSuccess,
@@ -8,6 +8,9 @@ import {
   getRunStatusFailure,
   storeConfig,
   setPollingLoading,
+  getBatchStatusSuccess,
+  getBatchStatusFailure,
+  updateSessionMeta,
 } from "./actions";
 
 import {
@@ -15,7 +18,7 @@ import {
   dispatchSuccessToast,
 } from "../../../utilis/tostNotifications";
 
-import { initAnalysis, getStatus } from "../../services/client";
+import { initAnalysis, getStatus, getBatchStatus } from "../../services/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_ATTEMPTS = 120; // 10 minutes
@@ -120,6 +123,38 @@ function* getRunStatusSaga() {
     );
   }
 }
+export function* getBatchStatusSaga(action) {
+  const { sessionIds } = action.payload;
+  try {
+    const response = yield call(getBatchStatus, sessionIds);
+    if (response.status === "success") {
+      yield put(getBatchStatusSuccess(response.data));
+      yield call(dispatchSuccessToast, "Batch status fetched successfully!");
+      for (const session of response.data.sessions) {
+        const isActive = session.status === "completed";
+
+        yield put(
+          updateSessionMeta(session.session_id, {
+            status: isActive,
+            expiryDate: session.expiryDate,
+          })
+        );
+      }
+    } else {
+      yield put(getBatchStatusFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch batch status"
+      );
+    }
+  } catch (err) {
+    yield put(getBatchStatusFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch batch status"
+    );
+  }
+}
 
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
@@ -127,7 +162,14 @@ export function* watchInitAnalysisSaga() {
 export function* watchGetRunStatusSaga() {
   yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
 }
+export function* watchGetBatchStatusSaga() {
+  yield takeEvery(GET_BATCH_STATUS, getBatchStatusSaga);
+}
 
 export default function* configSaga() {
-  yield all([fork(watchInitAnalysisSaga), fork(watchGetRunStatusSaga)]);
+  yield all([
+    fork(watchInitAnalysisSaga),
+    fork(watchGetRunStatusSaga),
+    fork(watchGetBatchStatusSaga),
+  ]);
 }

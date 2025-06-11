@@ -13,6 +13,11 @@ import {
   RENAME_CONFIG,
   DELETE_CONFIG,
   SET_POLLING_LOADING,
+  GET_BATCH_STATUS,
+  GET_BATCH_STATUS_SUCCESS,
+  GET_BATCH_STATUS_FAILURE,
+  GET_BATCH_STATUS_RESET,
+  UPDATE_SESSION_META,
 } from "./actionTypes";
 
 const initialState = {
@@ -20,9 +25,20 @@ const initialState = {
   runStatus: { data: null, loading: false, error: null },
   selectedAttributeTaxonset: { attribute: "all", taxonset: "all" },
   storeConfig: {
-    data: {},
+    data: {
+      /*
+    [sessionId]: {
+      sessionId: "some-id",
+      name: "some-name",
+      config: [...],
+      status: true,
+      expiryDate: "2025-06-12T20:00:00Z",
+    }
+    */
+    },
   },
   pollingLoading: false,
+  batchStatus: { data: null, loading: false, error: null },
 };
 
 const configReducer = (state = initialState, action) => {
@@ -131,6 +147,50 @@ const configReducer = (state = initialState, action) => {
         ...state,
         pollingLoading: action.payload,
       };
+    case GET_BATCH_STATUS:
+      return {
+        ...state,
+        batchStatus: { data: null, loading: true, error: null },
+      };
+
+    case GET_BATCH_STATUS_SUCCESS:
+      return {
+        ...state,
+        batchStatus: { data: action.payload, loading: false, error: null },
+      };
+
+    case GET_BATCH_STATUS_FAILURE:
+      return {
+        ...state,
+        batchStatus: { data: null, loading: false, error: action.payload },
+      };
+
+    case GET_BATCH_STATUS_RESET:
+      return {
+        ...state,
+        batchStatus: initialState.batchStatus,
+      };
+    case UPDATE_SESSION_META: {
+      const { sessionId, meta } = action.payload;
+      const existing = state.storeConfig.data || {};
+      if (!existing[sessionId]) {
+        return state;
+      }
+
+      return {
+        ...state,
+        storeConfig: {
+          ...state.storeConfig,
+          data: {
+            ...existing,
+            [sessionId]: {
+              ...existing[sessionId],
+              ...meta, // this allows updating status, expiryDate, etc.
+            },
+          },
+        },
+      };
+    }
 
     default:
       return state;
