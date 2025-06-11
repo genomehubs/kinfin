@@ -4,16 +4,16 @@ import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
 import styles from "./ClusterMetrics.module.scss";
 import { useSelector } from "react-redux";
-import * as AnalysisActions from "../../../app/store/kinfin/actions";
+import { getClusterMetrics } from "../../../app/store/analysis/actions";
 
 const ClusterMetrics = () => {
   const dispatch = useDispatch();
   const [currentPage, setCurrentPage] = useState(1);
   const handlePageChange = (e) => {
     const newPage = e.selected + 1;
-    setCurrentPage(newPage); // Update state
+    setCurrentPage(newPage);
     dispatch(
-      AnalysisActions.getClusterMetrics({
+      getClusterMetrics({
         attribute: "host",
         page: newPage,
         taxonSet: "human",

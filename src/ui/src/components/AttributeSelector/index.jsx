@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import * as AnalysisActions from "../../app/store/kinfin/actions";
+import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
 import styles from "./AttributeSelector.module.scss";
 const AttributeSelector = () => {
   const dispatch = useDispatch();
@@ -9,12 +9,10 @@ const AttributeSelector = () => {
     (state) => state?.analysis?.availableAttributesTaxonsets?.data
   );
 
-  // Get persisted values from Redux
   const persistedSelection = useSelector(
-    (state) => state?.analysis?.selectedAttributeTaxonset
+    (state) => state?.config?.selectedAttributeTaxonset
   );
 
-  // Initialize state with persisted values
   const [selectedAttribute, setSelectedAttribute] = useState("");
   const [selectedTaxon, setSelectedTaxon] = useState("");
 
@@ -23,12 +21,12 @@ const AttributeSelector = () => {
       setSelectedAttribute(persistedSelection.attribute || "");
       setSelectedTaxon(persistedSelection.taxonset || "");
     }
-  }, [persistedSelection]); // Run when persistedSelection changes
+  }, [persistedSelection]);
 
   const handleAttributeChange = (e) => {
     const attribute = e.target.value;
     setSelectedAttribute(attribute);
-    setSelectedTaxon(""); // Reset taxon selection when attribute changes
+    setSelectedTaxon("");
   };
 
   const handleTaxonChange = (e) => {
@@ -38,7 +36,7 @@ const AttributeSelector = () => {
   const handleApply = () => {
     if (selectedAttribute && selectedTaxon) {
       dispatch(
-        AnalysisActions.setSelectedAttributeTaxonset({
+        setSelectedAttributeTaxonset({
           attribute: selectedAttribute,
           taxonset: selectedTaxon,
         })
@@ -50,11 +48,11 @@ const AttributeSelector = () => {
     setSelectedAttribute("");
     setSelectedTaxon("");
     dispatch(
-      AnalysisActions.setSelectedAttributeTaxonset({
+      setSelectedAttributeTaxonset({
         attribute: "all",
         taxonset: "all",
       })
-    ); // Clear Redux state
+    );
   };
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styles from "./AllRarefactionCurve.module.scss";
-import * as AnalysisActions from "../../../app/store/kinfin/actions";
+import { getPlot } from "../../../app/store/analysis/actions";
 import { useDispatch, useSelector } from "react-redux";
 
 const AllRarefactionCurve = () => {
@@ -9,11 +9,10 @@ const AllRarefactionCurve = () => {
     (state) => state?.analysis?.plot?.data?.allRarefactionCurve
   );
 
-  // Store blob URL in local state
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
-    dispatch(AnalysisActions.getPlot());
+    dispatch(getPlot());
   }, [dispatch]);
 
   useEffect(() => {
@@ -22,7 +21,7 @@ const AllRarefactionCurve = () => {
       setBlobUrl(objectUrl);
 
       return () => {
-        URL.revokeObjectURL(objectUrl); // Clean up
+        URL.revokeObjectURL(objectUrl);
       };
     } else {
       console.error("❌ clusterSizeBlob is not a Blob:", clusterSizeBlob);

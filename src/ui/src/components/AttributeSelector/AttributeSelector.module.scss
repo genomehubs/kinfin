@@ -1,7 +1,7 @@
 .container {
   display: flex;
   align-items: flex-end;
-  gap: 24px; // spacing between selector groups
+  gap: 24px;
 
   .selectors {
     display: flex;
@@ -16,15 +16,16 @@
       label {
         font-size: 0.85em;
         margin-bottom: 4px;
-        color: #aaa;
+        color: var(--text-color);
+        opacity: 0.7;
       }
 
       .dropdown {
         padding: 8px 12px;
-        background-color: #000;
-        border: none;
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
         border-radius: 4px;
-        color: #fff;
+        color: var(--text-color);
         font-size: 0.9em;
       }
     }
@@ -43,14 +44,14 @@
     }
 
     .applyButton {
-      background-color: #fff;
-      color: #000;
+      background-color: var(--accent-color);
+      color: var(--bg-color);
     }
 
     .clearButton {
       background: transparent;
-      border: 1px solid #fff;
-      color: #fff;
+      border: 1px solid var(--text-color);
+      color: var(--text-color);
     }
   }
 }

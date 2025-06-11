@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import TableComponent from "../../UIElements/TableComponent";
 import styles from "./ClusterSummary.module.scss";
 import { useSelector } from "react-redux";
-import * as AnalysisActions from "../../../app/store/kinfin/actions";
+import { getClusterSummary } from "../../../app/store/analysis/actions";
 
 const ClusterSummary = () => {
   const dispatch = useDispatch();
@@ -12,9 +12,7 @@ const ClusterSummary = () => {
   const handlePageChange = (e) => {
     const newPage = e.selected + 1;
     setCurrentPage(newPage); // Update state
-    dispatch(
-      AnalysisActions.getClusterSummary({ attribute: "host", page: newPage })
-    );
+    dispatch(getClusterSummary({ attribute: "host", page: newPage }));
   };
 
   const data = useSelector(

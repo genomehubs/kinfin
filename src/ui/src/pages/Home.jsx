@@ -1,21 +1,29 @@
 import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import * as AnalysisActions from "../app/store/kinfin/actions";
+import { useNavigate } from "react-router-dom";
+import {
+  getAvailableAttributesTaxonsets,
+  getRunSummary,
+  getCountsByTaxon,
+  getClusterSummary,
+  getAttributeSummary,
+  getClusterMetrics,
+} from "../app/store/analysis/actions";
+import { getRunStatus, initAnalysis } from "../app/store/config/actions";
 
 const Home = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate(); // Initialize navigate function
+  const navigate = useNavigate();
 
   useEffect(() => {
-    dispatch(AnalysisActions.getRunStatus());
-    dispatch(AnalysisActions.getAvailableAttributesTaxonsets());
-    dispatch(AnalysisActions.getRunSummary());
-    dispatch(AnalysisActions.getCountsByTaxon());
-    dispatch(AnalysisActions.getClusterSummary({ attribute: "host" }));
-    dispatch(AnalysisActions.getAttributeSummary({ attribute: "host" }));
+    dispatch(getRunStatus());
+    dispatch(getAvailableAttributesTaxonsets());
+    dispatch(getRunSummary());
+    dispatch(getCountsByTaxon());
+    dispatch(getClusterSummary({ attribute: "host" }));
+    dispatch(getAttributeSummary({ attribute: "host" }));
     dispatch(
-      AnalysisActions.getClusterMetrics({
+      getClusterMetrics({
         attribute: "host",
         taxonSet: "human",
       })
@@ -23,7 +31,7 @@ const Home = () => {
   }, [dispatch]);
 
   const handleInitAnalysis = () => {
-    dispatch(AnalysisActions.initAnalysis());
+    dispatch(initAnalysis());
   };
 
   return (

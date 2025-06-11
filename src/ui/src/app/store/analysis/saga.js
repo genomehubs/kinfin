@@ -1,8 +1,6 @@
 import { takeEvery, fork, put, all, call } from "redux-saga/effects";
-// import { fetchData, postData } from "@/app/services/client";
+
 import {
-  INIT_ANALYSIS,
-  GET_RUN_STATUS,
   GET_AVAILABLE_ATTRIBUTES_TAXONSETS,
   GET_COUNTS_BY_TAXON,
   GET_CLUSTER_SUMMARY,
@@ -13,10 +11,6 @@ import {
   GET_RUN_SUMMARY,
 } from "./actionTypes";
 import {
-  initAnalysisSuccess,
-  initAnalysisFailure,
-  getRunStatusSuccess,
-  getRunStatusFailure,
   getPlotSuccess,
   getPlotFailure,
   getPairwiseAnalysisSuccess,
@@ -39,9 +33,7 @@ import {
   dispatchSuccessToast,
 } from "../../../utilis/tostNotifications";
 import {
-  initAnalysis,
   getAvailableAttributes,
-  getStatus,
   getCountsByTaxon,
   getRunSummary,
   getClusterSummary,
@@ -51,73 +43,6 @@ import {
   getPlot,
 } from "../../services/client";
 
-function* initAnalysisSaga() {
-  try {
-    const config = [
-      { taxon: "CBRIG", clade: "CBRIG", host: "outgroup" },
-      { taxon: "DMEDI", clade: "DMEDI", host: "human" },
-      { taxon: "LSIGM", clade: "n16", host: "other" },
-      { taxon: "AVITE", clade: "n16", host: "other" },
-      { taxon: "CELEG", clade: "CELEG", host: "outgroup" },
-      { taxon: "EELAP", clade: "n16", host: "other" },
-      { taxon: "OOCHE2", clade: "OOCHE2", host: "other" },
-      { taxon: "OFLEX", clade: "n11", host: "other" },
-      { taxon: "LOA2", clade: "n15", host: "human" },
-      { taxon: "SLABI", clade: "SLABI", host: "other" },
-      { taxon: "BMALA", clade: "n15", host: "human" },
-      { taxon: "DIMMI", clade: "n11", host: "other" },
-      { taxon: "WBANC2", clade: "n15", host: "human" },
-      { taxon: "TCALL", clade: "TCALL", host: "other" },
-      { taxon: "OOCHE1", clade: "n11", host: "other" },
-      { taxon: "BPAHA", clade: "n15", host: "other" },
-      { taxon: "OVOLV", clade: "n11", host: "human" },
-      { taxon: "WBANC1", clade: "WBANC1", host: "human" },
-      { taxon: "LOA1", clade: "LOA1", host: "human" },
-    ];
-    const response = yield call(initAnalysis, config);
-    if (response.status === "success") {
-      yield put(initAnalysisSuccess(response.data));
-      yield call(dispatchSuccessToast, "Analysis initialized successfully!");
-    } else {
-      yield put(initAnalysisFailure(response));
-      yield call(
-        dispatchErrorToast,
-        response?.error?.message || "Failed to initialize analysis"
-      );
-    }
-  } catch (err) {
-    yield put(initAnalysisFailure(err));
-    yield call(
-      dispatchErrorToast,
-      err?.response?.data?.error?.message || "Failed to initialize analysis"
-    );
-  } finally {
-    // yield put(setLoading(false));
-  }
-}
-
-function* getRunStatusSaga() {
-  try {
-    const response = yield call(getStatus);
-
-    if (response.status === "success") {
-      yield put(getRunStatusSuccess(response.data));
-      yield call(dispatchSuccessToast, "Run status fetched successfully!");
-    } else {
-      yield put(getRunStatusFailure(response));
-      yield call(
-        dispatchErrorToast,
-        response?.error || "Failed to fetch run status"
-      );
-    }
-  } catch (err) {
-    yield put(getRunStatusFailure(err));
-    yield call(
-      dispatchErrorToast,
-      err?.response?.data?.error || "Failed to fetch run status"
-    );
-  }
-}
 function* getAvailableAttributesSaga() {
   try {
     const response = yield call(getAvailableAttributes);
@@ -317,12 +242,6 @@ function* getPlotsSaga() {
     yield call(dispatchErrorToast, "Failed to fetch plots");
   }
 }
-export function* watchInitAnalysisSaga() {
-  yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
-}
-export function* watchGetRunStatusSaga() {
-  yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
-}
 
 export function* watchGetPlotsSaga() {
   yield takeEvery(GET_PLOT, getPlotsSaga);
@@ -354,8 +273,6 @@ export function* watchGetAvailableAttributesSaga() {
 
 function* analysisSaga() {
   yield all([
-    fork(watchInitAnalysisSaga),
-    fork(watchGetRunStatusSaga),
     fork(watchGetAvailableAttributesSaga),
     fork(watchGetRunSummarySaga),
     fork(watchGetCountsByTaxonSaga),
