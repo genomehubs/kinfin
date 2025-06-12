@@ -12,6 +12,10 @@ import {
   STORE_CONFIG_RESET,
   RENAME_CONFIG,
   DELETE_CONFIG,
+  GET_VALID_PROTEOME_IDS,
+  GET_VALID_PROTEOME_IDS_SUCCESS,
+  GET_VALID_PROTEOME_IDS_FAILURE,
+  GET_VALID_PROTEOME_IDS_RESET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -73,4 +77,23 @@ export const renameConfig = (data) => ({
 export const deleteConfig = (data) => ({
   type: DELETE_CONFIG,
   payload: data,
+});
+
+export const getValidProteomeIds = (data) => ({
+  type: GET_VALID_PROTEOME_IDS,
+  payload: data,
+});
+
+export const getValidProteomeIdsSuccess = (data) => ({
+  type: GET_VALID_PROTEOME_IDS_SUCCESS,
+  payload: data,
+});
+
+export const getValidProteomeIdsFailure = (data) => ({
+  type: GET_VALID_PROTEOME_IDS_FAILURE,
+  payload: data,
+});
+
+export const getValidProteomeIdsReset = () => ({
+  type: GET_VALID_PROTEOME_IDS_RESET,
 });

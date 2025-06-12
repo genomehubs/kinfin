@@ -147,3 +147,12 @@ tr:nth-child(even) {
   font-size: 14px;
   resize: vertical;
 }
+.invalidCell {
+  border: 2px solid red !important;
+  background-color: #ffe6e6;
+}
+
+.invalidHeader {
+  border: 2px solid red !important;
+  background-color: #ffe6e6;
+}
