@@ -73,6 +73,7 @@ const FileUpload = ({
           setParsedData([{ error: "Invalid JSON file" }]);
           setJsonText("");
           setJsonError("Invalid JSON file");
+          setValidationErrors({ headers: [], rows: {} });
         }
       };
       reader.readAsText(file);

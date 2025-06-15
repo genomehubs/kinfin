@@ -50,7 +50,7 @@ export const validateDataset = (data, validProteomes) => {
     headersRaw.forEach((col) => {
       const val = row[col];
 
-      if (!val || val.toString().trim() === "") {
+      if (val == null || val === "") {
         if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
         errors.rows[rowIndex][col] = "Missing value";
       } else if (!isValidValue(val.toString())) {
