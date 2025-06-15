@@ -9,6 +9,10 @@ import { initAnalysis } from "../../app/store/config/actions";
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
   const [parsedData, setParsedData] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({
+    headers: [],
+    rows: {},
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
@@ -40,11 +44,28 @@ const DefineNodeLabels = () => {
   return (
     <AppLayout>
       <div className={styles.page}>
-        <FileUpload onDataChange={setParsedData} />
+        <FileUpload
+          setValidationErrors={setValidationErrors}
+          validationErrors={validationErrors}
+          onDataChange={setParsedData}
+        />
 
         {parsedData && (
           <div className={styles.bottomSection}>
-            <button className={styles.initButton} onClick={openModal}>
+            <button
+              disabled={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+              }
+              className={styles.initButton}
+              onClick={openModal}
+              title={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+                  ? "Please fix validation issues"
+                  : ""
+              }
+            >
               Initialize Kinfin Analysis
             </button>
           </div>

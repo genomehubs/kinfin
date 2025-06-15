@@ -1,18 +1,28 @@
 import { takeEvery, fork, put, all, call } from "redux-saga/effects";
 
-import { INIT_ANALYSIS, GET_RUN_STATUS } from "./actionTypes";
+import {
+  INIT_ANALYSIS,
+  GET_RUN_STATUS,
+  GET_VALID_PROTEOME_IDS,
+} from "./actionTypes";
 import {
   initAnalysisSuccess,
   initAnalysisFailure,
   getRunStatusSuccess,
   getRunStatusFailure,
   storeConfig,
+  getValidProteomeIdsSuccess,
+  getValidProteomeIdsFailure,
 } from "./actions";
 import {
   dispatchErrorToast,
   dispatchSuccessToast,
 } from "../../../utilis/tostNotifications";
-import { initAnalysis, getStatus } from "../../services/client";
+import {
+  initAnalysis,
+  getStatus,
+  getValidProteomeIds,
+} from "../../services/client";
 
 function* initAnalysisSaga(action) {
   const { name, config } = action.payload;
@@ -65,6 +75,35 @@ function* getRunStatusSaga() {
     );
   }
 }
+function* getValidProteomeIdsSaga(action) {
+  try {
+    const data = {
+      page: 1,
+      size: 100,
+    };
+    const response = yield call(getValidProteomeIds, data);
+
+    if (response.status === "success") {
+      yield put(getValidProteomeIdsSuccess(response.data));
+      yield call(
+        dispatchSuccessToast,
+        "Valid proteome IDs fetched successfully!"
+      );
+    } else {
+      yield put(getValidProteomeIdsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch valid proteome IDs"
+      );
+    }
+  } catch (err) {
+    yield put(getValidProteomeIdsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch valid proteome IDs"
+    );
+  }
+}
 
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
@@ -72,9 +111,16 @@ export function* watchInitAnalysisSaga() {
 export function* watchGetRunStatusSaga() {
   yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
 }
+export function* watchGetValidProteomeIdsSaga() {
+  yield takeEvery(GET_VALID_PROTEOME_IDS, getValidProteomeIdsSaga);
+}
 
 function* configSaga() {
-  yield all([fork(watchInitAnalysisSaga), fork(watchGetRunStatusSaga)]);
+  yield all([
+    fork(watchInitAnalysisSaga),
+    fork(watchGetRunStatusSaga),
+    fork(watchGetValidProteomeIdsSaga),
+  ]);
 }
 
 export default configSaga;
