@@ -1,5 +1,3 @@
-// validateDataset.js
-
 const isAlphaNum = (val) => /^[a-zA-Z0-9_]+$/.test(val);
 const isValidValue = (val) =>
   typeof val === "string" && /^[a-zA-Z0-9_]+$/.test(val);
@@ -45,6 +43,9 @@ export const validateDataset = (data, validProteomes) => {
   const columnValues = {};
   headersRaw.forEach((h) => (columnValues[h] = new Set()));
 
+  const taxonColName = headersRaw.find((h) => h.toLowerCase() === "taxon");
+  const seenTaxons = new Set();
+
   data.forEach((row, rowIndex) => {
     headersRaw.forEach((col) => {
       const val = row[col];
@@ -61,10 +62,18 @@ export const validateDataset = (data, validProteomes) => {
       }
     });
 
-    const taxon = row[headersRaw.find((h) => h.toLowerCase() === "taxon")];
-    if (taxon && !validProteomes.includes(taxon)) {
-      if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
-      errors.rows[rowIndex]["taxon"] = `Invalid taxon: ${taxon}`;
+    // Taxon validation
+    const taxon = row[taxonColName];
+    if (taxon) {
+      if (!validProteomes.includes(taxon)) {
+        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
+        errors.rows[rowIndex]["taxon"] = `Invalid taxon: ${taxon}`;
+      } else if (seenTaxons.has(taxon)) {
+        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
+        errors.rows[rowIndex]["taxon"] = `Duplicate taxon: ${taxon}`;
+      } else {
+        seenTaxons.add(taxon);
+      }
     }
   });
 

@@ -6,16 +6,16 @@ import Papa from "papaparse";
 import { useSelector } from "react-redux";
 import { validateDataset } from "../../utilis/validateDataset";
 
-const FileUpload = ({ onDataChange }) => {
+const FileUpload = ({
+  onDataChange,
+  validationErrors,
+  setValidationErrors,
+}) => {
   const [selectedName, setSelectedName] = useState("");
   const [parsedData, setParsedData] = useState(null);
   const [viewMode, setViewMode] = useState("json");
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState("");
-  const [validationErrors, setValidationErrors] = useState({
-    headers: [],
-    rows: {},
-  });
 
   const fileInputRef = useRef(null);
 
@@ -98,27 +98,38 @@ const FileUpload = ({ onDataChange }) => {
     }
   };
 
-  // Function to handle header editing
   const handleHeaderEdit = (oldHeader, newHeader) => {
     if (!parsedData || !Array.isArray(parsedData) || oldHeader === newHeader) {
       return;
     }
 
-    // Update all rows to use the new header key while preserving order
+    const currentHeaders = Object.keys(parsedData[0] || {});
+    const normalized = currentHeaders.map((h) => h.trim().toLowerCase());
+
+    if (
+      normalized.includes(newHeader.trim().toLowerCase()) &&
+      oldHeader.trim().toLowerCase() !== newHeader.trim().toLowerCase()
+    ) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        headers: [
+          ...prev.headers,
+          `Cannot rename '${oldHeader}' to '${newHeader}' — header already exists.`,
+        ],
+      }));
+      return;
+    }
+
     const updatedData = parsedData.map((row) => {
-      if (row.hasOwnProperty(oldHeader)) {
-        const newRow = {};
-        // Iterate through keys in original order and rename the matching key
-        Object.keys(row).forEach((key) => {
-          if (key === oldHeader) {
-            newRow[newHeader] = row[key];
-          } else {
-            newRow[key] = row[key];
-          }
-        });
-        return newRow;
-      }
-      return row;
+      const newRow = {};
+      Object.keys(row).forEach((key) => {
+        if (key === oldHeader) {
+          newRow[newHeader] = row[oldHeader];
+        } else {
+          newRow[key] = row[key];
+        }
+      });
+      return newRow;
     });
 
     setParsedData(updatedData);
@@ -152,11 +163,7 @@ const FileUpload = ({ onDataChange }) => {
               return (
                 <th
                   className={hasHeaderError ? styles.invalidHeader : ""}
-                  title={
-                    hasHeaderError
-                      ? headerErrorMsg
-                      : "This header has validation issues"
-                  }
+                  title={hasHeaderError ? headerErrorMsg : ""}
                   key={head}
                 >
                   <div
@@ -276,17 +283,40 @@ const FileUpload = ({ onDataChange }) => {
             <>
               <h4>Table Preview:</h4>
               {renderTable()}
-              {validationErrors.headers.length > 0 && (
-                <div className={styles.errorMessage}>
-                  <p>Header validation issues:</p>
-                  <ul>
-                    {validationErrors.headers.map((msg, i) => (
-                      <li key={i}>{msg}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </>
+          )}
+          {validationErrors.headers.length > 0 && (
+            <div className={styles.errorMessage}>
+              <p>Header validation issues:</p>
+              <ul>
+                {validationErrors.headers.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Object.keys(validationErrors.rows).length > 0 && (
+            <div className={styles.errorMessage}>
+              <p>Row validation issues:</p>
+              <ul>
+                {Object.entries(validationErrors.rows).map(
+                  ([rowIndex, rowErrors]) => (
+                    <li key={rowIndex}>
+                      Row {parseInt(rowIndex, 10) + 1}:
+                      <ul>
+                        {Object.entries(rowErrors).map(
+                          ([field, errorMsg], i) => (
+                            <li key={i}>
+                              <strong>{field}:</strong> {errorMsg}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
           )}
         </div>
       )}
