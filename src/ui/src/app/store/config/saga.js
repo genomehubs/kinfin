@@ -1,4 +1,12 @@
-import { takeEvery, fork, put, all, call, delay } from "redux-saga/effects";
+import {
+  takeEvery,
+  fork,
+  put,
+  all,
+  call,
+  delay,
+  select,
+} from "redux-saga/effects";
 import { INIT_ANALYSIS, GET_RUN_STATUS, GET_BATCH_STATUS } from "./actionTypes";
 
 import {
@@ -23,6 +31,14 @@ import { initAnalysis, getStatus, getBatchStatus } from "../../services/client";
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_ATTEMPTS = 120; // 10 minutes
 
+const selectSessionStatusById = (session_id) => (state) => {
+  return state?.config?.storeConfig?.data?.[session_id]?.status;
+};
+
+const getSessionId = () =>
+  localStorage.getItem("currentSessionId") ||
+  "6599179a64accf331ffe653db00a0e24";
+
 function* pollRunStatusSaga(sessionId, navigate) {
   yield put(setPollingLoading(true));
   try {
@@ -39,6 +55,10 @@ function* pollRunStatusSaga(sessionId, navigate) {
         if (statusData.is_complete) {
           isComplete = true;
           yield call(dispatchSuccessToast, "Analysis completed!");
+          yield fork(getBatchStatusSaga, {
+            payload: { sessionIds: [sessionId] },
+          });
+
           yield call(navigate, `/${sessionId}/dashboard`);
         }
       } else {
@@ -104,6 +124,11 @@ function* initAnalysisSaga(action) {
 
 function* getRunStatusSaga() {
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getStatus);
     if (response.status === "success") {
       yield put(getRunStatusSuccess(response.data));

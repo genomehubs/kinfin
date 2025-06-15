@@ -160,10 +160,6 @@ const Sidebar = ({ open, setOpen }) => {
                             className={styles.tooltipItem}
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log(
-                                "Rename clicked for:",
-                                item.sessionId
-                              );
                               setModalOpen(true);
                             }}
                           >
@@ -175,10 +171,6 @@ const Sidebar = ({ open, setOpen }) => {
                             onClick={(e) => {
                               e.stopPropagation();
                               dispatch(deleteConfig(sessionIdClicked));
-                              console.log(
-                                "Delete clicked for:",
-                                item.sessionId
-                              );
                             }}
                           >
                             <AiFillDelete />

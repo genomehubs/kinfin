@@ -22,12 +22,22 @@ import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/Cl
 import ClusterAbsenceAcrossTaxonSets from "../../components/Charts/ClusterAbsenceAcrossTaxonSets";
 import TaxonCountPerTaxonSet from "../../components/Charts/TaxonCountPerTaxonSet";
 import { IoOpenOutline } from "react-icons/io5";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { initAnalysis } from "../../app/store/config/actions";
+// MUI components
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
+  // const [sessionDetails, setSessionDetails] = useState(false);
   const dispatch = useDispatch();
   const { sessionId } = useParams();
+  const selectSessionDetailsById = (session_id) => (state) =>
+    state?.config?.storeConfig?.data?.[session_id];
+  const sessionDetails = useSelector(selectSessionDetailsById(sessionId)); // This returns the actual data
+  const pollingLoading = useSelector((state) => state.config.pollingLoading);
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem("currentSessionId", sessionId);
@@ -58,11 +68,24 @@ const Dashboard = () => {
         taxonSet: selectedAttributeTaxonset?.taxonset,
       })
     );
-  }, [dispatch, selectedAttributeTaxonset, sessionId]);
+  }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
 
   const handleEnlarge = (chartName) => setEnlargedChart(chartName);
 
   const closeModal = () => setEnlargedChart(null);
+
+  const reinitializeSession = () => {
+    console.log(
+      "🚀 ~ reinitializeSession ~ payload.sessionDetails:",
+      sessionDetails
+    );
+    const payload = {
+      name: sessionDetails.name,
+      config: sessionDetails.config,
+      navigate,
+    };
+    dispatch(initAnalysis(payload));
+  };
 
   const modalTitleMap = {
     attributeSummary: "Attribute Summary",
@@ -114,40 +137,76 @@ const Dashboard = () => {
   return (
     <>
       <AppLayout>
-        <Modal
-          isOpen={!!enlargedChart}
-          onClose={closeModal}
-          title={modalTitleMap[enlargedChart] || ""}
-        >
-          {renderModalContent()}
-        </Modal>
-
-        <div className={styles.pageHeader}>
-          {/* <h1 className={styles.pageTitle}>KinFin Analysis</h1> */}
-          <AttributeSelector />
-        </div>
-
-        <div className={styles.page}>
-          <RunSummary />
-          <div className={styles.chartsContainer}>
-            {Object.entries(modalTitleMap).map(([key, label]) => (
-              <div key={key} className={styles.container}>
-                <div className={styles.header}>
-                  <button
-                    className={styles.enlargeButton}
-                    onClick={() => handleEnlarge(key)}
-                  >
-                    <IoOpenOutline />
-                  </button>
-                  <p className={styles.title}>{label}</p>
-                </div>
-                <div className={styles.chartContainer}>
-                  {renderDashboardChart(key)}
-                </div>
+        {sessionDetails?.status ? (
+          <>
+            {" "}
+            <Modal
+              isOpen={!!enlargedChart}
+              onClose={closeModal}
+              title={modalTitleMap[enlargedChart] || ""}
+            >
+              {renderModalContent()}
+            </Modal>
+            <div className={styles.pageHeader}>
+              {/* <h1 className={styles.pageTitle}>KinFin Analysis</h1> */}
+              <AttributeSelector />
+            </div>
+            <div className={styles.page}>
+              <RunSummary />
+              <div className={styles.chartsContainer}>
+                {Object.entries(modalTitleMap).map(([key, label]) => (
+                  <div key={key} className={styles.container}>
+                    <div className={styles.header}>
+                      <button
+                        className={styles.enlargeButton}
+                        onClick={() => handleEnlarge(key)}
+                      >
+                        <IoOpenOutline />
+                      </button>
+                      <p className={styles.title}>{label}</p>
+                    </div>
+                    <div className={styles.chartContainer}>
+                      {renderDashboardChart(key)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.page}>
+              <p>
+                Session is expired, Please reinitialize the session to view
+                results.
+              </p>
+              <button
+                className={styles.reinitializeButton}
+                onClick={reinitializeSession}
+              >
+                Re-Initialize Session
+              </button>
+            </div>
+          </>
+        )}
+        <Backdrop
+          sx={{
+            color: "#fff",
+            zIndex: (theme) => theme.zIndex.modal + 1,
+            flexDirection: "column",
+            gap: 2,
+          }}
+          open={pollingLoading}
+        >
+          <CircularProgress color="inherit" />
+          <div
+            style={{ fontSize: "1.1rem", textAlign: "center", maxWidth: 300 }}
+          >
+            Initialization is in progress. <br />
+            It might take 2–3 minutes. <br />
+            Please wait…
           </div>
-        </div>
+        </Backdrop>
       </AppLayout>
     </>
   );
