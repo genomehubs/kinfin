@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./FileUpload.module.scss";
+import { MdOutlineFileUpload } from "react-icons/md";
 import { read, utils } from "xlsx";
 import Papa from "papaparse";
 import { useSelector } from "react-redux";
@@ -9,12 +10,20 @@ import { validateDataset } from "../../utilis/validateDataset";
 import DataTable from "./DataTable";
 import JsonEditor from "./JsonEditor";
 
+const SUPPORTED_EXTENSIONS = {
+  xls: "excel",
+  xlsx: "excel",
+  csv: "csv",
+  tsv: "tsv",
+  json: "json",
+};
+
 const FileUpload = ({
   onDataChange,
   validationErrors,
   setValidationErrors,
 }) => {
-  const [selectedName, setSelectedName] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
   const [parsedData, setParsedData] = useState(null);
   const [viewMode, setViewMode] = useState("json");
   const [jsonText, setJsonText] = useState("");
@@ -27,101 +36,116 @@ const FileUpload = ({
   );
   const VALID_PROTEOME_IDS = Object.keys(validProteomeIds || {});
 
-  const handleClick = () => fileInputRef.current.click();
+  const resetViewState = useCallback(() => {
+    setJsonError("");
+    setViewMode("json");
+  }, []);
 
-  useEffect(() => {
-    if (onDataChange) onDataChange(parsedData);
-  }, [parsedData, onDataChange]);
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setSelectedName(file.name);
-    const ext = file.name.split(".").pop().toLowerCase();
-    const reader = new FileReader();
-
-    const processJson = (data) => {
+  const updateDataState = useCallback(
+    (data) => {
       setParsedData(data);
       setJsonText(JSON.stringify(data, null, 2));
-      setJsonError("");
-      setValidationErrors(validateDataset(data, VALID_PROTEOME_IDS));
+      const errors = validateDataset(data, VALID_PROTEOME_IDS);
+      setValidationErrors(errors);
+    },
+    [VALID_PROTEOME_IDS, setValidationErrors]
+  );
+
+  useEffect(() => {
+    onDataChange?.(parsedData);
+  }, [parsedData, onDataChange]);
+
+  const handleClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop().toLowerCase();
+    const fileType = SUPPORTED_EXTENSIONS[ext];
+
+    setSelectedFileName(file.name);
+    resetViewState();
+
+    const reader = new FileReader();
+
+    const handleParse = {
+      excel: () => {
+        reader.onload = (e) => {
+          const workbook = read(new Uint8Array(e.target.result), {
+            type: "array",
+          });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          updateDataState(utils.sheet_to_json(sheet));
+        };
+        reader.readAsArrayBuffer(file);
+      },
+      csv: () => parseDelimited(file, ","),
+      tsv: () => parseDelimited(file, "\t"),
+      json: () => {
+        reader.onload = (e) => {
+          try {
+            const json = JSON.parse(e.target.result);
+            updateDataState(json);
+          } catch {
+            setParsedData([{ error: "Invalid JSON file" }]);
+            setJsonText("");
+            setJsonError("Invalid JSON file");
+            setValidationErrors({ headers: [], rows: {} });
+          }
+        };
+        reader.readAsText(file);
+      },
     };
 
-    if (["xls", "xlsx"].includes(ext)) {
+    const parseDelimited = (file, delimiter) => {
       reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = utils.sheet_to_json(sheet);
-        processJson(json);
-      };
-      reader.readAsArrayBuffer(file);
-    } else if (["csv", "tsv"].includes(ext)) {
-      reader.onload = (e) => {
-        const parsed = Papa.parse(e.target.result, {
+        const { data } = Papa.parse(e.target.result, {
           header: true,
           skipEmptyLines: true,
-          delimiter: ext === "tsv" ? "\t" : ",",
+          delimiter,
         });
-        processJson(parsed.data);
+        updateDataState(data);
       };
       reader.readAsText(file);
-    } else if (ext === "json") {
-      reader.onload = (e) => {
-        try {
-          const json = JSON.parse(e.target.result);
-          processJson(json);
-        } catch {
-          setParsedData([{ error: "Invalid JSON file" }]);
-          setJsonText("");
-          setJsonError("Invalid JSON file");
-          setValidationErrors({ headers: [], rows: {} });
-        }
-      };
-      reader.readAsText(file);
+    };
+
+    if (handleParse[fileType]) {
+      handleParse[fileType]();
     } else {
       setParsedData([{ error: "Unsupported file format" }]);
       setJsonText("");
-      setJsonError("");
     }
-
-    setViewMode("json");
   };
 
   const handleJsonChange = (e) => {
-    const { value } = e.target;
-    setJsonText(value);
+    const input = e.target.value;
+    setJsonText(input);
     try {
-      const parsed = JSON.parse(value);
-      setParsedData(parsed);
-      setValidationErrors(validateDataset(parsed, VALID_PROTEOME_IDS));
+      const parsed = JSON.parse(input);
+      updateDataState(parsed);
       setJsonError("");
     } catch {
       setJsonError("Invalid JSON syntax");
     }
   };
-  const handleCellEdit = (e, idx, head) => {
-    const newVal = e.target.textContent.trim();
-    const updatedData = [...parsedData];
-    updatedData[idx][head] = newVal;
-    setParsedData(updatedData);
-    setJsonText(JSON.stringify(updatedData, null, 2));
-    setValidationErrors(validateDataset(updatedData, VALID_PROTEOME_IDS));
+
+  const handleCellEdit = (e, rowIndex, header) => {
+    const newValue = e.target.textContent.trim();
+    const updated = [...parsedData];
+    updated[rowIndex][header] = newValue;
+    updateDataState(updated);
   };
 
   const handleHeaderEdit = (oldHeader, newHeader) => {
-    if (!parsedData || !Array.isArray(parsedData) || oldHeader === newHeader) {
-      return;
-    }
+    if (!parsedData?.length || oldHeader === newHeader) return;
 
-    const currentHeaders = Object.keys(parsedData[0] || {});
-    const normalized = currentHeaders.map((h) => h.trim().toLowerCase());
+    const headers = Object.keys(parsedData[0]);
+    const normalized = headers.map((h) => h.trim().toLowerCase());
+    const newKey = newHeader.trim().toLowerCase();
+    const oldKey = oldHeader.trim().toLowerCase();
 
-    if (
-      normalized.includes(newHeader.trim().toLowerCase()) &&
-      oldHeader.trim().toLowerCase() !== newHeader.trim().toLowerCase()
-    ) {
+    if (normalized.includes(newKey) && newKey !== oldKey) {
       setValidationErrors((prev) => ({
         ...prev,
         headers: [
@@ -132,21 +156,15 @@ const FileUpload = ({
       return;
     }
 
-    const updatedData = parsedData.map((row) => {
+    const updated = parsedData.map((row) => {
       const newRow = {};
-      Object.keys(row).forEach((key) => {
-        if (key === oldHeader) {
-          newRow[newHeader] = row[oldHeader];
-        } else {
-          newRow[key] = row[key];
-        }
-      });
+      for (const key in row) {
+        newRow[key === oldHeader ? newHeader : key] = row[key];
+      }
       return newRow;
     });
 
-    setParsedData(updatedData);
-    setJsonText(JSON.stringify(updatedData, null, 2));
-    setValidationErrors(validateDataset(updatedData, VALID_PROTEOME_IDS));
+    updateDataState(updated);
   };
 
   return (
@@ -154,7 +172,7 @@ const FileUpload = ({
       {!parsedData && (
         <FileDropZone
           onClick={handleClick}
-          selectedName={selectedName}
+          selectedName={selectedFileName}
           inputRef={fileInputRef}
           onChange={handleFileChange}
         />
@@ -163,29 +181,24 @@ const FileUpload = ({
       {parsedData && (
         <div className={styles.preview}>
           <div className={styles.toggleButtons}>
-            <button
-              className={viewMode === "json" ? styles.active : ""}
-              onClick={() => setViewMode("json")}
-            >
-              JSON View
-            </button>
-            <button
-              className={viewMode === "table" ? styles.active : ""}
-              onClick={() => setViewMode("table")}
-            >
-              Table View
-            </button>
+            {["json", "table"].map((mode) => (
+              <button
+                key={mode}
+                className={viewMode === mode ? styles.active : ""}
+                onClick={() => setViewMode(mode)}
+              >
+                {mode === "json" ? "JSON View" : "Table View"}
+              </button>
+            ))}
           </div>
 
-          {viewMode === "json" && (
+          {viewMode === "json" ? (
             <JsonEditor
               jsonText={jsonText}
               onChange={handleJsonChange}
               jsonError={jsonError}
             />
-          )}
-
-          {viewMode === "table" && (
+          ) : (
             <>
               <h4>Table Preview:</h4>
               <DataTable
@@ -196,6 +209,7 @@ const FileUpload = ({
               />
             </>
           )}
+
           <ValidationErrors validationErrors={validationErrors} />
         </div>
       )}
