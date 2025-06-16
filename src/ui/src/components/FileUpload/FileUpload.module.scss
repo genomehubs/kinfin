@@ -12,55 +12,6 @@
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.uploadBox {
-  width: 100%;
-  max-width: 420px;
-  text-align: center;
-  border: 3px dashed var(--border-color);
-  padding: 2rem 1.5rem;
-  border-radius: 16px;
-  position: relative;
-  background: var(--sidebar-bg);
-  margin: 0 auto 2rem;
-  cursor: pointer;
-  transition: border 0.3s, background 0.3s;
-}
-
-.uploadBox:hover {
-  border-color: var(--accent-color);
-  background: var(--menu-hover);
-}
-
-.icon {
-  font-size: 40px;
-  opacity: 0.9;
-  margin-bottom: 1rem;
-  color: var(--icon-color);
-}
-
-h3 {
-  font-size: 1.1rem;
-  color: var(--text-color);
-  margin: 0;
-}
-
-p {
-  font-size: 0.85rem;
-  color: var(--text-color);
-  margin-top: 0.5rem;
-}
-
-input[type="file"] {
-  display: block;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
 .preview {
   margin-top: 2rem;
   width: 100%;
@@ -101,58 +52,4 @@ input[type="file"] {
     background-color: var(--accent-color);
     color: var(--bg-color);
   }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  color: var(--text-color);
-  margin-top: 1rem;
-}
-
-th,
-td {
-  border: 1px solid var(--table-border);
-  padding: 8px 10px;
-  text-align: left;
-  font-family: monospace;
-}
-
-th {
-  background-color: var(--th-bg);
-  color: var(--text-color);
-}
-
-tr:nth-child(even) {
-  background-color: var(--alt-row);
-}
-
-.invalidTaxonCell {
-  background-color: var(--error-color);
-  color: var(--text-color);
-  font-weight: bold;
-  border-radius: 4px;
-}
-
-.jsonTextarea {
-  width: 100%;
-  box-sizing: border-box;
-  height: 300px;
-  background: var(--sidebar-bg);
-  color: var(--text-color);
-  border: 1px solid var(--table-border);
-  border-radius: 6px;
-  padding: 10px;
-  font-family: monospace;
-  font-size: 14px;
-  resize: vertical;
-}
-.invalidCell {
-  border: 2px solid red !important;
-  background-color: #ffe6e6;
-}
-
-.invalidHeader {
-  border: 2px solid red !important;
-  background-color: #ffe6e6;
 }

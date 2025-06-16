@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./FileUpload.module.scss";
-import { MdOutlineFileUpload } from "react-icons/md";
 import { read, utils } from "xlsx";
 import Papa from "papaparse";
 import { useSelector } from "react-redux";
+import FileDropZone from "./FileDropzone";
+import ValidationErrors from "./ValidationErrors";
 import { validateDataset } from "../../utilis/validateDataset";
+import DataTable from "./DataTable";
+import JsonEditor from "./JsonEditor";
 
 const FileUpload = ({
   onDataChange,
@@ -98,6 +101,14 @@ const FileUpload = ({
       setJsonError("Invalid JSON syntax");
     }
   };
+  const handleCellEdit = (e, idx, head) => {
+    const newVal = e.target.textContent.trim();
+    const updatedData = [...parsedData];
+    updatedData[idx][head] = newVal;
+    setParsedData(updatedData);
+    setJsonText(JSON.stringify(updatedData, null, 2));
+    setValidationErrors(validateDataset(updatedData, VALID_PROTEOME_IDS));
+  };
 
   const handleHeaderEdit = (oldHeader, newHeader) => {
     if (!parsedData || !Array.isArray(parsedData) || oldHeader === newHeader) {
@@ -138,116 +149,15 @@ const FileUpload = ({
     setValidationErrors(validateDataset(updatedData, VALID_PROTEOME_IDS));
   };
 
-  const renderTable = () => {
-    if (!Array.isArray(parsedData)) {
-      return <p>Data is not in tabular format.</p>;
-    }
-    if (parsedData.length === 0) {
-      return <p>No data to display.</p>;
-    }
-
-    const headers = Object.keys(parsedData[0]);
-
-    return (
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            {headers.map((head) => {
-              const hasHeaderError = validationErrors.headers.some((error) =>
-                error.includes(head)
-              );
-              const headerErrorMsg = validationErrors.headers.find((error) => {
-                const normalizedHead = head.trim().toLowerCase();
-                return error.toLowerCase().includes(`'${normalizedHead}'`);
-              });
-
-              return (
-                <th
-                  className={hasHeaderError ? styles.invalidHeader : ""}
-                  title={hasHeaderError ? headerErrorMsg : ""}
-                  key={head}
-                >
-                  <div
-                    contentEditable={true}
-                    suppressContentEditableWarning={true}
-                    onBlur={(e) => {
-                      const newHeader = e.target.textContent.trim();
-                      if (newHeader && newHeader !== head) {
-                        handleHeaderEdit(head, newHeader);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        e.target.blur();
-                      }
-                    }}
-                    style={{
-                      minWidth: "100px",
-                      padding: "4px",
-                      outline: "none",
-                      borderRadius: "2px",
-                      cursor: "text",
-                    }}
-                  >
-                    {head}
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {parsedData.map((row, idx) => (
-            <tr key={idx}>
-              {headers.map((head) => {
-                const cellError = validationErrors.rows?.[idx]?.[head] || "";
-                return (
-                  <td
-                    key={head}
-                    className={cellError ? styles.invalidCell : ""}
-                    title={cellError}
-                    contentEditable={true}
-                    suppressContentEditableWarning={true}
-                    onBlur={(e) => {
-                      const newVal = e.target.textContent.trim();
-                      const updatedData = [...parsedData];
-                      updatedData[idx][head] = newVal;
-                      setParsedData(updatedData);
-                      setJsonText(JSON.stringify(updatedData, null, 2));
-                      setValidationErrors(
-                        validateDataset(updatedData, VALID_PROTEOME_IDS)
-                      );
-                    }}
-                  >
-                    {row[head]?.toString() || ""}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
   return (
     <>
       {!parsedData && (
-        <div className={styles.uploadBox} onClick={handleClick}>
-          <p className={styles.icon}>
-            <MdOutlineFileUpload />
-          </p>
-          <h3>{selectedName || "Click box to upload config"}</h3>
-          <p>Maximum file size 10MB</p>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".csv,.tsv,.xls,.xlsx,.json"
-            onChange={handleFileChange}
-            hidden
-          />
-        </div>
+        <FileDropZone
+          onClick={handleClick}
+          selectedName={selectedName}
+          inputRef={fileInputRef}
+          onChange={handleFileChange}
+        />
       )}
 
       {parsedData && (
@@ -268,57 +178,25 @@ const FileUpload = ({
           </div>
 
           {viewMode === "json" && (
-            <>
-              <h4>Parsed JSON (editable):</h4>
-              <textarea
-                className={styles.jsonTextarea}
-                value={jsonText}
-                onChange={handleJsonChange}
-                spellCheck={false}
-              />
-              {jsonError && <p className={styles.errorMessage}>{jsonError}</p>}
-            </>
+            <JsonEditor
+              jsonText={jsonText}
+              onChange={handleJsonChange}
+              jsonError={jsonError}
+            />
           )}
 
           {viewMode === "table" && (
             <>
               <h4>Table Preview:</h4>
-              {renderTable()}
+              <DataTable
+                parsedData={parsedData}
+                validationErrors={validationErrors}
+                handleHeaderEdit={handleHeaderEdit}
+                handleCellEdit={handleCellEdit}
+              />
             </>
           )}
-          {validationErrors.headers.length > 0 && (
-            <div className={styles.errorMessage}>
-              <p>Header validation issues:</p>
-              <ul>
-                {validationErrors.headers.map((msg, i) => (
-                  <li key={i}>{msg}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {Object.keys(validationErrors.rows).length > 0 && (
-            <div className={styles.errorMessage}>
-              <p>Row validation issues:</p>
-              <ul>
-                {Object.entries(validationErrors.rows).map(
-                  ([rowIndex, rowErrors]) => (
-                    <li key={rowIndex}>
-                      Row {parseInt(rowIndex, 10) + 1}:
-                      <ul>
-                        {Object.entries(rowErrors).map(
-                          ([field, errorMsg], i) => (
-                            <li key={i}>
-                              <strong>{field}:</strong> {errorMsg}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          )}
+          <ValidationErrors validationErrors={validationErrors} />
         </div>
       )}
     </>
