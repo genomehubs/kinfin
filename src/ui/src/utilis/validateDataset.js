@@ -2,36 +2,39 @@ const isAlphaNum = (val) => /^[a-zA-Z0-9_]+$/.test(val);
 const isValidValue = (val) =>
   typeof val === "string" && /^[a-zA-Z0-9_]+$/.test(val);
 
-export const validateDataset = (data, validProteomes) => {
+export const validateDataset = (data, validProteomeMap) => {
   const errors = {
     headers: [],
-    rows: {}, // { rowIndex: { colName: 'error message' } }
+    rows: {},
   };
 
   if (!Array.isArray(data) || data.length === 0) {
-    return errors;
+    return { data: [], errors };
+  }
+
+  const validProteomes = Object.keys(validProteomeMap || {});
+  const taxonToCanonical = {};
+
+  for (const [canonical, info] of Object.entries(validProteomeMap)) {
+    if (info?.taxon_id) taxonToCanonical[info.taxon_id] = canonical;
+    if (info?.species) taxonToCanonical[info.species.toLowerCase()] = canonical;
   }
 
   const headersRaw = Object.keys(data[0]);
   const headersLC = headersRaw.map((h) => h.toLowerCase());
 
-  // Check required column
   if (!headersLC.includes("taxon")) {
     errors.headers.push("Missing required 'taxon' column");
   }
 
-  // Check duplicate headers (case-insensitive)
-  const seen = new Set();
+  const seenHeaders = new Set();
   headersLC.forEach((h) => {
-    if (seen.has(h)) {
-      errors.headers.push(
-        `Duplicate column header found (case-insensitive): ${h}`
-      );
+    if (seenHeaders.has(h)) {
+      errors.headers.push(`Duplicate column header (case-insensitive): ${h}`);
     }
-    seen.add(h);
+    seenHeaders.add(h);
   });
 
-  // Validate header names
   headersRaw.forEach((h) => {
     if (!isAlphaNum(h)) {
       errors.headers.push(
@@ -43,18 +46,21 @@ export const validateDataset = (data, validProteomes) => {
   const columnValues = {};
   headersRaw.forEach((h) => (columnValues[h] = new Set()));
 
-  const taxonColName = headersRaw.find((h) => h.toLowerCase() === "taxon");
+  const taxonCol = headersRaw.find((h) => h.toLowerCase() === "taxon");
   const seenTaxons = new Set();
+  const validatedData = [];
 
   data.forEach((row, rowIndex) => {
+    const newRow = { ...row };
+
     headersRaw.forEach((col) => {
       const val = row[col];
 
       if (val == null || val === "") {
-        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
+        errors.rows[rowIndex] ??= {};
         errors.rows[rowIndex][col] = "Missing value";
       } else if (!isValidValue(val.toString())) {
-        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
+        errors.rows[rowIndex] ??= {};
         errors.rows[rowIndex][col] =
           "Invalid value: must be alphanumeric or underscore";
       } else {
@@ -62,27 +68,39 @@ export const validateDataset = (data, validProteomes) => {
       }
     });
 
-    // Taxon validation
-    const taxon = row[taxonColName];
-    if (taxon) {
-      if (!validProteomes.includes(taxon)) {
-        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
-        errors.rows[rowIndex]["taxon"] = `Invalid taxon: ${taxon}`;
-      } else if (seenTaxons.has(taxon)) {
-        if (!errors.rows[rowIndex]) errors.rows[rowIndex] = {};
-        errors.rows[rowIndex]["taxon"] = `Duplicate taxon: ${taxon}`;
+    const taxonRaw = row[taxonCol];
+    let canonicalId = null;
+
+    if (taxonRaw) {
+      const taxon = taxonRaw.toString();
+      if (validProteomes.includes(taxon)) {
+        canonicalId = taxon;
       } else {
-        seenTaxons.add(taxon);
+        canonicalId = taxonToCanonical[taxon.toLowerCase()] ?? null;
+      }
+
+      if (!canonicalId) {
+        errors.rows[rowIndex] ??= {};
+        errors.rows[rowIndex][
+          "taxon"
+        ] = `Invalid taxon or unrecognized ID: ${taxon}`;
+      } else if (seenTaxons.has(canonicalId)) {
+        errors.rows[rowIndex] ??= {};
+        errors.rows[rowIndex]["taxon"] = `Duplicate taxon: ${canonicalId}`;
+      } else {
+        seenTaxons.add(canonicalId);
+        newRow[taxonCol] = canonicalId;
       }
     }
+
+    validatedData.push(newRow);
   });
 
-  // Column distinct value check
   Object.entries(columnValues).forEach(([col, valueSet]) => {
     if (valueSet.size < 2) {
       errors.headers.push(`Column '${col}' has less than 2 distinct values`);
     }
   });
 
-  return errors;
+  return { data: validatedData, errors };
 };

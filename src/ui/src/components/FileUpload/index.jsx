@@ -34,7 +34,6 @@ const FileUpload = ({
   const validProteomeIds = useSelector(
     (state) => state.config.validProteomeIds.data
   );
-  const VALID_PROTEOME_IDS = Object.keys(validProteomeIds || {});
 
   const resetViewState = useCallback(() => {
     setJsonError("");
@@ -42,13 +41,16 @@ const FileUpload = ({
   }, []);
 
   const updateDataState = useCallback(
-    (data) => {
-      setParsedData(data);
-      setJsonText(JSON.stringify(data, null, 2));
-      const errors = validateDataset(data, VALID_PROTEOME_IDS);
+    (rawData) => {
+      const { data: cleanedData, errors } = validateDataset(
+        rawData,
+        validProteomeIds
+      );
+      setParsedData(cleanedData);
+      setJsonText(JSON.stringify(cleanedData, null, 2));
       setValidationErrors(errors);
     },
-    [VALID_PROTEOME_IDS, setValidationErrors]
+    [validProteomeIds, setValidationErrors]
   );
 
   useEffect(() => {
