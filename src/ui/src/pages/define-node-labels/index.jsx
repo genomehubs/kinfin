@@ -17,6 +17,7 @@ const DefineNodeLabels = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
+  const [resetKey, setResetKey] = useState(0);
 
   const openModal = () => {
     if (!parsedData) {
@@ -26,6 +27,19 @@ const DefineNodeLabels = () => {
     setUserName("");
     setNameError("");
     setModalOpen(true);
+  };
+  const cancelAnalysis = () => {
+    setParsedData(null);
+    setValidationErrors({
+      headers: [],
+      rows: {},
+    });
+
+    setResetKey((prev) => prev + 1);
+
+    setModalOpen(false);
+    setUserName("");
+    setNameError("");
   };
 
   const handleSubmit = () => {
@@ -45,6 +59,7 @@ const DefineNodeLabels = () => {
     <AppLayout>
       <div className={styles.page}>
         <FileUpload
+          key={resetKey}
           setValidationErrors={setValidationErrors}
           validationErrors={validationErrors}
           onDataChange={setParsedData}
@@ -52,6 +67,9 @@ const DefineNodeLabels = () => {
 
         {parsedData && (
           <div className={styles.bottomSection}>
+            <button className={styles.cancelButton} onClick={cancelAnalysis}>
+              Cancel Analysis
+            </button>
             <button
               disabled={
                 validationErrors.headers.length > 0 ||
