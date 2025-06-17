@@ -24,6 +24,13 @@ export const getStatus = async () => {
   });
   return response.data;
 };
+export const getValidProteomeIds = async (data) => {
+  const response = await apiClient.get("/valid-proteome-ids", {
+    headers: { "x-session-id": getSessionId() },
+    params: { page: data.page, size: data.size },
+  });
+  return response.data;
+};
 
 export const getRunSummary = async () => {
   const response = await apiClient.get("/run-summary", {
