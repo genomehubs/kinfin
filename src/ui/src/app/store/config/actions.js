@@ -16,6 +16,12 @@ import {
   GET_VALID_PROTEOME_IDS_SUCCESS,
   GET_VALID_PROTEOME_IDS_FAILURE,
   GET_VALID_PROTEOME_IDS_RESET,
+  SET_POLLING_LOADING,
+  GET_BATCH_STATUS,
+  GET_BATCH_STATUS_SUCCESS,
+  GET_BATCH_STATUS_FAILURE,
+  GET_BATCH_STATUS_RESET,
+  UPDATE_SESSION_META,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -96,4 +102,33 @@ export const getValidProteomeIdsFailure = (data) => ({
 
 export const getValidProteomeIdsReset = () => ({
   type: GET_VALID_PROTEOME_IDS_RESET,
+});
+
+export const setPollingLoading = (data) => ({
+  type: SET_POLLING_LOADING,
+  payload: data,
+});
+
+export const getBatchStatus = (data) => ({
+  type: GET_BATCH_STATUS,
+  payload: data,
+});
+
+export const getBatchStatusSuccess = (data) => ({
+  type: GET_BATCH_STATUS_SUCCESS,
+  payload: data,
+});
+
+export const getBatchStatusFailure = (data) => ({
+  type: GET_BATCH_STATUS_FAILURE,
+  payload: data,
+});
+
+export const getBatchStatusReset = () => ({
+  type: GET_BATCH_STATUS_RESET,
+});
+
+export const updateSessionMeta = (sessionId, meta) => ({
+  type: UPDATE_SESSION_META,
+  payload: { sessionId, meta },
 });

@@ -1,4 +1,4 @@
-import { takeEvery, fork, put, all, call } from "redux-saga/effects";
+import { takeEvery, fork, put, all, call, select } from "redux-saga/effects";
 
 import {
   GET_AVAILABLE_ATTRIBUTES_TAXONSETS,
@@ -42,9 +42,22 @@ import {
   getPairwiseAnalysis,
   getPlot,
 } from "../../services/client";
+const selectSessionStatusById = (session_id) => (state) => {
+  return state?.config?.storeConfig?.data?.[session_id]?.status;
+};
+
+const getSessionId = () =>
+  localStorage.getItem("currentSessionId") ||
+  "6599179a64accf331ffe653db00a0e24";
 
 function* getAvailableAttributesSaga() {
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
+
     const response = yield call(getAvailableAttributes);
 
     if (response.status === "success") {
@@ -67,6 +80,11 @@ function* getAvailableAttributesSaga() {
 }
 function* getRunSummarySaga() {
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getRunSummary);
 
     if (response.status === "success") {
@@ -89,6 +107,11 @@ function* getRunSummarySaga() {
 }
 function* getCountsByTaxonSaga() {
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getCountsByTaxon);
 
     if (response.status === "success") {
@@ -117,6 +140,11 @@ function* getClusterSummarySaga(action) {
     page,
   };
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getClusterSummary, data);
 
     if (response.status === "success") {
@@ -145,6 +173,11 @@ function* getAttributeSummarySaga(action) {
     size: 10,
   };
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getAttributeSummary, data);
 
     if (response.status === "success") {
@@ -177,6 +210,11 @@ function* getClusterMetricsSaga(action) {
     size: 10,
   };
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getClusterMetrics, data);
 
     if (response.status === "success") {
@@ -200,6 +238,11 @@ function* getClusterMetricsSaga(action) {
 function* getPairwiseAnalysisSaga(action) {
   const { attribute } = action.payload;
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const response = yield call(getPairwiseAnalysis, attribute);
 
     if (response.status === "success") {
@@ -226,6 +269,11 @@ function* getPairwiseAnalysisSaga(action) {
 
 function* getPlotsSaga() {
   try {
+    const status = yield select(selectSessionStatusById(getSessionId()));
+
+    if (!status) {
+      return;
+    }
     const [allRarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
       call(getPlot, "all-rarefaction-curve"),
       call(getPlot, "cluster-size-distribution"),

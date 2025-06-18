@@ -10,9 +10,9 @@ import {
 } from "../../app/store/analysis/actions";
 import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
+import DataTable from "../../components/FileUpload/DataTable";
 
 import { RunSummary } from "../../components";
-import Modal from "../../components/UIElements/Modal";
 import AttributeSelector from "../../components/AttributeSelector";
 import { useDispatch, useSelector } from "react-redux";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
@@ -22,12 +22,26 @@ import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/Cl
 import ClusterAbsenceAcrossTaxonSets from "../../components/Charts/ClusterAbsenceAcrossTaxonSets";
 import TaxonCountPerTaxonSet from "../../components/Charts/TaxonCountPerTaxonSet";
 import { IoOpenOutline } from "react-icons/io5";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { initAnalysis } from "../../app/store/config/actions";
+import Modal from "@mui/material/Modal";
+import Box from "@mui/material/Box";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
+  const [showDataModal, setShowDataModal] = useState(false);
+  const [parsedData, setParsedData] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({
+    headers: [],
+    rows: {},
+  });
+
   const dispatch = useDispatch();
   const { sessionId } = useParams();
+  const selectSessionDetailsById = (session_id) => (state) =>
+    state?.config?.storeConfig?.data?.[session_id];
+  const sessionDetails = useSelector(selectSessionDetailsById(sessionId)); // This returns the actual data
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem("currentSessionId", sessionId);
@@ -58,11 +72,32 @@ const Dashboard = () => {
         taxonSet: selectedAttributeTaxonset?.taxonset,
       })
     );
-  }, [dispatch, selectedAttributeTaxonset, sessionId]);
+  }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
 
   const handleEnlarge = (chartName) => setEnlargedChart(chartName);
 
   const closeModal = () => setEnlargedChart(null);
+
+  const reinitializeSession = () => {
+    const payload = {
+      name: sessionDetails.name,
+      config: sessionDetails.config,
+      navigate,
+    };
+    dispatch(initAnalysis(payload));
+  };
+  const handleSessionClick = (session) => {
+    if (!sessionDetails?.config) return;
+    try {
+      setParsedData(sessionDetails?.config);
+
+      setValidationErrors({ headers: [], rows: {} });
+
+      setShowDataModal(true);
+    } catch (error) {
+      console.error("Failed to parse session data:", error);
+    }
+  };
 
   const modalTitleMap = {
     attributeSummary: "Attribute Summary",
@@ -91,6 +126,21 @@ const Dashboard = () => {
         return null;
     }
   };
+  const handleHeaderEdit = (oldHeader, newHeader) => {
+    const updatedData = parsedData.map((row) => {
+      const updatedRow = { ...row };
+      updatedRow[newHeader] = updatedRow[oldHeader];
+      delete updatedRow[oldHeader];
+      return updatedRow;
+    });
+    setParsedData(updatedData);
+  };
+
+  const handleCellEdit = (e, rowIdx, header) => {
+    const updatedData = [...parsedData];
+    updatedData[rowIdx][header] = e.target.textContent.trim();
+    setParsedData(updatedData);
+  };
 
   const renderDashboardChart = (chartKey) => {
     switch (chartKey) {
@@ -114,40 +164,113 @@ const Dashboard = () => {
   return (
     <>
       <AppLayout>
-        <Modal
-          isOpen={!!enlargedChart}
-          onClose={closeModal}
-          title={modalTitleMap[enlargedChart] || ""}
-        >
-          {renderModalContent()}
-        </Modal>
-
-        <div className={styles.pageHeader}>
-          {/* <h1 className={styles.pageTitle}>KinFin Analysis</h1> */}
-          <AttributeSelector />
-        </div>
-
-        <div className={styles.page}>
-          <RunSummary />
-          <div className={styles.chartsContainer}>
-            {Object.entries(modalTitleMap).map(([key, label]) => (
-              <div key={key} className={styles.container}>
-                <div className={styles.header}>
-                  <button
-                    className={styles.enlargeButton}
-                    onClick={() => handleEnlarge(key)}
-                  >
-                    <IoOpenOutline />
-                  </button>
-                  <p className={styles.title}>{label}</p>
-                </div>
-                <div className={styles.chartContainer}>
-                  {renderDashboardChart(key)}
-                </div>
+        {sessionDetails?.status ? (
+          <>
+            {" "}
+            <Modal
+              open={!!enlargedChart}
+              onClose={closeModal}
+              aria-labelledby="modal-title"
+              aria-describedby="modal-description"
+            >
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "90%",
+                  maxWidth: 1000,
+                  maxHeight: "90vh",
+                  bgcolor: "var(--bg-color)",
+                  color: "var(--text-color)",
+                  boxShadow: 24,
+                  p: 4,
+                  overflowY: "auto",
+                  borderRadius: 2,
+                }}
+              >
+                <h2 id="modal-title">{modalTitleMap[enlargedChart] || ""}</h2>
+                <div id="modal-description">{renderModalContent()}</div>
+              </Box>
+            </Modal>
+            <div className={styles.pageHeader}>
+              <AttributeSelector />
+            </div>
+            <div className={styles.page}>
+              <RunSummary />
+              <div className={styles.chartsContainer}>
+                {Object.entries(modalTitleMap).map(([key, label]) => (
+                  <div key={key} className={styles.container}>
+                    <div className={styles.header}>
+                      <button
+                        className={styles.enlargeButton}
+                        onClick={() => handleEnlarge(key)}
+                      >
+                        <IoOpenOutline />
+                      </button>
+                      <p className={styles.title}>{label}</p>
+                    </div>
+                    <div className={styles.chartContainer}>
+                      {renderDashboardChart(key)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.page}>
+              <p>
+                Session is expired for{" "}
+                <span
+                  style={{
+                    color: "#2980b9",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => handleSessionClick(sessionDetails)}
+                >
+                  {sessionDetails?.name}
+                </span>
+                , Please reinitialize the session to view results.
+              </p>
+              <button
+                className={styles.reinitializeButton}
+                onClick={reinitializeSession}
+              >
+                Re-Initialize Session
+              </button>
+            </div>
+            <Modal
+              open={showDataModal}
+              onClose={() => setShowDataModal(false)}
+              aria-labelledby="parsed-data-title"
+            >
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "90%",
+                  maxWidth: 1000,
+                  maxHeight: "90vh",
+                  bgcolor: "var(--bg-color)",
+                  color: "var(--text-color)",
+                  boxShadow: 24,
+                  p: 4,
+                  overflowY: "auto",
+                  borderRadius: 2,
+                }}
+              >
+                <h2 id="parsed-data-title">{sessionDetails?.name}</h2>
+                <DataTable parsedData={parsedData} allowEdit={false} />
+              </Box>
+            </Modal>
+          </>
+        )}
       </AppLayout>
     </>
   );
