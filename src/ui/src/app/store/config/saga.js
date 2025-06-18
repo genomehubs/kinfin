@@ -51,8 +51,8 @@ const getSessionId = () =>
   localStorage.getItem("currentSessionId") ||
   "6599179a64accf331ffe653db00a0e24";
 
-function* pollRunStatusSaga(sessionId, navigate) {
-  yield put(setPollingLoading(true));
+function* pollRunStatusSaga(sessionId) {
+  yield put(setPollingLoading({ sessionId, loading: true }));
   try {
     let isComplete = false;
     let attempts = 0;
@@ -70,8 +70,6 @@ function* pollRunStatusSaga(sessionId, navigate) {
           yield fork(getBatchStatusSaga, {
             payload: { sessionIds: [sessionId] },
           });
-
-          yield call(navigate, `/${sessionId}/dashboard`);
         }
       } else {
         yield put(getRunStatusFailure(response));
@@ -97,7 +95,7 @@ function* pollRunStatusSaga(sessionId, navigate) {
       err?.response?.data?.error || "Polling failed"
     );
   } finally {
-    yield put(setPollingLoading(false));
+    yield put(setPollingLoading({ sessionId, loading: false }));
   }
 }
 
@@ -117,7 +115,8 @@ function* initAnalysisSaga(action) {
         dispatchSuccessToast,
         "KinFin analysis has started. Please wait..."
       );
-      yield fork(pollRunStatusSaga, response.data.session_id, navigate); // start polling
+      yield call(navigate, `/${response.data.session_id}/dashboard`);
+      yield fork(pollRunStatusSaga, response.data.session_id); // start polling
     } else {
       yield put(initAnalysisFailure(response));
       yield call(

@@ -42,7 +42,7 @@ const initialState = {
     },
   },
   validProteomeIds: { data: null, loading: false, error: null },
-  pollingLoading: false,
+  pollingLoading: {},
   batchStatus: { data: null, loading: false, error: null },
 };
 
@@ -173,7 +173,10 @@ const configReducer = (state = initialState, action) => {
     case SET_POLLING_LOADING:
       return {
         ...state,
-        pollingLoading: action.payload,
+        pollingLoadingBySessionId: {
+          ...state.pollingLoadingBySessionId,
+          [action.payload.sessionId]: action.payload.loading,
+        },
       };
     case GET_BATCH_STATUS:
       return {

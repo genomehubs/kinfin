@@ -128,24 +128,6 @@ const DefineNodeLabels = () => {
             </button>
           </div>
         </Modal>
-        <Backdrop
-          sx={{
-            color: "#fff",
-            zIndex: (theme) => theme.zIndex.modal + 1,
-            flexDirection: "column",
-            gap: 2,
-          }}
-          open={pollingLoading}
-        >
-          <CircularProgress color="inherit" />
-          <div
-            style={{ fontSize: "1.1rem", textAlign: "center", maxWidth: 300 }}
-          >
-            Initialization is in progress. <br />
-            It might take 2–3 minutes. <br />
-            Please wait…
-          </div>
-        </Backdrop>
       </div>
     </AppLayout>
   );

@@ -104,9 +104,9 @@ export const getValidProteomeIdsReset = () => ({
   type: GET_VALID_PROTEOME_IDS_RESET,
 });
 
-export const setPollingLoading = (isLoading) => ({
+export const setPollingLoading = (data) => ({
   type: SET_POLLING_LOADING,
-  payload: isLoading,
+  payload: data,
 });
 
 export const getBatchStatus = (data) => ({

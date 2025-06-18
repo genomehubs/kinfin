@@ -24,20 +24,15 @@ import TaxonCountPerTaxonSet from "../../components/Charts/TaxonCountPerTaxonSet
 import { IoOpenOutline } from "react-icons/io5";
 import { useNavigate, useParams } from "react-router-dom";
 import { initAnalysis } from "../../app/store/config/actions";
-// MUI components
-import Backdrop from "@mui/material/Backdrop";
-import CircularProgress from "@mui/material/CircularProgress";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
-  // const [sessionDetails, setSessionDetails] = useState(false);
   const dispatch = useDispatch();
   const { sessionId } = useParams();
   const selectSessionDetailsById = (session_id) => (state) =>
     state?.config?.storeConfig?.data?.[session_id];
   const sessionDetails = useSelector(selectSessionDetailsById(sessionId)); // This returns the actual data
-  const pollingLoading = useSelector((state) => state.config.pollingLoading);
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem("currentSessionId", sessionId);
@@ -189,24 +184,6 @@ const Dashboard = () => {
             </div>
           </>
         )}
-        <Backdrop
-          sx={{
-            color: "#fff",
-            zIndex: (theme) => theme.zIndex.modal + 1,
-            flexDirection: "column",
-            gap: 2,
-          }}
-          open={pollingLoading}
-        >
-          <CircularProgress color="inherit" />
-          <div
-            style={{ fontSize: "1.1rem", textAlign: "center", maxWidth: 300 }}
-          >
-            Initialization is in progress. <br />
-            It might take 2–3 minutes. <br />
-            Please wait…
-          </div>
-        </Backdrop>
       </AppLayout>
     </>
   );

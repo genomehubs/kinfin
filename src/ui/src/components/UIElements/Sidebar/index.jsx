@@ -4,13 +4,15 @@ import { FiMenu, FiDownload } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
 import { FaSun, FaMoon } from "react-icons/fa";
 import { useTheme } from "../../../hooks/useTheme";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Tooltip from "rc-tooltip";
 import "rc-tooltip/assets/bootstrap.css";
 import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
+
 import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import CircularProgress from "@mui/material/CircularProgress";
 import {
   renameConfig,
   deleteConfig,
@@ -48,7 +50,7 @@ const downloadAsTSV = (analysis) => {
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
   const dispatch = useDispatch();
-
+  const { sessionId } = useParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
@@ -59,7 +61,9 @@ const Sidebar = ({ open, setOpen }) => {
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data
   );
-
+  const pollingLoadingBySessionId = useSelector(
+    (state) => state.config.pollingLoadingBySessionId || {}
+  );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
 
@@ -125,20 +129,37 @@ const Sidebar = ({ open, setOpen }) => {
                 <div
                   key={item.sessionId}
                   className={`${styles.menuItem} ${
-                    visibleTooltip === item.sessionId ? styles.active : ""
+                    visibleTooltip === item.sessionId ||
+                    sessionId === item.sessionId
+                      ? styles.active
+                      : ""
                   }`}
                   onClick={() => navigate(`/${item.sessionId}/dashboard`)}
                 >
                   <Box
                     sx={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor: item.status ? "#2ecc71" : "#ee2f42",
+                      width: 12,
+                      height: 12,
                       marginRight: "8px",
                       flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
-                  />
+                  >
+                    {pollingLoadingBySessionId[item.sessionId] ? (
+                      <CircularProgress size={10} thickness={8} />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: item.status ? "#2ecc71" : "#ee2f42",
+                        }}
+                      />
+                    )}
+                  </Box>
                   <span className={styles.label}>{item.name}</span>
                   <div className={styles.refContainer} ref={tooltipRef}>
                     <Tooltip
