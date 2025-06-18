@@ -1,0 +1,39 @@
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text-color);
+  margin-top: 1rem;
+}
+
+th,
+td {
+  border: 1px solid var(--table-border);
+  padding: 8px 10px;
+  text-align: left;
+  font-family: monospace;
+}
+
+th {
+  background-color: var(--th-bg);
+  color: var(--text-color);
+}
+
+tr:nth-child(even) {
+  background-color: var(--alt-row);
+}
+
+.invalidTaxonCell {
+  background-color: var(--error-color);
+  color: var(--text-color);
+  font-weight: bold;
+  border-radius: 4px;
+}
+.invalidCell {
+  border: 2px solid red !important;
+  background-color: #ffe6e6;
+}
+
+.invalidHeader {
+  border: 2px solid red !important;
+  background-color: #ffe6e6;
+}

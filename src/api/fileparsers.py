@@ -1,4 +1,5 @@
 import csv
+import json
 from typing import Optional, Set, Union
 
 
@@ -245,3 +246,8 @@ def parse_pairwise_file(filepath: str, taxon_1: Optional[str], taxon_2: Optional
         result.append(row)
 
     return result
+
+
+def parse_valid_proteome_ids_file(filepath: str) -> dict:
+    with open(filepath, "r") as f:
+        return json.load(f)

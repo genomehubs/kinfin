@@ -17,6 +17,7 @@ from api.fileparsers import (
     parse_cluster_summary_file,
     parse_pairwise_file,
     parse_taxon_counts_file,
+    parse_valid_proteome_ids_file,
 )
 from api.sessions import query_manager
 from api.utils import (
@@ -557,6 +558,69 @@ async def get_available_attributes_and_taxon_sets(
             ).model_dump(),
             status_code=500,
         )
+
+
+@router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
+async def get_valid_taxons_api(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+):
+    try:
+        taxons = await asyncio.to_thread(
+            parse_valid_proteome_ids_file, query_manager.taxon_idx_mapping_file
+        )
+    except FileNotFoundError as e:
+        LOGGER.error("Taxon file not found", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Taxon index file not found",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=404,
+        )
+    except ValueError as e:
+        LOGGER.error("Error parsing taxon index file", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Error parsing taxon index file",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=422,
+        )
+    except Exception as e:
+        LOGGER.error("Error fetching valid taxons", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+    items = list(taxons.items())
+    total_items = len(items)
+    total_pages = (total_items + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    paginated_items = dict(items[start:end])
+
+    response = ResponseSchema(
+        status="success",
+        message="List of valid proteome IDs fetched",
+        data=paginated_items,
+        query=str(request.url),
+        current_page=page,
+        entries_per_page=size,
+        total_pages=total_pages,
+    )
+    return JSONResponse(response.model_dump(), status_code=200)
 
 
 @router.get("/kinfin/attribute-summary/{attribute}", response_model=ResponseSchema)

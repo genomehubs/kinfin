@@ -1,0 +1,45 @@
+.uploadBox {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  border: 3px dashed var(--border-color);
+  padding: 2rem 1.5rem;
+  border-radius: 16px;
+  position: relative;
+  background: var(--sidebar-bg);
+  margin: 0 auto 2rem;
+  cursor: pointer;
+  transition: border 0.3s, background 0.3s;
+}
+.uploadBox:hover {
+  border-color: var(--accent-color);
+  background: var(--menu-hover);
+}
+h3 {
+  font-size: 1.1rem;
+  color: var(--text-color);
+  margin: 0;
+}
+
+p {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  margin-top: 0.5rem;
+}
+
+input[type="file"] {
+  display: block;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.icon {
+  font-size: 40px;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+  color: var(--icon-color);
+}

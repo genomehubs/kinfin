@@ -18,9 +18,14 @@ const DefineNodeLabels = () => {
   const pollingLoading = useSelector((state) => state.config.pollingLoading);
 
   const [parsedData, setParsedData] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({
+    headers: [],
+    rows: {},
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
+  const [resetKey, setResetKey] = useState(0);
 
   const openModal = () => {
     if (!parsedData) {
@@ -30,6 +35,19 @@ const DefineNodeLabels = () => {
     setUserName("");
     setNameError("");
     setModalOpen(true);
+  };
+  const cancelAnalysis = () => {
+    setParsedData(null);
+    setValidationErrors({
+      headers: [],
+      rows: {},
+    });
+
+    setResetKey((prev) => prev + 1);
+
+    setModalOpen(false);
+    setUserName("");
+    setNameError("");
   };
 
   const handleSubmit = () => {
@@ -49,11 +67,32 @@ const DefineNodeLabels = () => {
   return (
     <AppLayout>
       <div className={styles.page}>
-        <FileUpload onDataChange={setParsedData} />
+        <FileUpload
+          key={resetKey}
+          setValidationErrors={setValidationErrors}
+          validationErrors={validationErrors}
+          onDataChange={setParsedData}
+        />
 
         {parsedData && (
           <div className={styles.bottomSection}>
-            <button className={styles.initButton} onClick={openModal}>
+            <button className={styles.cancelButton} onClick={cancelAnalysis}>
+              Cancel Analysis
+            </button>
+            <button
+              disabled={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+              }
+              className={styles.initButton}
+              onClick={openModal}
+              title={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+                  ? "Please fix validation issues"
+                  : ""
+              }
+            >
               Initialize Kinfin Analysis
             </button>
           </div>

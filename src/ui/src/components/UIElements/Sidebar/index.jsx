@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   renameConfig,
   deleteConfig,
+  getValidProteomeIds,
   getBatchStatus,
 } from "../../../app/store/config/actions";
 import { Box } from "@mui/material";
@@ -58,8 +59,13 @@ const Sidebar = ({ open, setOpen }) => {
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data
   );
+
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
+
+  useEffect(() => {
+    dispatch(getValidProteomeIds());
+  }, []);
 
   const hasFetchedStatusRef = useRef(false);
 
@@ -70,6 +76,7 @@ const Sidebar = ({ open, setOpen }) => {
       hasFetchedStatusRef.current = true;
     }
   }, [analysisList]);
+
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");

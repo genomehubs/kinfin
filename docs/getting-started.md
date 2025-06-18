@@ -133,3 +133,26 @@ The `/plot/{plot-type}` endpoint returns a png plot for the requested `plot-type
 curl -X GET "$KINFIN_HOST/kinfin/plot/cluster-size-distribution" \
 -H "x-session-id: $SESSION_ID" -o "cluster_size_distribution.png"
 ```
+
+## Alternate clustering data
+
+Example data from MolluscDB v1 ([Caurcel _et al._ 2021](https://doi.org/10.1098/rstb.2020.0157))
+
+```
+export WORKDIR=~/tmp/kinfin
+mkdir -p $WORKDIR
+cd $WORKDIR
+curl -L http://molluscdb.cog.sanger.ac.uk/dev/kinfin/molluscdb_v1_test_data.tar.gz > molluscdb_v1_test_data.tar.gz
+tar xf molluscdb_v1_test_data.tar.gz && rm molluscdb_v1_test_data.tar.gz
+```
+
+```
+export WORKDIR=~/tmp/kinfin
+export KINFIN_PORT=8000
+export CLUSTER_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/Orthogroups.txt
+export SEQUENCE_IDS_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/kinfin.SequenceIDs.txt
+export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/taxon_idx_mapping.json
+export RESULTS_BASE_DIR=$WORKDIR/output
+export SESSION_INACTIVITY_THRESHOLD=24
+./src/main.py serve -p $KINFIN_PORT
+```

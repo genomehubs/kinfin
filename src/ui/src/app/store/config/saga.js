@@ -7,7 +7,12 @@ import {
   delay,
   select,
 } from "redux-saga/effects";
-import { INIT_ANALYSIS, GET_RUN_STATUS, GET_BATCH_STATUS } from "./actionTypes";
+import {
+  INIT_ANALYSIS,
+  GET_RUN_STATUS,
+  GET_BATCH_STATUS,
+  GET_VALID_PROTEOME_IDS,
+} from "./actionTypes";
 
 import {
   initAnalysisSuccess,
@@ -15,6 +20,8 @@ import {
   getRunStatusSuccess,
   getRunStatusFailure,
   storeConfig,
+  getValidProteomeIdsSuccess,
+  getValidProteomeIdsFailure,
   setPollingLoading,
   getBatchStatusSuccess,
   getBatchStatusFailure,
@@ -26,7 +33,12 @@ import {
   dispatchSuccessToast,
 } from "../../../utilis/tostNotifications";
 
-import { initAnalysis, getStatus, getBatchStatus } from "../../services/client";
+import {
+  initAnalysis,
+  getStatus,
+  getBatchStatus,
+  getValidProteomeIds,
+} from "../../services/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_ATTEMPTS = 120; // 10 minutes
@@ -148,6 +160,35 @@ function* getRunStatusSaga() {
     );
   }
 }
+function* getValidProteomeIdsSaga(action) {
+  try {
+    const data = {
+      page: 1,
+      size: 100,
+    };
+    const response = yield call(getValidProteomeIds, data);
+
+    if (response.status === "success") {
+      yield put(getValidProteomeIdsSuccess(response.data));
+      yield call(
+        dispatchSuccessToast,
+        "Valid proteome IDs fetched successfully!"
+      );
+    } else {
+      yield put(getValidProteomeIdsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch valid proteome IDs"
+      );
+    }
+  } catch (err) {
+    yield put(getValidProteomeIdsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch valid proteome IDs"
+    );
+  }
+}
 export function* getBatchStatusSaga(action) {
   const { sessionIds } = action.payload;
   try {
@@ -187,6 +228,9 @@ export function* watchInitAnalysisSaga() {
 export function* watchGetRunStatusSaga() {
   yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
 }
+export function* watchGetValidProteomeIdsSaga() {
+  yield takeEvery(GET_VALID_PROTEOME_IDS, getValidProteomeIdsSaga);
+}
 export function* watchGetBatchStatusSaga() {
   yield takeEvery(GET_BATCH_STATUS, getBatchStatusSaga);
 }
@@ -194,7 +238,10 @@ export function* watchGetBatchStatusSaga() {
 export default function* configSaga() {
   yield all([
     fork(watchInitAnalysisSaga),
+
     fork(watchGetRunStatusSaga),
+    fork(watchGetValidProteomeIdsSaga),
+    ,
     fork(watchGetBatchStatusSaga),
   ]);
 }
