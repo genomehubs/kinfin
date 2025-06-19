@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload"; // adjust the path if needed
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
 import { useDispatch } from "react-redux";
-import { initAnalysis } from "../../app/store/config/actions";
+import {
+  initAnalysis,
+  getClusteringSets,
+} from "../../app/store/config/actions";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
@@ -54,6 +57,9 @@ const DefineNodeLabels = () => {
     dispatch(initAnalysis(payload));
     setModalOpen(false);
   };
+  useEffect(() => {
+    dispatch(getClusteringSets());
+  }, []);
 
   return (
     <AppLayout>

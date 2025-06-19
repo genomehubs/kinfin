@@ -16,6 +16,10 @@ import {
   GET_VALID_PROTEOME_IDS_SUCCESS,
   GET_VALID_PROTEOME_IDS_FAILURE,
   GET_VALID_PROTEOME_IDS_RESET,
+  GET_CLUSTERING_SETS,
+  GET_CLUSTERING_SETS_SUCCESS,
+  GET_CLUSTERING_SETS_FAILURE,
+  GET_CLUSTERING_SETS_RESET,
 } from "./actionTypes";
 
 const initialState = {
@@ -26,6 +30,7 @@ const initialState = {
     data: {},
   },
   validProteomeIds: { data: null, loading: false, error: null },
+  clusteringSets: { data: null, loading: false, error: null },
 };
 
 const configReducer = (state = initialState, action) => {
@@ -151,6 +156,29 @@ const configReducer = (state = initialState, action) => {
       return {
         ...state,
         validProteomeIds: initialState.validProteomeIds,
+      };
+    case GET_CLUSTERING_SETS:
+      return {
+        ...state,
+        clusteringSets: { data: null, loading: true, error: null },
+      };
+
+    case GET_CLUSTERING_SETS_SUCCESS:
+      return {
+        ...state,
+        clusteringSets: { data: action.payload, loading: false, error: null },
+      };
+
+    case GET_CLUSTERING_SETS_FAILURE:
+      return {
+        ...state,
+        clusteringSets: { data: null, loading: false, error: action.payload },
+      };
+
+    case GET_CLUSTERING_SETS_RESET:
+      return {
+        ...state,
+        clusteringSets: initialState.clusteringSets,
       };
 
     default:

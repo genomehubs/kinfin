@@ -16,6 +16,10 @@ import {
   GET_VALID_PROTEOME_IDS_SUCCESS,
   GET_VALID_PROTEOME_IDS_FAILURE,
   GET_VALID_PROTEOME_IDS_RESET,
+  GET_CLUSTERING_SETS,
+  GET_CLUSTERING_SETS_SUCCESS,
+  GET_CLUSTERING_SETS_FAILURE,
+  GET_CLUSTERING_SETS_RESET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -96,4 +100,23 @@ export const getValidProteomeIdsFailure = (data) => ({
 
 export const getValidProteomeIdsReset = () => ({
   type: GET_VALID_PROTEOME_IDS_RESET,
+});
+
+export const getClusteringSets = (data) => ({
+  type: GET_CLUSTERING_SETS,
+  payload: data,
+});
+
+export const getClusteringSetsSuccess = (data) => ({
+  type: GET_CLUSTERING_SETS_SUCCESS,
+  payload: data,
+});
+
+export const getClusteringSetsFailure = (data) => ({
+  type: GET_CLUSTERING_SETS_FAILURE,
+  payload: data,
+});
+
+export const getClusteringSetsReset = () => ({
+  type: GET_CLUSTERING_SETS_RESET,
 });

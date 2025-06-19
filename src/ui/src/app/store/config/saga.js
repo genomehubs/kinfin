@@ -4,6 +4,7 @@ import {
   INIT_ANALYSIS,
   GET_RUN_STATUS,
   GET_VALID_PROTEOME_IDS,
+  GET_CLUSTERING_SETS,
 } from "./actionTypes";
 import {
   initAnalysisSuccess,
@@ -13,6 +14,8 @@ import {
   storeConfig,
   getValidProteomeIdsSuccess,
   getValidProteomeIdsFailure,
+  getClusteringSetsFailure,
+  getClusteringSetsSuccess,
 } from "./actions";
 import {
   dispatchErrorToast,
@@ -22,6 +25,7 @@ import {
   initAnalysis,
   getStatus,
   getValidProteomeIds,
+  getClusteringSets,
 } from "../../services/client";
 
 function* initAnalysisSaga(action) {
@@ -105,6 +109,33 @@ function* getValidProteomeIdsSaga(action) {
   }
 }
 
+function* getClusteringSetsSaga(action) {
+  try {
+    const data = {
+      page: 1,
+      size: 100,
+    };
+    const response = yield call(getClusteringSets, data);
+
+    if (response.status === "success") {
+      yield put(getClusteringSetsSuccess(response.data));
+      yield call(dispatchSuccessToast, "Clustering fetched successfully!");
+    } else {
+      yield put(getClusteringSetsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch clustering sets"
+      );
+    }
+  } catch (err) {
+    yield put(getValidProteomeIdsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch clustering sets"
+    );
+  }
+}
+
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
 }
@@ -115,11 +146,16 @@ export function* watchGetValidProteomeIdsSaga() {
   yield takeEvery(GET_VALID_PROTEOME_IDS, getValidProteomeIdsSaga);
 }
 
+export function* watchGetClusteringSets() {
+  yield takeEvery(GET_CLUSTERING_SETS, getClusteringSetsSaga);
+}
+
 function* configSaga() {
   yield all([
     fork(watchInitAnalysisSaga),
     fork(watchGetRunStatusSaga),
     fork(watchGetValidProteomeIdsSaga),
+    fork(watchGetClusteringSets),
   ]);
 }
 

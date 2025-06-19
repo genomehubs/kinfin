@@ -32,6 +32,13 @@ export const getValidProteomeIds = async (data) => {
   return response.data;
 };
 
+export const getClusteringSets = async (data) => {
+  const response = await apiClient.get("/clustering-sets", {
+    params: { page: data.page, size: data.size },
+  });
+  return response.data;
+};
+
 export const getRunSummary = async () => {
   const response = await apiClient.get("/run-summary", {
     headers: { "x-session-id": getSessionId() },
