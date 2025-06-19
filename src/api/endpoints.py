@@ -18,6 +18,7 @@ from api.fileparsers import (
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
+    parse_clustering_file
 )
 from api.sessions import query_manager
 from api.utils import (
@@ -559,6 +560,71 @@ async def get_valid_taxons_api(
         status="success",
         message="List of valid proteome IDs fetched",
         data=paginated_items,
+        query=str(request.url),
+        current_page=page,
+        entries_per_page=size,
+        total_pages=total_pages,
+    )
+    return JSONResponse(response.model_dump(), status_code=200)
+
+
+@router.get("/kinfin/clustering-sets", response_model=ResponseSchema)
+async def get_clustering_sets_api(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+):
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        clustering_file_path = os.path.join(current_dir, "clustering.json")
+
+        clustering_data = await asyncio.to_thread(
+            parse_clustering_file, clustering_file_path
+        )
+    except FileNotFoundError as e:
+        LOGGER.error("Clustering file not found", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Clustering file not found",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=404,
+        )
+    except ValueError as e:
+        LOGGER.error("Error parsing clustering file", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Error parsing clustering file",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=422,
+        )
+    except Exception as e:
+        LOGGER.error("Error fetching clustering sets", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+    total_items = len(clustering_data)
+    total_pages = (total_items + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    paginated_data = clustering_data[start:end]
+
+    response = ResponseSchema(
+        status="success",
+        message="Clustering sets fetched successfully",
+        data=paginated_data,
         query=str(request.url),
         current_page=page,
         entries_per_page=size,
