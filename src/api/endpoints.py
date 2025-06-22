@@ -529,12 +529,41 @@ async def get_available_attributes_and_taxon_sets(
 @router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
 async def get_valid_taxons_api(
     request: Request,
+    clusteringId: str,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    
 ):
     try:
+        cluster_info = CLUSTERING_DATASETS.get(clusteringId)
+        if not cluster_info:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid clusteringId: {input_data.clusteringId}",
+                    error="Clustering not found",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=404,
+            )
+
+        cluster_path = cluster_info["path"]
+        taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+        try:
+            check_file(taxon_idx_mapping_file, install_kinfin=True)
+        except FileNotFoundError as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Missing clustering dataset file(s)",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+
         taxons = await asyncio.to_thread(
-            parse_valid_proteome_ids_file, query_manager.taxon_idx_mapping_file
+            parse_valid_proteome_ids_file, taxon_idx_mapping_file
         )
     except FileNotFoundError as e:
         LOGGER.error("Taxon file not found", exc_info=True)
