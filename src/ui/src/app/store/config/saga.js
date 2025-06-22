@@ -105,8 +105,12 @@ function* pollRunStatusSaga(sessionId) {
 
 function* initAnalysisSaga(action) {
   const { name, config, navigate } = action.payload;
+  const data = {
+    config: config,
+    clusteringId: "155a0782-2203-4168-b002-8ebc5ccaea7c",
+  };
   try {
-    const response = yield call(initAnalysis, config);
+    const response = yield call(initAnalysis, data);
     if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
       const payloadForIndexDBStorage = {
@@ -168,6 +172,7 @@ function* getValidProteomeIdsSaga(action) {
     const data = {
       page: 1,
       size: 100,
+      clusteringId: "155a0782-2203-4168-b002-8ebc5ccaea7c",
     };
     const response = yield call(getValidProteomeIds, data);
 

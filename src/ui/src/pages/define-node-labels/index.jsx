@@ -8,6 +8,7 @@ import {
   initAnalysis,
   getClusteringSets,
 } from "../../app/store/config/actions";
+import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
 import { useNavigate } from "react-router-dom";
 
 // MUI components
@@ -73,6 +74,7 @@ const DefineNodeLabels = () => {
   return (
     <AppLayout>
       <div className={styles.page}>
+        <ClusterSetSelectionDropdown />
         <FileUpload
           key={resetKey}
           setValidationErrors={setValidationErrors}
