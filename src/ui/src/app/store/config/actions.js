@@ -26,6 +26,7 @@ import {
   GET_CLUSTERING_SETS_SUCCESS,
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
+  SET_SELECTED_CLUSTER_SET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -89,10 +90,12 @@ export const deleteConfig = (data) => ({
   payload: data,
 });
 
-export const getValidProteomeIds = (data) => ({
-  type: GET_VALID_PROTEOME_IDS,
-  payload: data,
-});
+export const getValidProteomeIds = (data) => {
+  return {
+    type: GET_VALID_PROTEOME_IDS,
+    payload: data,
+  };
+};
 
 export const getValidProteomeIdsSuccess = (data) => ({
   type: GET_VALID_PROTEOME_IDS_SUCCESS,
@@ -155,3 +158,11 @@ export const getClusteringSetsFailure = (data) => ({
 export const getClusteringSetsReset = () => ({
   type: GET_CLUSTERING_SETS_RESET,
 });
+
+export const setSelectedClusterSet = (data) => {
+  console.log("🚀2 ~ setSelectedClusterSet ~ data:", data);
+  return {
+    type: SET_SELECTED_CLUSTER_SET,
+    payload: data,
+  };
+};

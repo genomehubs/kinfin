@@ -43,7 +43,7 @@ PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
-    clusteringId: str
+    clusterId: str
 
 
 class ResponseSchema(BaseModel):
@@ -191,13 +191,13 @@ async def initialize(input_data: InputSchema, request: Request):
                 ).model_dump(),
                 status_code=400,
             )
-        cluster_info = CLUSTERING_DATASETS.get(input_data.clusteringId)
+        cluster_info = CLUSTERING_DATASETS.get(input_data.clusterId)
 
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusteringId: {input_data.clusteringId}",
+                    message=f"Invalid clusterId: {input_data.clusterId}",
                     error="Clustering not found",
                     query=str(request.url),
                 ).model_dump(),
@@ -585,18 +585,18 @@ async def get_available_attributes_and_taxon_sets(
 @router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
 async def get_valid_taxons_api(
     request: Request,
-    clusteringId: str,
+    clusterId: str,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     
 ):
     try:
-        cluster_info = CLUSTERING_DATASETS.get(clusteringId)
+        cluster_info = CLUSTERING_DATASETS.get(clusterId)
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusteringId: {input_data.clusteringId}",
+                    message=f"Invalid clusterId: {clusterId}",
                     error="Clustering not found",
                     query=str(request.url),
                 ).model_dump(),

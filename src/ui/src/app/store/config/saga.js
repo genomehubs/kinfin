@@ -104,10 +104,10 @@ function* pollRunStatusSaga(sessionId) {
 }
 
 function* initAnalysisSaga(action) {
-  const { name, config, navigate } = action.payload;
+  const { name, config, navigate, clusterId } = action.payload;
   const data = {
     config: config,
-    clusteringId: "155a0782-2203-4168-b002-8ebc5ccaea7c",
+    clusterId: clusterId,
   };
   try {
     const response = yield call(initAnalysis, data);
@@ -168,11 +168,12 @@ function* getRunStatusSaga() {
   }
 }
 function* getValidProteomeIdsSaga(action) {
+  const { clusterId } = action.payload;
   try {
     const data = {
       page: 1,
       size: 100,
-      clusteringId: "155a0782-2203-4168-b002-8ebc5ccaea7c",
+      clusterId: clusterId,
     };
     const response = yield call(getValidProteomeIds, data);
 

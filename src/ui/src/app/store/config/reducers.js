@@ -26,6 +26,7 @@ import {
   GET_CLUSTERING_SETS_SUCCESS,
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
+  SET_SELECTED_CLUSTER_SET,
 } from "./actionTypes";
 
 const initialState = {
@@ -49,6 +50,7 @@ const initialState = {
   pollingLoading: {},
   batchStatus: { data: null, loading: false, error: null },
   clusteringSets: { data: null, loading: false, error: null },
+  selectedClusterSet: null,
 };
 
 const configReducer = (state = initialState, action) => {
@@ -250,6 +252,8 @@ const configReducer = (state = initialState, action) => {
         ...state,
         clusteringSets: initialState.clusteringSets,
       };
+    case SET_SELECTED_CLUSTER_SET:
+      return { ...state, selectedClusterSet: action.payload };
 
     default:
       return state;

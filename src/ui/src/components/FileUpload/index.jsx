@@ -34,7 +34,6 @@ const FileUpload = ({
   const validProteomeIds = useSelector(
     (state) => state.config.validProteomeIds.data
   );
-  console.log("🚀 ~ validProteomeIds:", validProteomeIds);
 
   const resetViewState = useCallback(() => {
     setJsonError("");

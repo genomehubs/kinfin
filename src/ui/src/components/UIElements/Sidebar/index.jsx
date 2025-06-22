@@ -66,10 +66,15 @@ const Sidebar = ({ open, setOpen }) => {
   );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
   const tooltipRef = useRef(null);
+  const selectedClusterSet = useSelector(
+    (state) => state?.config?.selectedClusterSet
+  );
 
   useEffect(() => {
-    dispatch(getValidProteomeIds());
-  }, []);
+    if (selectedClusterSet) {
+      dispatch(getValidProteomeIds({ clusterId: selectedClusterSet }));
+    }
+  }, [selectedClusterSet]);
 
   const hasFetchedStatusRef = useRef(false);
 

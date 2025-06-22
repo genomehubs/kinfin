@@ -16,7 +16,7 @@ const apiClient = axios.create({
 export const initAnalysis = async (data) => {
   const response = await apiClient.post("/init", {
     config: data.config,
-    clusteringId: data.clusteringId,
+    clusterId: data.clusterId,
   });
   return response.data;
 };
@@ -40,7 +40,7 @@ export const getValidProteomeIds = async (data) => {
     params: {
       page: data.page,
       size: data.size,
-      clusteringId: data.clusteringId,
+      clusterId: data.clusterId,
     },
   });
   return response.data;

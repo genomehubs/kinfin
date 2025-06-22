@@ -20,6 +20,9 @@ const DefineNodeLabels = () => {
   const navigate = useNavigate();
 
   const pollingLoading = useSelector((state) => state.config.pollingLoading);
+  const selectedClusterSet = useSelector(
+    (state) => state?.config?.selectedClusterSet
+  );
 
   const [parsedData, setParsedData] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
@@ -62,6 +65,7 @@ const DefineNodeLabels = () => {
     const payload = {
       name: userName.trim(),
       config: parsedData,
+      clusterId: selectedClusterSet,
       navigate,
     };
     dispatch(initAnalysis(payload));
