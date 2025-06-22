@@ -3,20 +3,28 @@ import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload"; // adjust the path if needed
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   initAnalysis,
   getClusteringSets,
 } from "../../app/store/config/actions";
+import { useNavigate } from "react-router-dom";
+
+// MUI components
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const pollingLoading = useSelector((state) => state.config.pollingLoading);
+
   const [parsedData, setParsedData] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
     headers: [],
     rows: {},
   });
-
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
@@ -53,6 +61,7 @@ const DefineNodeLabels = () => {
     const payload = {
       name: userName.trim(),
       config: parsedData,
+      navigate,
     };
     dispatch(initAnalysis(payload));
     setModalOpen(false);

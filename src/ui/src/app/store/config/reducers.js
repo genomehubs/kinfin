@@ -16,6 +16,12 @@ import {
   GET_VALID_PROTEOME_IDS_SUCCESS,
   GET_VALID_PROTEOME_IDS_FAILURE,
   GET_VALID_PROTEOME_IDS_RESET,
+  SET_POLLING_LOADING,
+  GET_BATCH_STATUS,
+  GET_BATCH_STATUS_SUCCESS,
+  GET_BATCH_STATUS_FAILURE,
+  GET_BATCH_STATUS_RESET,
+  UPDATE_SESSION_META,
   GET_CLUSTERING_SETS,
   GET_CLUSTERING_SETS_SUCCESS,
   GET_CLUSTERING_SETS_FAILURE,
@@ -27,9 +33,21 @@ const initialState = {
   runStatus: { data: null, loading: false, error: null },
   selectedAttributeTaxonset: { attribute: "all", taxonset: "all" },
   storeConfig: {
-    data: {},
+    data: {
+      /*
+    [sessionId]: {
+      sessionId: "some-id",
+      name: "some-name",
+      config: [...],
+      status: true,
+      expiryDate: "2025-06-12T20:00:00Z",
+    }
+    */
+    },
   },
   validProteomeIds: { data: null, loading: false, error: null },
+  pollingLoading: {},
+  batchStatus: { data: null, loading: false, error: null },
   clusteringSets: { data: null, loading: false, error: null },
 };
 
@@ -157,6 +175,58 @@ const configReducer = (state = initialState, action) => {
         ...state,
         validProteomeIds: initialState.validProteomeIds,
       };
+    case SET_POLLING_LOADING:
+      return {
+        ...state,
+        pollingLoadingBySessionId: {
+          ...state.pollingLoadingBySessionId,
+          [action.payload.sessionId]: action.payload.loading,
+        },
+      };
+    case GET_BATCH_STATUS:
+      return {
+        ...state,
+        batchStatus: { data: null, loading: true, error: null },
+      };
+
+    case GET_BATCH_STATUS_SUCCESS:
+      return {
+        ...state,
+        batchStatus: { data: action.payload, loading: false, error: null },
+      };
+
+    case GET_BATCH_STATUS_FAILURE:
+      return {
+        ...state,
+        batchStatus: { data: null, loading: false, error: action.payload },
+      };
+
+    case GET_BATCH_STATUS_RESET:
+      return {
+        ...state,
+        batchStatus: initialState.batchStatus,
+      };
+    case UPDATE_SESSION_META: {
+      const { sessionId, meta } = action.payload;
+      const existing = state.storeConfig.data || {};
+      if (!existing[sessionId]) {
+        return state;
+      }
+
+      return {
+        ...state,
+        storeConfig: {
+          ...state.storeConfig,
+          data: {
+            ...existing,
+            [sessionId]: {
+              ...existing[sessionId],
+              ...meta, // this allows updating status, expiryDate, etc.
+            },
+          },
+        },
+      };
+    }
     case GET_CLUSTERING_SETS:
       return {
         ...state,

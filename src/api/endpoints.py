@@ -2,11 +2,11 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -131,6 +131,36 @@ def check_kinfin_session(func):
             )
 
     return wrapper
+
+
+def get_session_status(session_id: str) -> Dict:
+    result_dir = query_manager.get_session_dir(session_id)
+    if not result_dir:
+        return {
+            "session_id": session_id,
+            "status": "not_initialized",
+            "expiryDate": None,
+        }
+
+    status_file = os.path.join(result_dir, f"{session_id}.status")
+    if not os.path.exists(status_file):
+        return {
+            "session_id": session_id,
+            "status": "not_initialized",
+            "expiryDate": None,
+        }
+
+    run_status = read_status(status_file)
+    status = run_status.get("status")
+
+    expiry_date = datetime.fromtimestamp(os.path.getmtime(result_dir)) + timedelta(
+        hours=query_manager.expiration_hours
+    )
+    return {
+        "session_id": session_id,
+        "status": status,
+        "expiryDate": expiry_date.isoformat(),
+    }
 
 
 @router.post("/kinfin/init", response_model=ResponseSchema)
@@ -264,6 +294,32 @@ async def get_run_status(request: Request, session_id: str = Depends(header_sche
                 message="Internal Server Error",
                 query=str(request.url),
                 error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+
+@router.post("/kinfin/status", response_model=ResponseSchema)
+async def get_batch_status(request: Request, session_ids: List[str] = Body(...)):
+    try:
+        statuses = [get_session_status(session_id) for session_id in session_ids]
+        return JSONResponse(
+            content=ResponseSchema(
+                status="success",
+                message="Batch session status fetched successfully.",
+                data={"sessions": statuses},
+                query=str(request.url),
+            ).model_dump(),
+            status_code=200,
+        )
+    except Exception as e:
+        LOGGER.error(f"Error in batch status check: {str(e)}", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                error=str(e),
+                query=str(request.url),
             ).model_dump(),
             status_code=500,
         )
