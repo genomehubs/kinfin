@@ -23,6 +23,8 @@ const DefineNodeLabels = () => {
   const selectedClusterSet = useSelector(
     (state) => state?.config?.selectedClusterSet
   );
+  const clusteringSets =
+    useSelector((state) => state?.config?.clusteringSets.data) || [];
 
   const [parsedData, setParsedData] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
@@ -62,10 +64,15 @@ const DefineNodeLabels = () => {
       setNameError("Name is required.");
       return;
     }
+    const selectedCluster = clusteringSets.find(
+      (set) => set.id === selectedClusterSet
+    );
+
     const payload = {
       name: userName.trim(),
       config: parsedData,
       clusterId: selectedClusterSet,
+      clusterName: selectedCluster.name || "",
       navigate,
     };
     dispatch(initAnalysis(payload));

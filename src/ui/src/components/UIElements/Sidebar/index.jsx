@@ -86,6 +86,17 @@ const Sidebar = ({ open, setOpen }) => {
     }
   }, [analysisList]);
 
+  const groupedAnalysis = analysisList?.reduce((acc, item) => {
+    const clusterId = item.clusterId || "unassigned";
+    if (!acc[clusterId]) {
+      acc[clusterId] = {
+        clusterName: item.clusterName || "Unassigned Cluster",
+        configs: [],
+      };
+    }
+    acc[clusterId].configs.push(item);
+    return acc;
+  }, {});
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
@@ -127,109 +138,114 @@ const Sidebar = ({ open, setOpen }) => {
 
           {/* Analysis list */}
           <div className={styles.otherSection}>
-            {analysisList?.length === 0 ? (
+            {!analysisList?.length ? (
               <div className={styles.emptyState}>No saved analyses</div>
             ) : (
-              analysisList?.map((item) => (
-                <div
-                  key={item.sessionId}
-                  className={`${styles.menuItem} ${
-                    visibleTooltip === item.sessionId ||
-                    sessionId === item.sessionId
-                      ? styles.active
-                      : ""
-                  }`}
-                  onClick={() => navigate(`/${item.sessionId}/dashboard`)}
-                >
-                  <Box
-                    sx={{
-                      width: 12,
-                      height: 12,
-                      marginRight: "8px",
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {pollingLoadingBySessionId[item.sessionId] ? (
-                      <CircularProgress size={10} thickness={8} />
-                    ) : (
-                      <Box
-                        sx={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: "50%",
-                          backgroundColor: item.status ? "#2ecc71" : "#ee2f42",
-                        }}
-                      />
-                    )}
-                  </Box>
-                  <span className={styles.label}>{item.name}</span>
-                  <div className={styles.refContainer} ref={tooltipRef}>
-                    <Tooltip
-                      placement="rightTop"
-                      styles={{
-                        root: { pointerEvents: "auto" },
-                      }}
-                      onVisibleChange={(visible) => {
-                        if (!visible) {
-                          setVisibleTooltip(null);
-                        }
-                      }}
-                      trigger={["click"]}
-                      overlay={
-                        <div className={styles.tooltipContent}>
-                          <div
-                            className={styles.tooltipItem}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              downloadAsTSV(item);
+              Object.entries(groupedAnalysis).map(
+                ([clusterId, { clusterName, configs }]) => (
+                  <div key={clusterId} className={styles.clusterGroup}>
+                    <div className={styles.clusterTitle}>{clusterName}</div>
+                    {configs.map((item) => (
+                      <div
+                        key={item.sessionId}
+                        className={`${styles.menuItem} ${
+                          visibleTooltip === item.sessionId ||
+                          sessionId === item.sessionId
+                            ? styles.active
+                            : ""
+                        }`}
+                        onClick={() => navigate(`/${item.sessionId}/dashboard`)}
+                      >
+                        <Box
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            marginRight: "8px",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {pollingLoadingBySessionId[item.sessionId] ? (
+                            <CircularProgress size={10} thickness={8} />
+                          ) : (
+                            <Box
+                              sx={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: "50%",
+                                backgroundColor: item.status
+                                  ? "#2ecc71"
+                                  : "#ee2f42",
+                              }}
+                            />
+                          )}
+                        </Box>
+                        <span className={styles.label}>{item.name}</span>
+                        <div className={styles.refContainer} ref={tooltipRef}>
+                          <Tooltip
+                            placement="rightTop"
+                            styles={{ root: { pointerEvents: "auto" } }}
+                            onVisibleChange={(visible) => {
+                              if (!visible) setVisibleTooltip(null);
                             }}
+                            trigger={["click"]}
+                            overlay={
+                              <div className={styles.tooltipContent}>
+                                <div
+                                  className={styles.tooltipItem}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadAsTSV(item);
+                                  }}
+                                >
+                                  <FiDownload /> Download
+                                </div>
+                                <div
+                                  className={styles.tooltipItem}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModalOpen(true);
+                                  }}
+                                >
+                                  <MdOutlineEdit /> Rename
+                                </div>
+                                <div
+                                  className={styles.tooltipItem}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    dispatch(deleteConfig(sessionIdClicked));
+                                  }}
+                                >
+                                  <AiFillDelete /> Delete
+                                </div>
+                              </div>
+                            }
+                            visible={visibleTooltip === item.sessionId}
+                            showArrow={false}
+                            defaultVisible={false}
                           >
-                            <FiDownload /> Download
-                          </div>
-                          <div
-                            className={styles.tooltipItem}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalOpen(true);
-                            }}
-                          >
-                            <MdOutlineEdit />
-                            Rename
-                          </div>
-                          <div
-                            className={styles.tooltipItem}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              dispatch(deleteConfig(sessionIdClicked));
-                            }}
-                          >
-                            <AiFillDelete />
-                            Delete
-                          </div>
+                            <GoKebabHorizontal
+                              className={styles.downloadIcon}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSessionIdClicked(item.sessionId);
+                                setUserName(item.name);
+                                setVisibleTooltip((prev) =>
+                                  prev === item.sessionId
+                                    ? null
+                                    : item.sessionId
+                                );
+                              }}
+                            />
+                          </Tooltip>
                         </div>
-                      }
-                      visible={visibleTooltip === item.sessionId}
-                      showArrow={false}
-                      defaultVisible={false}
-                    >
-                      <GoKebabHorizontal
-                        className={styles.downloadIcon}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSessionIdClicked(item.sessionId);
-                          setUserName(item.name);
-                          setVisibleTooltip((prev) =>
-                            prev === item.sessionId ? null : item.sessionId
-                          );
-                        }}
-                      />
-                    </Tooltip>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))
+                )
+              )
             )}
           </div>
         </div>

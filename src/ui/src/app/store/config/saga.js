@@ -104,7 +104,7 @@ function* pollRunStatusSaga(sessionId) {
 }
 
 function* initAnalysisSaga(action) {
-  const { name, config, navigate, clusterId } = action.payload;
+  const { name, config, navigate, clusterId, clusterName } = action.payload;
   const data = {
     config: config,
     clusterId: clusterId,
@@ -117,6 +117,8 @@ function* initAnalysisSaga(action) {
         name,
         config,
         sessionId: response.data.session_id,
+        clusterId: clusterId,
+        clusterName: clusterName,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
       yield call(

@@ -39,6 +39,8 @@ const initialState = {
     [sessionId]: {
       sessionId: "some-id",
       name: "some-name",
+      clusterId: "some-id",
+      clusterName: "some-name",
       config: [...],
       status: true,
       expiryDate: "2025-06-12T20:00:00Z",
@@ -101,7 +103,8 @@ const configReducer = (state = initialState, action) => {
       };
 
     case STORE_CONFIG: {
-      const { sessionId, name, config } = action.payload;
+      const { sessionId, name, config, clusterId, clusterName } =
+        action.payload;
       const existingData = state.storeConfig?.data || {};
       return {
         ...state,
@@ -109,7 +112,7 @@ const configReducer = (state = initialState, action) => {
           ...state.storeConfig,
           data: {
             ...existingData,
-            [sessionId]: { sessionId, name, config },
+            [sessionId]: { sessionId, name, config, clusterId, clusterName },
           },
         },
       };
