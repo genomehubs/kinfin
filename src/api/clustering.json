@@ -5,7 +5,7 @@
     "version": "v1.0",
     "date": "2025-05-10",
     "description": "Clustering of all nematodes proteomes using standard parameters.",
-    "path": "/tmp/clustering/nematodes"
+    "path": "/home/dinesh/tmp/kinfin/nematodes"
   },
   {
     "id": "f259e2ec-9080-46ca-9f03-4f290cb8d39d",
@@ -13,14 +13,6 @@
     "version": "v1.1",
     "date": "2025-06-01",
     "description": "Subset of mollusc proteomes filtered by assembly metrics and clustered with adjusted inflation parameter.",
-    "path": "/tmp/clustering/molluscs"
-  },
-  {
-    "id": "643c6292-0ec6-4a50-95be-520b8dcdae52",
-    "name": "API Test Data",
-    "version": "v1.2",
-    "date": "2025-05-01",
-    "description": "Minimal clustering dataset for UI and API integration testing.",
-    "path": "/tmp/clustering/human"
+    "path": "/home/dinesh/tmp/kinfin/molluscdb"
   }
 ]

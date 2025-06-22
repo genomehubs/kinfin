@@ -1,4 +1,5 @@
 from core.input import ServeArgs
+from api.utils import load_clustering_datasets
 
 
 def run_server(
@@ -29,6 +30,10 @@ def run_server(
     import uvicorn
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
+
+    current_dir = os.path.dirname(__file__)
+    dataset_path = os.path.join(current_dir, "clustering.json")
+    load_clustering_datasets(dataset_path)
 
     from api.endpoints import router
     from api.sessions import query_manager

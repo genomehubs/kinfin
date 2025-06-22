@@ -252,6 +252,7 @@ def parse_valid_proteome_ids_file(filepath: str) -> dict:
     with open(filepath, "r") as f:
         return json.load(f)
 
+
 def parse_clustering_file(filepath: str) -> list[dict]:
     """
     Parses a clustering JSON file and returns a list of clustering entries.
