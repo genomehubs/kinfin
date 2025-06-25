@@ -13,8 +13,11 @@ const apiClient = axios.create({
   },
 });
 
-export const initAnalysis = async (config) => {
-  const response = await apiClient.post("/init", { config });
+export const initAnalysis = async (data) => {
+  const response = await apiClient.post("/init", {
+    config: data.config,
+    clusterId: data.clusterId,
+  });
   return response.data;
 };
 
@@ -34,6 +37,17 @@ export const getBatchStatus = async (sessionIds = []) => {
 export const getValidProteomeIds = async (data) => {
   const response = await apiClient.get("/valid-proteome-ids", {
     headers: { "x-session-id": getSessionId() },
+    params: {
+      page: data.page,
+      size: data.size,
+      clusterId: data.clusterId,
+    },
+  });
+  return response.data;
+};
+
+export const getClusteringSets = async (data) => {
+  const response = await apiClient.get("/clustering-sets", {
     params: { page: data.page, size: data.size },
   });
   return response.data;

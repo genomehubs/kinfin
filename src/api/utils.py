@@ -1,6 +1,8 @@
 import asyncio
 import glob
 from collections import defaultdict
+import json
+from typing import Dict
 
 
 def read_status(status_file):
@@ -115,3 +117,13 @@ def sort_and_paginate_result(
     total_pages = -(-len(result) // size)
 
     return paginated_result, total_pages
+
+
+CLUSTERING_DATASETS: Dict[str, dict] = {}
+
+
+def load_clustering_datasets(json_path: str):
+    global CLUSTERING_DATASETS
+    with open(json_path, "r") as f:
+        datasets = json.load(f)
+        CLUSTERING_DATASETS = {item["id"]: item for item in datasets}

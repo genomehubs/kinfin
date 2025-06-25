@@ -5,9 +5,9 @@ A set of example commands to get started with the KinFin API
 ## Fetch the test data
 
 ```bash
-export WORKDIR=~/tmp/kinfin
-mkdir -p $WORKDIR
-cd $WORKDIR
+export KINFIN_WORKDIR=~/tmp/kinfin
+mkdir -p $KINFIN_WORKDIR
+cd $KINFIN_WORKDIR
 curl -L http://molluscdb.cog.sanger.ac.uk/dev/kinfin/api_test_data.tar.gz > api_test_data.tar.gz
 tar xf api_test_data.tar.gz && rm api_test_data.tar.gz
 ```
@@ -20,16 +20,16 @@ pip install -r requirements.txt
 ```
 
 ## Start the API
+
 ```bash
 export KINFIN_PORT=8000
-export CLUSTER_FILE_PATH=$WORKDIR/api_test_data/Orthogroups.txt
-export SEQUENCE_IDS_FILE_PATH=$WORKDIR/api_test_data/kinfin.SequenceIDs.txt
-export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/api_test_data/taxon_idx_mapping.json
-export RESULTS_BASE_DIR=$WORKDIR/output
+export CLUSTER_FILE_PATH=$KINFIN_WORKDIR/api_test_data/Orthogroups.txt
+export SEQUENCE_IDS_FILE_PATH=$KINFIN_WORKDIR/api_test_data/kinfin.SequenceIDs.txt
+export TAXON_IDX_MAPPING_FILE_PATH=$KINFIN_WORKDIR/api_test_data/taxon_idx_mapping.json
+export RESULTS_BASE_DIR=$KINFIN_WORKDIR/output
 export SESSION_INACTIVITY_THRESHOLD=24  # keep files for 24 hours
 ./src/main.py serve -p $KINFIN_PORT
 ```
-
 
 ## Use the API
 
@@ -139,20 +139,20 @@ curl -X GET "$KINFIN_HOST/kinfin/plot/cluster-size-distribution" \
 Example data from MolluscDB v1 ([Caurcel _et al._ 2021](https://doi.org/10.1098/rstb.2020.0157))
 
 ```
-export WORKDIR=~/tmp/kinfin
-mkdir -p $WORKDIR
-cd $WORKDIR
+export KINFIN_WORKDIR=~/tmp/kinfin
+mkdir -p $KINFIN_WORKDIR
+cd $KINFIN_WORKDIR
 curl -L http://molluscdb.cog.sanger.ac.uk/dev/kinfin/molluscdb_v1_test_data.tar.gz > molluscdb_v1_test_data.tar.gz
 tar xf molluscdb_v1_test_data.tar.gz && rm molluscdb_v1_test_data.tar.gz
 ```
 
 ```
-export WORKDIR=~/tmp/kinfin
+export KINFIN_WORKDIR=~/tmp/kinfin
 export KINFIN_PORT=8000
-export CLUSTER_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/Orthogroups.txt
-export SEQUENCE_IDS_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/kinfin.SequenceIDs.txt
-export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/molluscdb_v1_test_data/taxon_idx_mapping.json
-export RESULTS_BASE_DIR=$WORKDIR/output
+export CLUSTER_FILE_PATH=$KINFIN_WORKDIR/molluscdb_v1_test_data/Orthogroups.txt
+export SEQUENCE_IDS_FILE_PATH=$KINFIN_WORKDIR/molluscdb_v1_test_data/kinfin.SequenceIDs.txt
+export TAXON_IDX_MAPPING_FILE_PATH=$KINFIN_WORKDIR/molluscdb_v1_test_data/taxon_idx_mapping.json
+export RESULTS_BASE_DIR=$KINFIN_WORKDIR/output
 export SESSION_INACTIVITY_THRESHOLD=24
 ./src/main.py serve -p $KINFIN_PORT
 ```

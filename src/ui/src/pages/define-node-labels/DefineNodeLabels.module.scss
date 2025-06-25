@@ -77,3 +77,53 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
+.stepContent {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.workflowStep {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  width: 100%;
+}
+.clusterSetParent {
+  display: flex;
+  justify-content: center;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stepNumber {
+  background: #4285f4;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.workflowStep.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(0.3);
+}

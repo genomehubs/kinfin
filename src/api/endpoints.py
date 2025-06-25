@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
+from core.utils import check_file
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -18,6 +19,7 @@ from api.fileparsers import (
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
+    parse_clustering_file,
 )
 from api.sessions import query_manager
 from api.utils import (
@@ -25,6 +27,7 @@ from api.utils import (
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    CLUSTERING_DATASETS,
 )
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -40,6 +43,7 @@ PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
+    clusterId: str
 
 
 class ResponseSchema(BaseModel):
@@ -160,10 +164,7 @@ def get_session_status(session_id: str) -> Dict:
 
 
 @router.post("/kinfin/init", response_model=ResponseSchema)
-async def initialize(
-    input_data: InputSchema,
-    request: Request,
-):
+async def initialize(input_data: InputSchema, request: Request):
     """
     Initialize the analysis process.
 
@@ -178,23 +179,48 @@ async def initialize(
         HTTPException: If there's an error in the input data or during processing.
     """
     try:
-        if not isinstance(input_data.config, list):
+        if not isinstance(input_data.config, list) or not all(
+            isinstance(i, dict) for i in input_data.config
+        ):
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Data must be a list of dictionaries.",
-                    error="Invalid input data format",
+                    message="Config must be a list of dictionaries.",
+                    error="Invalid input format",
                     query=str(request.url),
                 ).model_dump(),
                 status_code=400,
             )
+        cluster_info = CLUSTERING_DATASETS.get(input_data.clusterId)
 
-        if not all(isinstance(item, dict) for item in input_data.config):
+        if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Each item in data must be a dictionary.",
-                    error="Invalid data format",
+                    message=f"Invalid clusterId: {input_data.clusterId}",
+                    error="Clustering not found",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=404,
+            )
+
+        KINFIN_WORKDIR = os.getenv("KINFIN_WORKDIR")
+        cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
+
+        cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
+        sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
+        taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+
+        try:
+            check_file(cluster_f, install_kinfin=True)
+            check_file(sequence_ids_f, install_kinfin=True)
+            check_file(taxon_idx_mapping_file, install_kinfin=True)
+        except FileNotFoundError as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Missing clustering dataset file(s)",
+                    error=str(e),
                     query=str(request.url),
                 ).model_dump(),
                 status_code=400,
@@ -202,7 +228,6 @@ async def initialize(
 
         session_id, result_dir = query_manager.get_or_create_session(input_data.config)
         config_f = os.path.join(result_dir, "config.json")
-
         with open(config_f, "w") as file:
             json.dump(input_data.config, file)
 
@@ -211,13 +236,13 @@ async def initialize(
             "src/main.py",
             "analyse",
             "-g",
-            query_manager.cluster_f,
+            cluster_f,
             "-c",
             config_f,
             "-s",
-            query_manager.sequence_ids_f,
+            sequence_ids_f,
             "-m",
-            query_manager.taxon_idx_mapping_file,
+            taxon_idx_mapping_file,
             "-o",
             result_dir,
             "--plot_format",
@@ -227,18 +252,16 @@ async def initialize(
         status_file = os.path.join(result_dir, f"{session_id}.status")
         asyncio.create_task(run_cli_command(command, status_file))
 
-        response = ResponseSchema(
-            status="success",
-            message="Analysis task has been queued.",
-            data={"session_id": session_id},
-            query=str(request.url),
-        )
         return JSONResponse(
-            content=response.model_dump(),
+            content=ResponseSchema(
+                status="success",
+                message="Analysis task has been queued.",
+                data={"session_id": session_id},
+                query=str(request.url),
+            ).model_dump(),
             status_code=202,
         )
     except Exception as e:
-        print(e)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
@@ -563,12 +586,42 @@ async def get_available_attributes_and_taxon_sets(
 @router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
 async def get_valid_taxons_api(
     request: Request,
+    clusterId: str,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    
 ):
     try:
+        cluster_info = CLUSTERING_DATASETS.get(clusterId)
+        if not cluster_info:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid clusterId: {clusterId}",
+                    error="Clustering not found",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=404,
+            )
+
+        KINFIN_WORKDIR = os.getenv("KINFIN_WORKDIR")
+        cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
+        taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+        try:
+            check_file(taxon_idx_mapping_file, install_kinfin=True)
+        except FileNotFoundError as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Missing clustering dataset file(s)",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+
         taxons = await asyncio.to_thread(
-            parse_valid_proteome_ids_file, query_manager.taxon_idx_mapping_file
+            parse_valid_proteome_ids_file, taxon_idx_mapping_file
         )
     except FileNotFoundError as e:
         LOGGER.error("Taxon file not found", exc_info=True)
@@ -615,6 +668,71 @@ async def get_valid_taxons_api(
         status="success",
         message="List of valid proteome IDs fetched",
         data=paginated_items,
+        query=str(request.url),
+        current_page=page,
+        entries_per_page=size,
+        total_pages=total_pages,
+    )
+    return JSONResponse(response.model_dump(), status_code=200)
+
+
+@router.get("/kinfin/clustering-sets", response_model=ResponseSchema)
+async def get_clustering_sets_api(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+):
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        clustering_file_path = os.path.join(current_dir, "clustering.json")
+
+        clustering_data = await asyncio.to_thread(
+            parse_clustering_file, clustering_file_path
+        )
+    except FileNotFoundError as e:
+        LOGGER.error("Clustering file not found", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Clustering file not found",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=404,
+        )
+    except ValueError as e:
+        LOGGER.error("Error parsing clustering file", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Error parsing clustering file",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=422,
+        )
+    except Exception as e:
+        LOGGER.error("Error fetching clustering sets", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+    total_items = len(clustering_data)
+    total_pages = (total_items + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    paginated_data = clustering_data[start:end]
+
+    response = ResponseSchema(
+        status="success",
+        message="Clustering sets fetched successfully",
+        data=paginated_data,
         query=str(request.url),
         current_page=page,
         entries_per_page=size,
