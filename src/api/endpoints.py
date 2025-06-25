@@ -204,7 +204,8 @@ async def initialize(input_data: InputSchema, request: Request):
                 status_code=404,
             )
 
-        cluster_path = cluster_info["path"]
+        KINFIN_WORKDIR = os.getenv("KINFIN_WORKDIR")
+        cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
 
         cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
         sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
@@ -603,7 +604,8 @@ async def get_valid_taxons_api(
                 status_code=404,
             )
 
-        cluster_path = cluster_info["path"]
+        KINFIN_WORKDIR = os.getenv("KINFIN_WORKDIR")
+        cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
         taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
         try:
             check_file(taxon_idx_mapping_file, install_kinfin=True)

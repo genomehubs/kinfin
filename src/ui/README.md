@@ -26,9 +26,9 @@ cd kinfin
 ## 📂 2. Download and Extract Test Data
 
 ```bash
-export WORKDIR=~/tmp/kinfin
-mkdir -p $WORKDIR
-cd $WORKDIR
+export KINFIN_WORKDIR=~/tmp/kinfin
+mkdir -p $KINFIN_WORKDIR
+cd $KINFIN_WORKDIR
 ```
 
 ### Download and extract api_test_data → nematodes
@@ -62,7 +62,7 @@ Start the backend API:
 
 ```bash
 export KINFIN_PORT=8000
-export RESULTS_BASE_DIR=$WORKDIR/output
+export RESULTS_BASE_DIR=$KINFIN_WORKDIR/output
 export SESSION_INACTIVITY_THRESHOLD=24  # Files retained for 24 hours
 
 ./src/main.py serve -p $KINFIN_PORT
