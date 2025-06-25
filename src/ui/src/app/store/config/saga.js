@@ -12,6 +12,7 @@ import {
   GET_RUN_STATUS,
   GET_BATCH_STATUS,
   GET_VALID_PROTEOME_IDS,
+  GET_CLUSTERING_SETS,
 } from "./actionTypes";
 
 import {
@@ -26,6 +27,8 @@ import {
   getBatchStatusSuccess,
   getBatchStatusFailure,
   updateSessionMeta,
+  getClusteringSetsFailure,
+  getClusteringSetsSuccess,
 } from "./actions";
 
 import {
@@ -38,6 +41,7 @@ import {
   getStatus,
   getBatchStatus,
   getValidProteomeIds,
+  getClusteringSets,
 } from "../../services/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
@@ -100,15 +104,21 @@ function* pollRunStatusSaga(sessionId) {
 }
 
 function* initAnalysisSaga(action) {
-  const { name, config, navigate } = action.payload;
+  const { name, config, navigate, clusterId, clusterName } = action.payload;
+  const data = {
+    config: config,
+    clusterId: clusterId,
+  };
   try {
-    const response = yield call(initAnalysis, config);
+    const response = yield call(initAnalysis, data);
     if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
       const payloadForIndexDBStorage = {
         name,
         config,
         sessionId: response.data.session_id,
+        clusterId: clusterId,
+        clusterName: clusterName,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
       yield call(
@@ -160,10 +170,12 @@ function* getRunStatusSaga() {
   }
 }
 function* getValidProteomeIdsSaga(action) {
+  const { clusterId } = action.payload;
   try {
     const data = {
       page: 1,
       size: 100,
+      clusterId: clusterId,
     };
     const response = yield call(getValidProteomeIds, data);
 
@@ -221,6 +233,33 @@ export function* getBatchStatusSaga(action) {
   }
 }
 
+function* getClusteringSetsSaga(action) {
+  try {
+    const data = {
+      page: 1,
+      size: 100,
+    };
+    const response = yield call(getClusteringSets, data);
+
+    if (response.status === "success") {
+      yield put(getClusteringSetsSuccess(response.data));
+      yield call(dispatchSuccessToast, "Clustering fetched successfully!");
+    } else {
+      yield put(getClusteringSetsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch clustering sets"
+      );
+    }
+  } catch (err) {
+    yield put(getValidProteomeIdsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch clustering sets"
+    );
+  }
+}
+
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
 }
@@ -234,6 +273,10 @@ export function* watchGetBatchStatusSaga() {
   yield takeEvery(GET_BATCH_STATUS, getBatchStatusSaga);
 }
 
+export function* watchGetClusteringSets() {
+  yield takeEvery(GET_CLUSTERING_SETS, getClusteringSetsSaga);
+}
+
 export default function* configSaga() {
   yield all([
     fork(watchInitAnalysisSaga),
@@ -242,5 +285,6 @@ export default function* configSaga() {
     fork(watchGetValidProteomeIdsSaga),
     ,
     fork(watchGetBatchStatusSaga),
+    fork(watchGetClusteringSets),
   ]);
 }

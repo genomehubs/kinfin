@@ -22,6 +22,11 @@ import {
   GET_BATCH_STATUS_FAILURE,
   GET_BATCH_STATUS_RESET,
   UPDATE_SESSION_META,
+  GET_CLUSTERING_SETS,
+  GET_CLUSTERING_SETS_SUCCESS,
+  GET_CLUSTERING_SETS_FAILURE,
+  GET_CLUSTERING_SETS_RESET,
+  SET_SELECTED_CLUSTER_SET,
 } from "./actionTypes";
 
 const initialState = {
@@ -34,6 +39,8 @@ const initialState = {
     [sessionId]: {
       sessionId: "some-id",
       name: "some-name",
+      clusterId: "some-id",
+      clusterName: "some-name",
       config: [...],
       status: true,
       expiryDate: "2025-06-12T20:00:00Z",
@@ -44,6 +51,8 @@ const initialState = {
   validProteomeIds: { data: null, loading: false, error: null },
   pollingLoading: {},
   batchStatus: { data: null, loading: false, error: null },
+  clusteringSets: { data: null, loading: false, error: null },
+  selectedClusterSet: null,
 };
 
 const configReducer = (state = initialState, action) => {
@@ -94,7 +103,8 @@ const configReducer = (state = initialState, action) => {
       };
 
     case STORE_CONFIG: {
-      const { sessionId, name, config } = action.payload;
+      const { sessionId, name, config, clusterId, clusterName } =
+        action.payload;
       const existingData = state.storeConfig?.data || {};
       return {
         ...state,
@@ -102,7 +112,7 @@ const configReducer = (state = initialState, action) => {
           ...state.storeConfig,
           data: {
             ...existingData,
-            [sessionId]: { sessionId, name, config },
+            [sessionId]: { sessionId, name, config, clusterId, clusterName },
           },
         },
       };
@@ -222,6 +232,31 @@ const configReducer = (state = initialState, action) => {
         },
       };
     }
+    case GET_CLUSTERING_SETS:
+      return {
+        ...state,
+        clusteringSets: { data: null, loading: true, error: null },
+      };
+
+    case GET_CLUSTERING_SETS_SUCCESS:
+      return {
+        ...state,
+        clusteringSets: { data: action.payload, loading: false, error: null },
+      };
+
+    case GET_CLUSTERING_SETS_FAILURE:
+      return {
+        ...state,
+        clusteringSets: { data: null, loading: false, error: action.payload },
+      };
+
+    case GET_CLUSTERING_SETS_RESET:
+      return {
+        ...state,
+        clusteringSets: initialState.clusteringSets,
+      };
+    case SET_SELECTED_CLUSTER_SET:
+      return { ...state, selectedClusterSet: action.payload };
 
     default:
       return state;
