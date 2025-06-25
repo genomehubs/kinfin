@@ -28,10 +28,7 @@ import {
   getRunSummaryFailure,
   getRunSummarySuccess,
 } from "./actions";
-import {
-  dispatchErrorToast,
-  dispatchSuccessToast,
-} from "../../../utilis/tostNotifications";
+import { dispatchErrorToast } from "../../../utilis/tostNotifications";
 import {
   getAvailableAttributes,
   getCountsByTaxon,
@@ -62,7 +59,6 @@ function* getAvailableAttributesSaga() {
 
     if (response.status === "success") {
       yield put(getAvailableAttributesTaxonsetsSuccess(response.data));
-      yield call(dispatchSuccessToast, "Attributes fetched successfully!");
     } else {
       yield put(getAvailableAttributesTaxonsetsFailure(response));
       yield call(
@@ -89,7 +85,6 @@ function* getRunSummarySaga() {
 
     if (response.status === "success") {
       yield put(getRunSummarySuccess(response.data));
-      yield call(dispatchSuccessToast, "Run Summary fetched successfully!");
     } else {
       yield put(getRunSummaryFailure(response));
       yield call(
@@ -116,7 +111,6 @@ function* getCountsByTaxonSaga() {
 
     if (response.status === "success") {
       yield put(getCountsByTaxonSuccess(response.data));
-      yield call(dispatchSuccessToast, "Counts by taxon fetched successfully!");
     } else {
       yield put(getCountsByTaxonFailure(response));
       yield call(
@@ -149,7 +143,6 @@ function* getClusterSummarySaga(action) {
 
     if (response.status === "success") {
       yield put(getClusterSummarySuccess(response));
-      yield call(dispatchSuccessToast, "Cluster Summary fetched successfully!");
     } else {
       yield put(getClusterSummaryFailure(response));
       yield call(
@@ -182,10 +175,6 @@ function* getAttributeSummarySaga(action) {
 
     if (response.status === "success") {
       yield put(getAttributeSummarySuccess(response));
-      yield call(
-        dispatchSuccessToast,
-        "Attribute Summary fetched successfully!"
-      );
     } else {
       yield put(getAttributeSummaryFailure(response));
       yield call(
@@ -219,7 +208,6 @@ function* getClusterMetricsSaga(action) {
 
     if (response.status === "success") {
       yield put(getClusterMetricsSuccess(response));
-      yield call(dispatchSuccessToast, "Cluster Metrics fetched successfully!");
     } else {
       yield put(getClusterMetricsFailure(response));
       yield call(
@@ -247,10 +235,6 @@ function* getPairwiseAnalysisSaga(action) {
 
     if (response.status === "success") {
       yield put(getPairwiseAnalysisSuccess(response.data));
-      yield call(
-        dispatchSuccessToast,
-        "Pairwise Analysis fetched successfully!"
-      );
     } else {
       yield put(getPairwiseAnalysisFailure(response));
       yield call(
