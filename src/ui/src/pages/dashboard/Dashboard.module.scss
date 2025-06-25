@@ -6,19 +6,20 @@
   gap: 32px;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 180px;
+  padding: 20px;
   flex-direction: column !important;
   min-height: 100vh;
 
   .chartsContainer {
     display: flex;
     align-items: center;
+    flex-direction: column;
     flex-wrap: wrap;
     width: 100%;
     gap: 12px;
 
     .container {
-      width: 30%;
+      width: 100%;
       padding: 12px;
       border: 1px solid var(--border-color);
       border-radius: 12px;

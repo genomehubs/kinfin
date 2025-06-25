@@ -103,9 +103,9 @@ const Dashboard = () => {
     attributeSummary: "Attribute Summary",
     clusterSummary: "Cluster Summary",
     clusterMetrics: "Cluster Metrics",
-    clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
-    clusterAbsence: "Cluster Absence Across Taxon Sets",
-    taxonCount: "Taxon Count per Taxon Set",
+    // clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
+    // clusterAbsence: "Cluster Absence Across Taxon Sets",
+    // taxonCount: "Taxon Count per Taxon Set",
   };
 
   const renderModalContent = () => {
@@ -116,12 +116,7 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
-      case "clusterAndProteinDistribution":
-        return <ClusterAndProteinDistributionPerTaxonSet />;
-      case "clusterAbsence":
-        return <ClusterAbsenceAcrossTaxonSets />;
-      case "taxonCount":
-        return <TaxonCountPerTaxonSet />;
+
       default:
         return null;
     }
@@ -150,12 +145,7 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
-      case "clusterAndProteinDistribution":
-        return <ClusterAndProteinDistributionPerTaxonSet />;
-      case "clusterAbsence":
-        return <ClusterAbsenceAcrossTaxonSets />;
-      case "taxonCount":
-        return <TaxonCountPerTaxonSet />;
+
       default:
         return null;
     }
