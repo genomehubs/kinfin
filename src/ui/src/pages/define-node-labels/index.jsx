@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from "react";
 import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload";
-import Modal from "../../components/UIElements/Modal";
-import styles from "./DefineNodeLabels.module.scss";
+import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
 import { useDispatch, useSelector } from "react-redux";
 import {
   initAnalysis,
   getClusteringSets,
   setSelectedClusterSet,
 } from "../../app/store/config/actions";
-import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
 import { useNavigate } from "react-router-dom";
+import styles from "./DefineNodeLabels.module.scss";
+
+// MUI imports
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button as MuiButton,
+} from "@mui/material";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
@@ -38,6 +47,7 @@ const DefineNodeLabels = () => {
   useEffect(() => {
     dispatch(getClusteringSets());
   }, []);
+
   useEffect(() => {
     dispatch(setSelectedClusterSet(null));
   }, []);
@@ -88,14 +98,12 @@ const DefineNodeLabels = () => {
       setPendingClusterId(newClusterId);
       setConfirmClusterChangeOpen(true);
     } else {
-      console.log("jkdcbjkdsbcdjksbc khd d 1");
       dispatch(setSelectedClusterSet(newClusterId));
     }
   };
 
   const confirmClusterChange = () => {
     if (pendingClusterId) {
-      console.log("first");
       dispatch(setSelectedClusterSet(pendingClusterId));
       setParsedData(null);
       setValidationErrors({ headers: [], rows: {} });
@@ -120,7 +128,6 @@ const DefineNodeLabels = () => {
             <h3>Select Clustering Dataset</h3>
           </div>
           <div className={styles.clusterSetParent}>
-            {" "}
             <ClusterSetSelectionDropdown onChange={handleClusterSetChange} />
           </div>
         </div>
@@ -169,62 +176,58 @@ const DefineNodeLabels = () => {
         </div>
 
         {/* Modal for Analysis Name */}
-        <Modal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title="Initialize Analysis"
-        >
-          <div className={styles.container}>
-            <label htmlFor="analysis-name" className={styles.label}>
-              Enter a name for this analysis:
-            </label>
-
-            <input
-              id="analysis-name"
-              type="text"
-              value={userName}
-              onChange={(e) => {
-                setUserName(e.target.value);
-                if (nameError) setNameError("");
-              }}
-              className={`${styles.input} ${nameError ? styles.error : ""}`}
-            />
-
-            {nameError && <p className={styles.errorMessage}>{nameError}</p>}
-
-            <button onClick={handleSubmit} className={styles.submitButton}>
+        <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth>
+          <DialogTitle>Initialize Analysis</DialogTitle>
+          <DialogContent>
+            <div className={styles.container}>
+              <label htmlFor="analysis-name" className={styles.label}>
+                Enter a name for this analysis:
+              </label>
+              <TextField
+                id="analysis-name"
+                fullWidth
+                value={userName}
+                onChange={(e) => {
+                  setUserName(e.target.value);
+                  if (nameError) setNameError("");
+                }}
+                error={Boolean(nameError)}
+                helperText={nameError}
+                variant="outlined"
+                margin="dense"
+              />
+            </div>
+          </DialogContent>
+          <DialogActions>
+            <MuiButton onClick={() => setModalOpen(false)}>Cancel</MuiButton>
+            <MuiButton onClick={handleSubmit} variant="contained">
               Submit
-            </button>
-          </div>
-        </Modal>
+            </MuiButton>
+          </DialogActions>
+        </Dialog>
 
         {/* Confirm Cluster Change */}
-        <Modal
-          isOpen={confirmClusterChangeOpen}
+        <Dialog
+          open={confirmClusterChangeOpen}
           onClose={cancelClusterChange}
-          title="Change Clustering Dataset?"
+          fullWidth
         >
-          <div className={styles.container}>
-            <p style={{ marginBottom: "1rem" }}>
-              Changing the dataset will clear your uploaded configuration. Are
-              you sure you want to continue?
-            </p>
-            <div className={styles.bottomSection}>
-              <button
-                className={styles.cancelButton}
-                onClick={cancelClusterChange}
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.submitButton}
-                onClick={confirmClusterChange}
-              >
-                Yes, Change It
-              </button>
+          <DialogTitle>Change Clustering Dataset?</DialogTitle>
+          <DialogContent>
+            <div className={styles.container}>
+              <p style={{ marginBottom: "1rem" }}>
+                Changing the dataset will clear your uploaded configuration. Are
+                you sure you want to continue?
+              </p>
             </div>
-          </div>
-        </Modal>
+          </DialogContent>
+          <DialogActions>
+            <MuiButton onClick={cancelClusterChange}>Cancel</MuiButton>
+            <MuiButton onClick={confirmClusterChange} variant="contained">
+              Yes, Change It
+            </MuiButton>
+          </DialogActions>
+        </Dialog>
       </div>
     </AppLayout>
   );
