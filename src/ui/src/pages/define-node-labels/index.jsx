@@ -1,25 +1,21 @@
 import React, { useEffect, useState } from "react";
 import AppLayout from "../../components/AppLayout";
-import FileUpload from "../../components/FileUpload"; // adjust the path if needed
+import FileUpload from "../../components/FileUpload";
 import Modal from "../../components/UIElements/Modal";
 import styles from "./DefineNodeLabels.module.scss";
 import { useDispatch, useSelector } from "react-redux";
 import {
   initAnalysis,
   getClusteringSets,
+  setSelectedClusterSet,
 } from "../../app/store/config/actions";
 import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
 import { useNavigate } from "react-router-dom";
-
-// MUI components
-import Backdrop from "@mui/material/Backdrop";
-import CircularProgress from "@mui/material/CircularProgress";
 
 const DefineNodeLabels = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const pollingLoading = useSelector((state) => state.config.pollingLoading);
   const selectedClusterSet = useSelector(
     (state) => state?.config?.selectedClusterSet
   );
@@ -35,25 +31,31 @@ const DefineNodeLabels = () => {
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
   const [resetKey, setResetKey] = useState(0);
+  const [pendingClusterId, setPendingClusterId] = useState(null);
+  const [confirmClusterChangeOpen, setConfirmClusterChangeOpen] =
+    useState(false);
+
+  useEffect(() => {
+    dispatch(getClusteringSets());
+  }, []);
+  useEffect(() => {
+    dispatch(setSelectedClusterSet(null));
+  }, []);
 
   const openModal = () => {
     if (!parsedData) {
-      alert("Please upload and validate your JSON first.");
+      alert("Please upload and validate your config file first.");
       return;
     }
     setUserName("");
     setNameError("");
     setModalOpen(true);
   };
+
   const cancelAnalysis = () => {
     setParsedData(null);
-    setValidationErrors({
-      headers: [],
-      rows: {},
-    });
-
+    setValidationErrors({ headers: [], rows: {} });
     setResetKey((prev) => prev + 1);
-
     setModalOpen(false);
     setUserName("");
     setNameError("");
@@ -64,6 +66,7 @@ const DefineNodeLabels = () => {
       setNameError("Name is required.");
       return;
     }
+
     const selectedCluster = clusteringSets.find(
       (set) => set.id === selectedClusterSet
     );
@@ -72,51 +75,100 @@ const DefineNodeLabels = () => {
       name: userName.trim(),
       config: parsedData,
       clusterId: selectedClusterSet,
-      clusterName: selectedCluster.name || "",
+      clusterName: selectedCluster?.name || "",
       navigate,
     };
+
     dispatch(initAnalysis(payload));
     setModalOpen(false);
   };
-  useEffect(() => {
-    dispatch(getClusteringSets());
-  }, []);
+
+  const handleClusterSetChange = (newClusterId) => {
+    if (parsedData) {
+      setPendingClusterId(newClusterId);
+      setConfirmClusterChangeOpen(true);
+    } else {
+      console.log("jkdcbjkdsbcdjksbc khd d 1");
+      dispatch(setSelectedClusterSet(newClusterId));
+    }
+  };
+
+  const confirmClusterChange = () => {
+    if (pendingClusterId) {
+      console.log("first");
+      dispatch(setSelectedClusterSet(pendingClusterId));
+      setParsedData(null);
+      setValidationErrors({ headers: [], rows: {} });
+      setResetKey((prev) => prev + 1);
+      setPendingClusterId(null);
+    }
+    setConfirmClusterChangeOpen(false);
+  };
+
+  const cancelClusterChange = () => {
+    setPendingClusterId(null);
+    setConfirmClusterChangeOpen(false);
+  };
 
   return (
     <AppLayout>
       <div className={styles.page}>
-        <ClusterSetSelectionDropdown />
-        <FileUpload
-          key={resetKey}
-          setValidationErrors={setValidationErrors}
-          validationErrors={validationErrors}
-          onDataChange={setParsedData}
-        />
-
-        {parsedData && (
-          <div className={styles.bottomSection}>
-            <button className={styles.cancelButton} onClick={cancelAnalysis}>
-              Cancel Analysis
-            </button>
-            <button
-              disabled={
-                validationErrors.headers.length > 0 ||
-                Object.keys(validationErrors.rows).length > 0
-              }
-              className={styles.initButton}
-              onClick={openModal}
-              title={
-                validationErrors.headers.length > 0 ||
-                Object.keys(validationErrors.rows).length > 0
-                  ? "Please fix validation issues"
-                  : ""
-              }
-            >
-              Initialize Kinfin Analysis
-            </button>
+        {/* Step 1 */}
+        <div className={styles.workflowStep}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>1</span>
+            <h3>Select Clustering Dataset</h3>
           </div>
-        )}
+          <div className={styles.clusterSetParent}>
+            {" "}
+            <ClusterSetSelectionDropdown onChange={handleClusterSetChange} />
+          </div>
+        </div>
 
+        {/* Step 2 */}
+        <div
+          className={`${styles.workflowStep} ${
+            !selectedClusterSet ? styles.disabled : ""
+          }`}
+        >
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>2</span>
+            <h3>Upload Configuration</h3>
+          </div>
+          <FileUpload
+            key={resetKey}
+            disabled={!selectedClusterSet}
+            setValidationErrors={setValidationErrors}
+            validationErrors={validationErrors}
+            onDataChange={setParsedData}
+          />
+
+          {parsedData && (
+            <div className={styles.bottomSection}>
+              <button className={styles.cancelButton} onClick={cancelAnalysis}>
+                Cancel Analysis
+              </button>
+              <button
+                disabled={
+                  validationErrors.headers.length > 0 ||
+                  Object.keys(validationErrors.rows).length > 0
+                }
+                className={styles.initButton}
+                onClick={openModal}
+                title={
+                  validationErrors.headers.length > 0 ||
+                  Object.keys(validationErrors.rows).length > 0
+                    ? "Please fix validation issues"
+                    : ""
+                }
+              >
+                Initialize Kinfin Analysis
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Modal for Analysis Name */}
         <Modal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
@@ -133,9 +185,7 @@ const DefineNodeLabels = () => {
               value={userName}
               onChange={(e) => {
                 setUserName(e.target.value);
-                if (nameError) {
-                  setNameError("");
-                }
+                if (nameError) setNameError("");
               }}
               className={`${styles.input} ${nameError ? styles.error : ""}`}
             />
@@ -145,6 +195,34 @@ const DefineNodeLabels = () => {
             <button onClick={handleSubmit} className={styles.submitButton}>
               Submit
             </button>
+          </div>
+        </Modal>
+
+        {/* Confirm Cluster Change */}
+        <Modal
+          isOpen={confirmClusterChangeOpen}
+          onClose={cancelClusterChange}
+          title="Change Clustering Dataset?"
+        >
+          <div className={styles.container}>
+            <p style={{ marginBottom: "1rem" }}>
+              Changing the dataset will clear your uploaded configuration. Are
+              you sure you want to continue?
+            </p>
+            <div className={styles.bottomSection}>
+              <button
+                className={styles.cancelButton}
+                onClick={cancelClusterChange}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.submitButton}
+                onClick={confirmClusterChange}
+              >
+                Yes, Change It
+              </button>
+            </div>
           </div>
         </Modal>
       </div>

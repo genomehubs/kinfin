@@ -1,22 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Menu, MenuItem, Typography, Box, Stack } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedClusterSet } from "../../app/store/config/actions";
 
-export default function ClusterSetSelectionDropdown() {
+export default function ClusterSetSelectionDropdown({ onChange }) {
   const [anchorEl, setAnchorEl] = useState(null);
-  const [selected, setSelected] = useState(null);
+  const dispatch = useDispatch();
+
   const clusteringSets =
     useSelector((state) => state?.config?.clusteringSets.data) || [];
+  const selectedClusterSet = useSelector(
+    (state) => state?.config?.selectedClusterSet
+  );
 
-  const dispatch = useDispatch();
+  const selected = clusteringSets.find(
+    (dataset) => dataset.id === selectedClusterSet
+  );
+
   const handleOpen = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
 
   const handleSelect = (dataset) => {
-    setSelected(dataset);
-    dispatch(setSelectedClusterSet(dataset.id));
+    onChange?.(dataset.id);
     handleClose();
   };
 
@@ -28,7 +34,7 @@ export default function ClusterSetSelectionDropdown() {
         endIcon={<ArrowDropDownIcon />}
         sx={{
           textTransform: "none",
-          width: 300,
+          width: 420,
           justifyContent: "space-between",
         }}
       >
@@ -49,6 +55,7 @@ export default function ClusterSetSelectionDropdown() {
             key={dataset.id}
             onClick={() => handleSelect(dataset)}
             sx={{ whiteSpace: "normal", alignItems: "flex-start" }}
+            selected={selectedClusterSet === dataset.id}
           >
             <Stack spacing={0.5}>
               <Typography fontWeight={600}>{dataset.name}</Typography>
