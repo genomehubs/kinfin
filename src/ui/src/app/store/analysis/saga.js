@@ -133,10 +133,10 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page } = action.payload;
+  const { attribute, page, size } = action.payload;
   const data = {
     attribute,
-    size: 10,
+    size,
     page,
   };
   try {
