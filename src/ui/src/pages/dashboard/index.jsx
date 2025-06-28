@@ -56,22 +56,6 @@ const Dashboard = () => {
     dispatch(getAvailableAttributesTaxonsets());
     dispatch(getRunSummary());
     dispatch(getCountsByTaxon());
-    dispatch(
-      getClusterSummary({
-        attribute: selectedAttributeTaxonset?.attribute,
-      })
-    );
-    // dispatch(
-    //   getAttributeSummary({
-    //     attribute: selectedAttributeTaxonset?.attribute,
-    //   })
-    // );
-    dispatch(
-      getClusterMetrics({
-        attribute: selectedAttributeTaxonset?.attribute,
-        taxonSet: selectedAttributeTaxonset?.taxonset,
-      })
-    );
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
 
   const handleEnlarge = (chartName) => setEnlargedChart(chartName);
@@ -193,12 +177,12 @@ const Dashboard = () => {
                 {Object.entries(modalTitleMap).map(([key, label]) => (
                   <div key={key} className={styles.container}>
                     <div className={styles.header}>
-                      <button
+                      {/* <button
                         className={styles.enlargeButton}
                         onClick={() => handleEnlarge(key)}
                       >
                         <IoOpenOutline />
-                      </button>
+                      </button> */}
                       <p className={styles.title}>{label}</p>
                     </div>
                     {/* <div className={styles.chartContainer}> */}
