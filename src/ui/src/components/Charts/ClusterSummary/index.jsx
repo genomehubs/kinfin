@@ -1,129 +1,124 @@
-import React, { useState } from "react";
-import ReactPaginate from "react-paginate";
-import { useDispatch } from "react-redux";
-import TableComponent from "../../UIElements/TableComponent";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
-import { useSelector } from "react-redux";
 import { getClusterSummary } from "../../../app/store/analysis/actions";
+
+const pageSizeOptions = [5, 10, 25];
 
 const ClusterSummary = () => {
   const dispatch = useDispatch();
-  const [currentPage, setCurrentPage] = useState(1);
-  const handlePageChange = (e) => {
-    const newPage = e.selected + 1;
-    setCurrentPage(newPage); // Update state
-    dispatch(getClusterSummary({ attribute: "host", page: newPage }));
-  };
 
-  const data = useSelector(
-    (state) => state?.analysis?.clusterSummary?.data?.data
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 5,
+  });
+
+  const clusterSummaryData = useSelector(
+    (state) => state?.analysis?.clusterSummary?.data
   );
-  const pageCount = useSelector(
-    (state) => state?.analysis?.clusterSummary?.data?.total_pages
+  const selectedAttributeTaxonset = useSelector(
+    (state) => state?.config?.selectedAttributeTaxonset || null
   );
 
-  const columns = [
-    {
-      Header: <span className="tableColHeader">Cluster ID</span>,
-      accessor: "cluster_id",
-      Cell: ({ value }) => <div>{value ?? "-"}</div>,
+  const handlePaginationModelChange = useCallback(
+    (newPaginationModel) => {
+      if (
+        newPaginationModel.page !== paginationModel.page ||
+        newPaginationModel.pageSize !== paginationModel.pageSize
+      ) {
+        setPaginationModel(newPaginationModel);
+      }
     },
-    {
-      Header: <span className="tableColHeader">Cluster Protein Count</span>,
-      accessor: "cluster_protein_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Protein Median Count</span>,
-      accessor: "protein_median_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">TAXON Count</span>,
-      accessor: "TAXON_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Attribute</span>,
-      accessor: "attribute",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Cluster Type</span>,
-      accessor: "attribute_cluster_type",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Human Count</span>,
-      accessor: "protein_counts.human_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Other Count</span>,
-      accessor: "protein_counts.other_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Outgroup Count</span>,
-      accessor: "protein_counts.outgroup_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Human Median</span>,
-      accessor: "protein_counts.human_median",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Other Median</span>,
-      accessor: "protein_counts.other_median",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Outgroup Median</span>,
-      accessor: "protein_counts.outgroup_median",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Human Coverage</span>,
-      accessor: "protein_counts.human_cov",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Other Coverage</span>,
-      accessor: "protein_counts.other_cov",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Outgroup Coverage</span>,
-      accessor: "protein_counts.outgroup_cov",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
+    [paginationModel]
+  );
+
+  useEffect(() => {
+    const { page, pageSize } = paginationModel;
+
+    const payload = {
+      page: page + 1, // Backend is 1-based
+      size: pageSize,
+      attribute: selectedAttributeTaxonset?.attribute,
+    };
+
+    if (payload.attribute) {
+      dispatch(getClusterSummary(payload));
+    }
+  }, [paginationModel, dispatch, selectedAttributeTaxonset]);
+
+  const processedRows = useMemo(() => {
+    const rawData = clusterSummaryData?.data ?? {};
+
+    return Object.values(rawData).map((row) => {
+      const flatCounts =
+        row.protein_counts &&
+        Object.entries(row.protein_counts).reduce((acc, [key, value]) => {
+          acc[key] = value;
+          return acc;
+        }, {});
+
+      return {
+        id: row.cluster_id,
+        ...row,
+        ...flatCounts,
+      };
+    });
+  }, [clusterSummaryData]);
+
+  const rowCount = useMemo(() => {
+    return (
+      clusterSummaryData?.total_entries ??
+      clusterSummaryData?.total_pages * clusterSummaryData?.entries_per_page ??
+      processedRows.length
+    );
+  }, [clusterSummaryData, processedRows]);
+
+  const baseColumns = [
+    { field: "cluster_id", headerName: "Cluster ID", flex: 1 },
+    { field: "cluster_protein_count", headerName: "Total Proteins", flex: 1 },
+    { field: "protein_median_count", headerName: "Median Count", flex: 1 },
+    { field: "TAXON_count", headerName: "TAXON Count", flex: 1 },
+    { field: "attribute", headerName: "Attribute", flex: 1 },
+    { field: "attribute_cluster_type", headerName: "Cluster Type", flex: 1 },
   ];
 
+  const dynamicColumns = useMemo(() => {
+    const firstRow = processedRows[0] || {};
+    const dynamicKeys = Object.keys(firstRow).filter(
+      (key) =>
+        key.endsWith("_count") &&
+        !["cluster_protein_count", "TAXON_count"].includes(key)
+    );
+
+    return dynamicKeys.map((key) => ({
+      field: key,
+      headerName: key.replace(/_/g, " ").replace("count", "Count"),
+      flex: 1,
+    }));
+  }, [processedRows]);
+
+  const columns = useMemo(
+    () => [...baseColumns, ...dynamicColumns],
+    [dynamicColumns]
+  );
+
   return (
-    <>
-      {" "}
-      <div className="tableScroll">
-        <TableComponent
-          columns={columns}
-          data={(data && Object.values(data)) ?? []}
-          className="listingTable"
-          loading={false}
-        />
-      </div>
-      <ReactPaginate
-        previousLabel="<"
-        nextLabel=">"
-        breakLabel={<span className="paginationBreak">...</span>}
-        pageCount={pageCount}
-        onPageChange={handlePageChange}
-        pageRangeDisplayed={4}
-        containerClassName={styles.pagination}
-        pageClassName="page-item"
-        pageLinkClassName="page-link"
-        forcePage={currentPage - 1}
+    <div className={styles.container}>
+      <DataGrid
+        rows={processedRows}
+        columns={columns}
+        paginationMode="server"
+        paginationModel={paginationModel}
+        onPaginationModelChange={handlePaginationModelChange}
+        rowCount={rowCount}
+        pageSizeOptions={pageSizeOptions}
+        disableSelectionOnClick
+        checkboxSelection={false}
+        autoHeight
+        className={styles.listingTable}
       />
-    </>
+    </div>
   );
 };
 

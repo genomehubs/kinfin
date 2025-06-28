@@ -22,6 +22,11 @@ import {
   GET_BATCH_STATUS_FAILURE,
   GET_BATCH_STATUS_RESET,
   UPDATE_SESSION_META,
+  GET_CLUSTERING_SETS,
+  GET_CLUSTERING_SETS_SUCCESS,
+  GET_CLUSTERING_SETS_FAILURE,
+  GET_CLUSTERING_SETS_RESET,
+  SET_SELECTED_CLUSTER_SET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -85,10 +90,12 @@ export const deleteConfig = (data) => ({
   payload: data,
 });
 
-export const getValidProteomeIds = (data) => ({
-  type: GET_VALID_PROTEOME_IDS,
-  payload: data,
-});
+export const getValidProteomeIds = (data) => {
+  return {
+    type: GET_VALID_PROTEOME_IDS,
+    payload: data,
+  };
+};
 
 export const getValidProteomeIdsSuccess = (data) => ({
   type: GET_VALID_PROTEOME_IDS_SUCCESS,
@@ -132,3 +139,30 @@ export const updateSessionMeta = (sessionId, meta) => ({
   type: UPDATE_SESSION_META,
   payload: { sessionId, meta },
 });
+
+export const getClusteringSets = (data) => ({
+  type: GET_CLUSTERING_SETS,
+  payload: data,
+});
+
+export const getClusteringSetsSuccess = (data) => ({
+  type: GET_CLUSTERING_SETS_SUCCESS,
+  payload: data,
+});
+
+export const getClusteringSetsFailure = (data) => ({
+  type: GET_CLUSTERING_SETS_FAILURE,
+  payload: data,
+});
+
+export const getClusteringSetsReset = () => ({
+  type: GET_CLUSTERING_SETS_RESET,
+});
+
+export const setSelectedClusterSet = (data) => {
+  console.log("🚀2 ~ setSelectedClusterSet ~ data:", data);
+  return {
+    type: SET_SELECTED_CLUSTER_SET,
+    payload: data,
+  };
+};
