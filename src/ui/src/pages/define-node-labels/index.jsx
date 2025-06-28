@@ -135,7 +135,7 @@ const DefineNodeLabels = () => {
         {/* Step 2 */}
         <div
           className={`${styles.workflowStep} ${
-            !selectedClusterSet ? styles.disabled : ""
+            selectedClusterSet ? "" : styles.disabled
           }`}
         >
           <div className={styles.stepHeader}>
@@ -189,7 +189,9 @@ const DefineNodeLabels = () => {
                 value={userName}
                 onChange={(e) => {
                   setUserName(e.target.value);
-                  if (nameError) setNameError("");
+                  if (nameError) {
+                    setNameError("");
+                  }
                 }}
                 error={Boolean(nameError)}
                 helperText={nameError}

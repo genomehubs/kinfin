@@ -61,11 +61,11 @@ const Dashboard = () => {
         attribute: selectedAttributeTaxonset?.attribute,
       })
     );
-    dispatch(
-      getAttributeSummary({
-        attribute: selectedAttributeTaxonset?.attribute,
-      })
-    );
+    // dispatch(
+    //   getAttributeSummary({
+    //     attribute: selectedAttributeTaxonset?.attribute,
+    //   })
+    // );
     dispatch(
       getClusterMetrics({
         attribute: selectedAttributeTaxonset?.attribute,
@@ -201,9 +201,9 @@ const Dashboard = () => {
                       </button>
                       <p className={styles.title}>{label}</p>
                     </div>
-                    <div className={styles.chartContainer}>
-                      {renderDashboardChart(key)}
-                    </div>
+                    {/* <div className={styles.chartContainer}> */}
+                    {renderDashboardChart(key)}
+                    {/* </div> */}
                   </div>
                 ))}
               </div>

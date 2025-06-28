@@ -166,11 +166,11 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page } = action.payload;
+  const { attribute, page, size } = action.payload;
   const data = {
     attribute,
     page,
-    size: 10,
+    size,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
