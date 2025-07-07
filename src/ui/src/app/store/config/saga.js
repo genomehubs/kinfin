@@ -111,10 +111,6 @@ function* initAnalysisSaga(action) {
         sessionId: response.data.session_id,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
-      yield call(
-        dispatchSuccessToast,
-        "KinFin analysis has started. Please wait..."
-      );
       yield call(navigate, `/${response.data.session_id}/dashboard`);
       yield fork(pollRunStatusSaga, response.data.session_id); // start polling
     } else {
@@ -143,7 +139,6 @@ function* getRunStatusSaga() {
     const response = yield call(getStatus);
     if (response.status === "success") {
       yield put(getRunStatusSuccess(response.data));
-      yield call(dispatchSuccessToast, "Run status fetched successfully!");
     } else {
       yield put(getRunStatusFailure(response));
       yield call(
@@ -169,10 +164,6 @@ function* getValidProteomeIdsSaga(action) {
 
     if (response.status === "success") {
       yield put(getValidProteomeIdsSuccess(response.data));
-      yield call(
-        dispatchSuccessToast,
-        "Valid proteome IDs fetched successfully!"
-      );
     } else {
       yield put(getValidProteomeIdsFailure(response));
       yield call(
@@ -194,7 +185,7 @@ export function* getBatchStatusSaga(action) {
     const response = yield call(getBatchStatus, sessionIds);
     if (response.status === "success") {
       yield put(getBatchStatusSuccess(response.data));
-      yield call(dispatchSuccessToast, "Batch status fetched successfully!");
+
       for (const session of response.data.sessions) {
         const isActive = session.status === "completed";
 
