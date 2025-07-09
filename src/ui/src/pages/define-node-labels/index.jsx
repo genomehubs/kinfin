@@ -69,6 +69,7 @@ const DefineNodeLabels = () => {
     setModalOpen(false);
     setUserName("");
     setNameError("");
+    dispatch(setSelectedClusterSet(null));
   };
 
   const handleSubmit = () => {
@@ -149,32 +150,39 @@ const DefineNodeLabels = () => {
             validationErrors={validationErrors}
             onDataChange={setParsedData}
           />
-
-          {parsedData && (
-            <div className={styles.bottomSection}>
-              <button className={styles.cancelButton} onClick={cancelAnalysis}>
-                Cancel Analysis
-              </button>
-              <button
-                disabled={
-                  validationErrors.headers.length > 0 ||
-                  Object.keys(validationErrors.rows).length > 0
-                }
-                className={styles.initButton}
-                onClick={openModal}
-                title={
-                  validationErrors.headers.length > 0 ||
-                  Object.keys(validationErrors.rows).length > 0
-                    ? "Please fix validation issues"
-                    : ""
-                }
-              >
-                Initialize Kinfin Analysis
-              </button>
-            </div>
-          )}
         </div>
+        <div
+          className={`${styles.workflowStep} ${
+            !selectedClusterSet ? styles.disabled : ""
+          }`}
+        >
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>3</span>
+            <h3>Initialize KinFin Analysis</h3>
+          </div>
 
+          <div className={styles.bottomSection}>
+            <button className={styles.cancelButton} onClick={cancelAnalysis}>
+              Cancel Analysis
+            </button>
+            <button
+              disabled={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+              }
+              className={styles.initButton}
+              onClick={openModal}
+              title={
+                validationErrors.headers.length > 0 ||
+                Object.keys(validationErrors.rows).length > 0
+                  ? "Please fix validation issues"
+                  : ""
+              }
+            >
+              Initialize KinFin Analysis
+            </button>
+          </div>
+        </div>
         {/* Modal for Analysis Name */}
         <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth>
           <DialogTitle>Initialize Analysis</DialogTitle>

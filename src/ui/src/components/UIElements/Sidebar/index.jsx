@@ -18,6 +18,7 @@ import {
   deleteConfig,
   getValidProteomeIds,
   getBatchStatus,
+  setSelectedClusterSet,
 } from "../../../app/store/config/actions";
 import { Box } from "@mui/material";
 
@@ -127,7 +128,10 @@ const Sidebar = ({ open, setOpen }) => {
           {/* Default item */}
           <div className={styles.defaultSection}>
             <div
-              onClick={() => navigate(`/define-node-labels`)}
+              onClick={() => {
+                navigate(`/define-node-labels`);
+                dispatch(setSelectedClusterSet(null));
+              }}
               className={`${styles.menuItem} ${styles.newAnalysis}`}
             >
               <span className={styles.label}>{defaultItem.label}</span>
