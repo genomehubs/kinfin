@@ -1,0 +1,18 @@
+[
+  {
+    "id": "155a0782-2203-4168-b002-8ebc5ccaea7c",
+    "name": "Nematodes",
+    "version": "v1.0",
+    "date": "2025-05-10",
+    "description": "Clustering of all nematodes proteomes using standard parameters.",
+    "path": "nematodes"
+  },
+  {
+    "id": "f259e2ec-9080-46ca-9f03-4f290cb8d39d",
+    "name": "All Molluscs - Filtered",
+    "version": "v1.1",
+    "date": "2025-06-01",
+    "description": "Subset of mollusc proteomes filtered by assembly metrics and clustered with adjusted inflation parameter.",
+    "path": "molluscdb"
+  }
+]

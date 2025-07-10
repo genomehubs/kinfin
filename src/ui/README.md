@@ -26,13 +26,27 @@ cd kinfin
 ## 📂 2. Download and Extract Test Data
 
 ```bash
-export WORKDIR=~/tmp/kinfin
-mkdir -p $WORKDIR
-cd $WORKDIR
+export KINFIN_WORKDIR=~/tmp/kinfin
+mkdir -p $KINFIN_WORKDIR
+cd $KINFIN_WORKDIR
+```
 
+### Download and extract api_test_data → nematodes
+
+```
 curl -L http://molluscdb.cog.sanger.ac.uk/dev/kinfin/api_test_data.tar.gz -o api_test_data.tar.gz
 tar -xzf api_test_data.tar.gz
 rm api_test_data.tar.gz
+mv api_test_data nematodes
+```
+
+### Download and extract molluscdb_v1_test_data → molluscdb
+
+```
+curl -L https://molluscdb.cog.sanger.ac.uk/dev/kinfin/molluscdb_v1_test_data.tar.gz -o molluscdb_v1_test_data.tar.gz
+tar -xzf molluscdb_v1_test_data.tar.gz
+rm molluscdb_v1_test_data.tar.gz
+mv molluscdb_v1_test_data molluscdb
 ```
 
 ## 🧪 3. Setup and Start the Backend API
@@ -48,10 +62,7 @@ Start the backend API:
 
 ```bash
 export KINFIN_PORT=8000
-export CLUSTER_FILE_PATH=$WORKDIR/api_test_data/Orthogroups.txt
-export SEQUENCE_IDS_FILE_PATH=$WORKDIR/api_test_data/kinfin.SequenceIDs.txt
-export TAXON_IDX_MAPPING_FILE_PATH=$WORKDIR/api_test_data/taxon_idx_mapping.json
-export RESULTS_BASE_DIR=$WORKDIR/output
+export RESULTS_BASE_DIR=$KINFIN_WORKDIR/output
 export SESSION_INACTIVITY_THRESHOLD=24  # Files retained for 24 hours
 
 ./src/main.py serve -p $KINFIN_PORT

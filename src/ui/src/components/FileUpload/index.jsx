@@ -25,7 +25,7 @@ const FileUpload = ({
 }) => {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [parsedData, setParsedData] = useState(null);
-  const [viewMode, setViewMode] = useState("json");
+  const [viewMode, setViewMode] = useState("table");
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState("");
 
@@ -37,7 +37,7 @@ const FileUpload = ({
 
   const resetViewState = useCallback(() => {
     setJsonError("");
-    setViewMode("json");
+    setViewMode("table");
   }, []);
 
   const updateDataState = useCallback(
@@ -183,7 +183,7 @@ const FileUpload = ({
       {parsedData && (
         <div className={styles.preview}>
           <div className={styles.toggleButtons}>
-            {["json", "table"].map((mode) => (
+            {["table", "json"].map((mode) => (
               <button
                 key={mode}
                 className={viewMode === mode ? styles.active : ""}
