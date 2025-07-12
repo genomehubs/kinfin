@@ -56,22 +56,6 @@ const Dashboard = () => {
     dispatch(getAvailableAttributesTaxonsets());
     dispatch(getRunSummary());
     dispatch(getCountsByTaxon());
-    dispatch(
-      getClusterSummary({
-        attribute: selectedAttributeTaxonset?.attribute,
-      })
-    );
-    dispatch(
-      getAttributeSummary({
-        attribute: selectedAttributeTaxonset?.attribute,
-      })
-    );
-    dispatch(
-      getClusterMetrics({
-        attribute: selectedAttributeTaxonset?.attribute,
-        taxonSet: selectedAttributeTaxonset?.taxonset,
-      })
-    );
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
 
   const handleEnlarge = (chartName) => setEnlargedChart(chartName);
@@ -103,9 +87,9 @@ const Dashboard = () => {
     attributeSummary: "Attribute Summary",
     clusterSummary: "Cluster Summary",
     clusterMetrics: "Cluster Metrics",
-    clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
-    clusterAbsence: "Cluster Absence Across Taxon Sets",
-    taxonCount: "Taxon Count per Taxon Set",
+    // clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
+    // clusterAbsence: "Cluster Absence Across Taxon Sets",
+    // taxonCount: "Taxon Count per Taxon Set",
   };
 
   const renderModalContent = () => {
@@ -116,12 +100,7 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
-      case "clusterAndProteinDistribution":
-        return <ClusterAndProteinDistributionPerTaxonSet />;
-      case "clusterAbsence":
-        return <ClusterAbsenceAcrossTaxonSets />;
-      case "taxonCount":
-        return <TaxonCountPerTaxonSet />;
+
       default:
         return null;
     }
@@ -150,12 +129,7 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
-      case "clusterAndProteinDistribution":
-        return <ClusterAndProteinDistributionPerTaxonSet />;
-      case "clusterAbsence":
-        return <ClusterAbsenceAcrossTaxonSets />;
-      case "taxonCount":
-        return <TaxonCountPerTaxonSet />;
+
       default:
         return null;
     }
@@ -203,17 +177,17 @@ const Dashboard = () => {
                 {Object.entries(modalTitleMap).map(([key, label]) => (
                   <div key={key} className={styles.container}>
                     <div className={styles.header}>
-                      <button
+                      {/* <button
                         className={styles.enlargeButton}
                         onClick={() => handleEnlarge(key)}
                       >
                         <IoOpenOutline />
-                      </button>
+                      </button> */}
                       <p className={styles.title}>{label}</p>
                     </div>
-                    <div className={styles.chartContainer}>
-                      {renderDashboardChart(key)}
-                    </div>
+                    {/* <div className={styles.chartContainer}> */}
+                    {renderDashboardChart(key)}
+                    {/* </div> */}
                   </div>
                 ))}
               </div>

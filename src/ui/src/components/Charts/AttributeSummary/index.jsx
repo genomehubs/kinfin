@@ -1,109 +1,157 @@
-import React, { useCallback, useState } from "react";
-import ReactPaginate from "react-paginate";
-import { useDispatch } from "react-redux";
-import TableComponent from "../../UIElements/TableComponent";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { DataGrid } from "@mui/x-data-grid";
 import styles from "./AttributeSummary.module.scss";
-import { useSelector } from "react-redux";
 import { getAttributeSummary } from "../../../app/store/analysis/actions";
+
+const pageSizeOptions = [10, 25, 50];
 
 const AttributeSummary = () => {
   const dispatch = useDispatch();
-  const [currentPage, setCurrentPage] = useState(1);
-  const handlePageChange = (e) => {
-    const newPage = e.selected + 1;
-    setCurrentPage(newPage);
-    dispatch(getAttributeSummary({ attribute: "host", page: newPage }));
-  };
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
 
-  const data = useSelector(
-    (state) => state?.analysis?.attributeSummary?.data?.data
+  const isInitialMount = useRef(true);
+
+  const attributeData = useSelector(
+    (state) => state?.analysis?.attributeSummary?.data || null
   );
-  const pageCount = useSelector(
-    (state) => state?.analysis?.attributeSummary?.data?.total_pages
+  const selectedAttributeTaxonset = useSelector(
+    (state) => state?.config?.selectedAttributeTaxonset || null
   );
 
-  const columns = [
-    {
-      Header: <span className="tableColHeader">Taxon Set</span>,
-      accessor: "taxon_set",
-      Cell: ({ value }) => <div>{value ?? "-"}</div>,
+  // Reset page to 0 when attribute changes
+  useEffect(() => {
+    if (selectedAttributeTaxonset?.attribute) {
+      setPaginationModel((prev) => ({
+        ...prev,
+        page: 0,
+      }));
+    }
+  }, [selectedAttributeTaxonset?.attribute]);
+
+  // Fetch attribute summary
+  useEffect(() => {
+    const { page, pageSize } = paginationModel;
+
+    if (!selectedAttributeTaxonset?.attribute) return;
+
+    const payload = {
+      attribute: selectedAttributeTaxonset.attribute,
+      page: page + 1, // Convert 0-based to 1-based for API
+      size: pageSize,
+    };
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
+
+    dispatch(getAttributeSummary(payload));
+  }, [paginationModel, selectedAttributeTaxonset?.attribute, dispatch]);
+
+  const { rows, rowCount } = useMemo(() => {
+    const rawData = attributeData?.data ?? {};
+    const processedRows = Object.values(rawData).map((row, index) => ({
+      id: index + paginationModel.page * paginationModel.pageSize,
+      ...row,
+      singleton_cluster_count: row?.singleton?.cluster_count ?? "-",
+      singleton_protein_count: row?.singleton?.protein_count ?? "-",
+      specific_cluster_count: row?.specific?.cluster_count ?? "-",
+      shared_cluster_count: row?.shared?.cluster_count ?? "-",
+      absent_cluster_total_count: row?.absent?.cluster_total_count ?? "-",
+      TAXON_taxa: Array.isArray(row?.TAXON_taxa)
+        ? row.TAXON_taxa.join(", ")
+        : "-",
+    }));
+
+    const totalRows =
+      attributeData?.total_entries ??
+      attributeData?.total_pages * attributeData?.entries_per_page ??
+      processedRows.length;
+
+    return {
+      rows: processedRows,
+      rowCount: totalRows,
+    };
+  }, [attributeData, paginationModel.page, paginationModel.pageSize]);
+
+  const columns = useMemo(
+    () => [
+      { field: "taxon_set", headerName: "Taxon Set", flex: 1 },
+      { field: "cluster_total_count", headerName: "Total Clusters", flex: 1 },
+      { field: "protein_total_count", headerName: "Total Proteins", flex: 1 },
+      {
+        field: "singleton_cluster_count",
+        headerName: "Singleton Clusters",
+        flex: 1,
+      },
+      {
+        field: "singleton_protein_count",
+        headerName: "Singleton Proteins",
+        flex: 1,
+      },
+      {
+        field: "specific_cluster_count",
+        headerName: "Specific Clusters",
+        flex: 1,
+      },
+      { field: "shared_cluster_count", headerName: "Shared Clusters", flex: 1 },
+      {
+        field: "absent_cluster_total_count",
+        headerName: "Absent Clusters",
+        flex: 1,
+      },
+      { field: "TAXON_taxa", headerName: "Taxa", flex: 2 },
+    ],
+    []
+  );
+
+  const handlePaginationModelChange = useCallback(
+    (newPaginationModel) => {
+      if (
+        newPaginationModel.page !== paginationModel.page ||
+        newPaginationModel.pageSize !== paginationModel.pageSize
+      ) {
+        setPaginationModel(newPaginationModel);
+      }
     },
-    {
-      Header: <span className="tableColHeader">Total Clusters</span>,
-      accessor: "cluster_total_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Total Proteins</span>,
-      accessor: "protein_total_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Singleton Clusters</span>,
-      accessor: "singleton.cluster_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Singleton Proteins</span>,
-      accessor: "singleton.protein_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Specific Clusters</span>,
-      accessor: "specific.cluster_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Shared Clusters</span>,
-      accessor: "shared.cluster_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Absent Clusters</span>,
-      accessor: "absent.cluster_total_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Taxon Count</span>,
-      accessor: "TAXON_count",
-      Cell: ({ value }) => <div className={styles.Row}>{value ?? "-"}</div>,
-    },
-    {
-      Header: <span className="tableColHeader">Taxa</span>,
-      accessor: "TAXON_taxa",
-      Cell: useCallback(
-        ({ value }) => (
-          <div className={styles.Row}>{value?.join(", ") ?? "-"}</div>
-        ),
-        []
-      ),
-    },
-  ];
+    [paginationModel]
+  );
 
   return (
-    <>
-      {" "}
-      <div className="tableScroll">
-        <TableComponent
-          columns={columns}
-          data={(data && Object.values(data)) ?? []}
-          className="listingTable"
-          loading={false}
-        />
-      </div>
-      <ReactPaginate
-        previousLabel="<"
-        nextLabel=">"
-        breakLabel={<span className="paginationBreak">...</span>}
-        pageCount={pageCount}
-        onPageChange={handlePageChange}
-        pageRangeDisplayed={4}
-        containerClassName={styles.pagination}
-        pageClassName="page-item"
-        pageLinkClassName="page-link"
-        forcePage={currentPage - 1}
+    <div style={{ height: "70vh", width: "100%" }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        paginationMode="server"
+        paginationModel={paginationModel}
+        onPaginationModelChange={handlePaginationModelChange}
+        rowCount={rowCount}
+        pageSizeOptions={pageSizeOptions}
+        disableSelectionOnClick
+        checkboxSelection={false}
+        className={styles.listingTable}
+        sx={{
+          "& .MuiDataGrid-columnHeader": {
+            whiteSpace: "normal",
+            lineHeight: "normal",
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            fontWeight: "bold",
+            whiteSpace: "normal",
+            lineHeight: "normal",
+          },
+        }}
       />
-    </>
+    </div>
   );
 };
 
