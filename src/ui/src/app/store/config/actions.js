@@ -160,7 +160,6 @@ export const getClusteringSetsReset = () => ({
 });
 
 export const setSelectedClusterSet = (data) => {
-  console.log("🚀2 ~ setSelectedClusterSet ~ data:", data);
   return {
     type: SET_SELECTED_CLUSTER_SET,
     payload: data,

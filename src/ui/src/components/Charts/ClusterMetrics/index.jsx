@@ -57,15 +57,10 @@ const ClusterMetrics = () => {
 
     dispatch(getClusterMetrics(payload));
   }, [paginationModel, selectedAttributeTaxonset?.attribute, dispatch]);
-  console.log(
-    "🚀 ~ useEffect ~ selectedAttributeTaxonset:",
-    selectedAttributeTaxonset
-  );
 
   const { rows, rowCount } = useMemo(() => {
     const rawData = clusterMetrics?.data ?? {};
     const processedRows = Object.values(rawData).map((row, index) => {
-      console.log("🚀 ~ processedRows ~ row:", row);
       const counts = row?.counts || {};
       const coverage = row?.coverage || {};
 
