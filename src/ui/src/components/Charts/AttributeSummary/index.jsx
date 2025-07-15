@@ -87,54 +87,46 @@ const AttributeSummary = () => {
 
   const columns = useMemo(
     () => [
-      { field: "taxon_set", headerName: "Taxon Set", minWidth: 150, flex: 1 },
+      { field: "taxon_set", headerName: "Taxon Set", minWidth: 150 },
       {
         field: "cluster_total_count",
         headerName: "Total Clusters",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "protein_total_count",
         headerName: "Total Proteins",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "singleton_cluster_count",
         headerName: "Singleton Clusters",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "singleton_protein_count",
         headerName: "Singleton Proteins",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "specific_cluster_count",
         headerName: "Specific Clusters",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "shared_cluster_count",
         headerName: "Shared Clusters",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "absent_cluster_total_count",
         headerName: "Absent Clusters",
         minWidth: 80,
-        flex: 1,
       },
       {
         field: "TAXON_taxa",
         headerName: "Taxa",
         minWidth: 80,
-        flex: 1,
       },
     ],
     []
