@@ -6,32 +6,32 @@ import os
 import traceback
 from datetime import datetime, timedelta
 from functools import wraps
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from tempfile import NamedTemporaryFile
-from core.utils import check_file
 
 from api.fileparsers import (
     parse_attribute_summary_file,
     parse_cluster_metrics_file,
     parse_cluster_summary_file,
+    parse_clustering_file,
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
-    parse_clustering_file,
 )
 from api.sessions import query_manager
 from api.utils import (
+    CLUSTERING_DATASETS,
     extract_attributes_and_taxon_sets,
     read_status,
     run_cli_command,
     sort_and_paginate_result,
-    CLUSTERING_DATASETS,
 )
+from core.utils import check_file
 
 LOGGER = logging.getLogger("uvicorn.error")
 LOGGER.setLevel(logging.DEBUG)
@@ -541,7 +541,7 @@ async def get_cluster_summary(
                 for row in result.values():
                     flat_row = row.copy()
                     protein_counts = flat_row.pop("protein_counts", {})
-                    flat_row.update(protein_counts) 
+                    flat_row.update(protein_counts)
                     flattened_rows.append(flat_row)
 
                 if not flattened_rows:
@@ -579,7 +579,6 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=500,
                 )
-
 
         paginated_result, total_pages = sort_and_paginate_result(
             result,
@@ -650,7 +649,6 @@ async def get_valid_taxons_api(
     clusterId: str,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
-    
 ):
     try:
         cluster_info = CLUSTERING_DATASETS.get(clusterId)
