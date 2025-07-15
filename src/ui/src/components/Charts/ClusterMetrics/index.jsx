@@ -101,62 +101,53 @@ const ClusterMetrics = () => {
 
   const columns = useMemo(
     () => [
-      { field: "cluster_id", headerName: "Cluster ID", flex: 1, minWidth: 120 },
+      { field: "cluster_id", headerName: "Cluster ID", minWidth: 120 },
       {
         field: "cluster_status",
         headerName: "Cluster Status",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "cluster_type",
         headerName: "Cluster Type",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "present_in_cluster",
         headerName: "Present in Cluster",
-        flex: 1,
         minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "is_singleton",
         headerName: "Singleton",
-        flex: 1,
         minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "is_specific",
         headerName: "Specific",
-        flex: 1,
         minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "cluster_protein_count",
         headerName: "Cluster Protein Count",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "cluster_proteome_count",
         headerName: "Cluster Proteome Count",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "TAXON_protein_count",
         headerName: "Taxon Protein Count",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "TAXON_mean_count",
         headerName: "Taxon Mean Count",
-        flex: 1,
         minWidth: 120,
         valueFormatter: (value) => {
           const num = Number(value);
@@ -166,7 +157,6 @@ const ClusterMetrics = () => {
       {
         field: "non_taxon_mean_count",
         headerName: "Non-Taxon Mean Count",
-        flex: 1,
         minWidth: 120,
         valueFormatter: (value) => {
           const num = Number(value);
@@ -176,13 +166,11 @@ const ClusterMetrics = () => {
       {
         field: "representation",
         headerName: "Representation",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "log2_mean(TAXON/others)",
         headerName: "Log2 Mean ",
-        flex: 1,
         minWidth: 120,
         valueFormatter: (value) => {
           const num = Number(value);
@@ -192,7 +180,6 @@ const ClusterMetrics = () => {
       {
         field: "pvalue(TAXON vs. others)",
         headerName: "P-value",
-        flex: 1,
         minWidth: 120,
         valueFormatter: (value) => {
           const num = Number(value);
@@ -202,25 +189,21 @@ const ClusterMetrics = () => {
       {
         field: "taxon_coverage",
         headerName: "Taxon Coverage",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "TAXON_count",
         headerName: "TAXON Count",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "non_TAXON_count",
         headerName: "Non-Taxon Count",
-        flex: 1,
         minWidth: 120,
       },
       {
         field: "TAXON_taxa",
         headerName: "TAXON Taxa",
-        flex: 1,
         minWidth: 120,
         renderCell: ({ value }) =>
           Array.isArray(value) ? value.join(", ") : value ?? "-",
@@ -228,7 +211,6 @@ const ClusterMetrics = () => {
       {
         field: "non_TAXON_taxa",
         headerName: "Non-TAXON Taxa",
-        flex: 1,
         minWidth: 120,
         renderCell: ({ value }) =>
           Array.isArray(value) ? value.join(", ") : value ?? "-",
