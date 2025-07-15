@@ -1,16 +1,15 @@
 import asyncio
 import csv
+import io
 import json
 import logging
 import os
-import traceback
 from datetime import datetime, timedelta
 from functools import wraps
-from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
@@ -556,17 +555,18 @@ async def get_cluster_summary(
                     )
 
                 first_row = flattened_rows[0]
+                buffer = io.StringIO()
+                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(flattened_rows)
+                buffer.seek(0)
 
-                with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
-                    writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
-                    writer.writeheader()
-                    writer.writerows(flattened_rows)
-                    tmp_file_path = tmp_file.name
-
-                return FileResponse(
-                    tmp_file_path,
+                return StreamingResponse(
+                    buffer,
                     media_type="text/tab-separated-values",
-                    filename=f"{attribute}_cluster_summary.tsv",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"
+                    },
                 )
 
             except Exception as e:
@@ -600,7 +600,6 @@ async def get_cluster_summary(
         return JSONResponse(response.model_dump())
     except Exception as e:
         print(e)
-        traceback.print_exc()
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
@@ -857,41 +856,29 @@ async def get_attribute_summary(
 
         if as_file:
             if not result:
-                return JSONResponse(
-                    content=ResponseSchema(
-                        status="error",
-                        message="No data available for download.",
-                        error="no_data",
-                        query=str(request.url),
-                    ).model_dump(),
-                    status_code=404,
-                )
+                return ResponseSchema(
+                    status="error",
+                    message="No data available for download.",
+                    error="no_data",
+                    query=str(request.url),
+                ).to_json_response(status_code=404)
 
-            try:
-                rows = list(result.values())
+            rows = list(result.values())
+            first_row = rows[0]
 
-                first_row = rows[0]
-                with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
-                    writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
-                    writer.writeheader()
-                    writer.writerows(rows)
-                    tmp_file_path = tmp_file.name
+            buffer = io.StringIO()
+            writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+            writer.writeheader()
+            writer.writerows(rows)
+            buffer.seek(0)
 
-                return FileResponse(
-                    tmp_file_path,
-                    media_type="text/tab-separated-values",
-                    filename=f"{attribute}_attribute_summary.tsv",
-                )
-            except Exception as e:
-                return JSONResponse(
-                    content=ResponseSchema(
-                        status="error",
-                        message="Failed to generate TSV file",
-                        error=str(e),
-                        query=str(request.url),
-                    ).model_dump(),
-                    status_code=500,
-                )
+            return StreamingResponse(
+                buffer,
+                media_type="text/tab-separated-values",
+                headers={
+                    "Content-Disposition": f"attachment; filename={attribute}_attribute_summary.tsv"
+                },
+            )
 
         paginated_result, total_pages = sort_and_paginate_result(
             result,
@@ -1012,19 +999,22 @@ async def get_cluster_metrics(
 
             try:
                 rows = list(result.values())
-                first_row = rows[0]
+                first_row = rows[0] if rows else {}
 
-                with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
-                    writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
-                    writer.writeheader()
-                    writer.writerows(rows)
-                    tmp_file_path = tmp_file.name
+                buffer = io.StringIO()
+                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(rows)
+                buffer.seek(0)
 
-                return FileResponse(
-                    tmp_file_path,
+                return StreamingResponse(
+                    buffer,
                     media_type="text/tab-separated-values",
-                    filename=f"{attribute}_{taxon_set}_cluster_metrics.tsv",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
+                    },
                 )
+
             except Exception as e:
                 return JSONResponse(
                     content=ResponseSchema(
