@@ -20,7 +20,8 @@ import { useDispatch, useSelector } from "react-redux";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
 import ClusterMetrics from "../../components/Charts/ClusterMetrics";
-
+import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
+import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import { useNavigate, useParams } from "react-router-dom";
 import { initAnalysis } from "../../app/store/config/actions";
 import Modal from "@mui/material/Modal";
@@ -78,6 +79,8 @@ const Dashboard = () => {
     attributeSummary: "Attribute Summary",
     clusterSummary: "Cluster Summary",
     clusterMetrics: "Cluster Metrics",
+    allRarefactionCurve: "All Rarefaction Curve",
+    clusterSizeDistribution: "Cluster Size Distribution",
   };
 
   const handleDownload = (chartKey) => {
@@ -126,6 +129,10 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
+      case "allRarefactionCurve":
+        return <AllRarefactionCurve />;
+      case "clusterSizeDistribution":
+        return <ClusterSizeDistribution />;
 
       default:
         return null;
@@ -171,22 +178,41 @@ const Dashboard = () => {
             <div className={styles.page}>
               <RunSummary />
               <div className={styles.chartsContainer}>
-                {Object.entries(modalTitleMap).map(([key, label]) => (
-                  <div key={key} className={styles.container}>
-                    <div className={styles.header}>
-                      <button
-                        className={styles.enlargeButton}
-                        onClick={() => handleDownload(key)}
-                      >
-                        <MdOutlineFileDownload />
-                      </button>
-                      <p className={styles.title}>{label}</p>
+                {["attributeSummary", "clusterSummary", "clusterMetrics"].map(
+                  (key) => (
+                    <div key={key} className={styles.container}>
+                      <div className={styles.header}>
+                        <button
+                          className={styles.enlargeButton}
+                          onClick={() => handleDownload(key)}
+                        >
+                          <MdOutlineFileDownload />
+                        </button>
+                        <p className={styles.title}>{modalTitleMap[key]}</p>
+                      </div>
+                      {renderDashboardChart(key)}
                     </div>
-                    {/* <div className={styles.chartContainer}> */}
-                    {renderDashboardChart(key)}
-                    {/* </div> */}
-                  </div>
-                ))}
+                  )
+                )}
+
+                <div className={styles.rowContainer}>
+                  {["allRarefactionCurve", "clusterSizeDistribution"].map(
+                    (key) => (
+                      <div key={key} className={styles.container}>
+                        <div className={styles.header}>
+                          <button
+                            className={styles.enlargeButton}
+                            onClick={() => handleDownload(key)}
+                          >
+                            <MdOutlineFileDownload />
+                          </button>
+                          <p className={styles.title}>{modalTitleMap[key]}</p>
+                        </div>
+                        {renderDashboardChart(key)}
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </>

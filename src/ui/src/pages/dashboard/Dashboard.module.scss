@@ -103,3 +103,25 @@
   background-color: var(--accent-color);
   color: var(--bg-color);
 }
+.rowContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+
+  .container {
+    flex: 1 1 48%;
+    max-width: 48%;
+  }
+}
+
+@media (max-width: 768px) {
+  .rowContainer {
+    flex-direction: column;
+
+    .container {
+      max-width: 100%;
+    }
+  }
+}

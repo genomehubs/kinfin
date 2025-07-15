@@ -1,6 +1,14 @@
 .container {
-  min-height: 100%;
-  .image {
-    border-radius: 12px;
-  }
+  height: 50vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.image {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
 }
