@@ -95,7 +95,7 @@ export const getClusterMetrics = async (data) => {
     `/cluster-metrics/${data.attribute}/${data.taxonSet}`,
     {
       headers: { "x-session-id": getSessionId() },
-      params: { page: data.page, size: data.size },
+      params: { page: data.page, size: data.size, as_file: data.asFile },
     }
   );
   return response.data;

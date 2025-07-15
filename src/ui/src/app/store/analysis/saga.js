@@ -216,12 +216,13 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page, size } = action.payload;
+  const { attribute, taxonSet, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
     size,
+    asFile,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -230,6 +231,16 @@ function* getClusterMetricsSaga(action) {
       return;
     }
     const response = yield call(getClusterMetrics, data);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_${taxonSet}_cluster_metrics.tsv`,
+        "text/tab-separated-values"
+      );
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getClusterMetricsSuccess(response));
