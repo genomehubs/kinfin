@@ -4,9 +4,6 @@ import {
   getAvailableAttributesTaxonsets,
   getRunSummary,
   getCountsByTaxon,
-  getClusterSummary,
-  getAttributeSummary,
-  getClusterMetrics,
 } from "../../app/store/analysis/actions";
 import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
@@ -18,10 +15,7 @@ import { useDispatch, useSelector } from "react-redux";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
 import ClusterMetrics from "../../components/Charts/ClusterMetrics";
-import ClusterAndProteinDistributionPerTaxonSet from "../../components/Charts/ClusterAndProteinDistributionPerTaxonSet";
-import ClusterAbsenceAcrossTaxonSets from "../../components/Charts/ClusterAbsenceAcrossTaxonSets";
-import TaxonCountPerTaxonSet from "../../components/Charts/TaxonCountPerTaxonSet";
-import { IoOpenOutline } from "react-icons/io5";
+
 import { useNavigate, useParams } from "react-router-dom";
 import { initAnalysis } from "../../app/store/config/actions";
 import Modal from "@mui/material/Modal";
@@ -32,10 +26,6 @@ const Dashboard = () => {
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [parsedData, setParsedData] = useState([]);
-  const [validationErrors, setValidationErrors] = useState({
-    headers: [],
-    rows: {},
-  });
 
   const dispatch = useDispatch();
   const { sessionId } = useParams();
@@ -58,8 +48,6 @@ const Dashboard = () => {
     dispatch(getCountsByTaxon());
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
 
-  const handleEnlarge = (chartName) => setEnlargedChart(chartName);
-
   const closeModal = () => setEnlargedChart(null);
 
   const reinitializeSession = () => {
@@ -70,12 +58,10 @@ const Dashboard = () => {
     };
     dispatch(initAnalysis(payload));
   };
-  const handleSessionClick = (session) => {
+  const handleSessionClick = () => {
     if (!sessionDetails?.config) return;
     try {
       setParsedData(sessionDetails?.config);
-
-      setValidationErrors({ headers: [], rows: {} });
 
       setShowDataModal(true);
     } catch (error) {
@@ -104,21 +90,6 @@ const Dashboard = () => {
       default:
         return null;
     }
-  };
-  const handleHeaderEdit = (oldHeader, newHeader) => {
-    const updatedData = parsedData.map((row) => {
-      const updatedRow = { ...row };
-      updatedRow[newHeader] = updatedRow[oldHeader];
-      delete updatedRow[oldHeader];
-      return updatedRow;
-    });
-    setParsedData(updatedData);
-  };
-
-  const handleCellEdit = (e, rowIdx, header) => {
-    const updatedData = [...parsedData];
-    updatedData[rowIdx][header] = e.target.textContent.trim();
-    setParsedData(updatedData);
   };
 
   const renderDashboardChart = (chartKey) => {

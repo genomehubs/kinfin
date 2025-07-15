@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button, Menu, MenuItem, Typography, Box, Stack } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { useDispatch, useSelector } from "react-redux";
-import { setSelectedClusterSet } from "../../app/store/config/actions";
+import { useSelector } from "react-redux";
 
 export default function ClusterSetSelectionDropdown({ onChange }) {
   const [anchorEl, setAnchorEl] = useState(null);
-  const dispatch = useDispatch();
 
   const clusteringSets =
     useSelector((state) => state?.config?.clusteringSets.data) || [];

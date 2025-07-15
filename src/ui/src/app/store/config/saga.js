@@ -224,7 +224,7 @@ export function* getBatchStatusSaga(action) {
   }
 }
 
-function* getClusteringSetsSaga(action) {
+function* getClusteringSetsSaga() {
   try {
     const data = {
       page: 1,
@@ -274,7 +274,6 @@ export default function* configSaga() {
 
     fork(watchGetRunStatusSaga),
     fork(watchGetValidProteomeIdsSaga),
-    ,
     fork(watchGetBatchStatusSaga),
     fork(watchGetClusteringSets),
   ]);

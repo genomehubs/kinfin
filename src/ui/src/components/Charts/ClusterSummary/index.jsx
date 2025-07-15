@@ -65,13 +65,21 @@ const ClusterSummary = () => {
       };
     });
   }, [clusterSummaryData]);
-
   const rowCount = useMemo(() => {
-    return (
-      clusterSummaryData?.total_entries ??
-      clusterSummaryData?.total_pages * clusterSummaryData?.entries_per_page ??
-      processedRows.length
-    );
+    if (clusterSummaryData?.total_entries != null) {
+      return clusterSummaryData.total_entries;
+    }
+
+    if (
+      clusterSummaryData?.total_pages != null &&
+      clusterSummaryData?.entries_per_page != null
+    ) {
+      return (
+        clusterSummaryData.total_pages * clusterSummaryData.entries_per_page
+      );
+    }
+
+    return processedRows.length;
   }, [clusterSummaryData, processedRows]);
 
   const baseColumns = [

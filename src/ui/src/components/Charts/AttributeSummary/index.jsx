@@ -74,7 +74,9 @@ const AttributeSummary = () => {
 
     const totalRows =
       attributeData?.total_entries ??
-      attributeData?.total_pages * attributeData?.entries_per_page ??
+      (attributeData?.total_pages && attributeData?.entries_per_page
+        ? attributeData.total_pages * attributeData.entries_per_page
+        : undefined) ??
       processedRows.length;
 
     return {

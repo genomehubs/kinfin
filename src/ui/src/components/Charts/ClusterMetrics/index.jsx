@@ -88,7 +88,9 @@ const ClusterMetrics = () => {
 
     const totalRows =
       clusterMetrics?.total_entries ??
-      clusterMetrics?.total_pages * clusterMetrics?.entries_per_page ??
+      (clusterMetrics?.total_pages && clusterMetrics?.entries_per_page
+        ? clusterMetrics.total_pages * clusterMetrics.entries_per_page
+        : undefined) ??
       processedRows.length;
 
     return {
