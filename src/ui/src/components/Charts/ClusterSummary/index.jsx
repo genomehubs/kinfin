@@ -75,12 +75,28 @@ const ClusterSummary = () => {
   }, [clusterSummaryData, processedRows]);
 
   const baseColumns = [
-    { field: "cluster_id", headerName: "Cluster ID", flex: 1 },
-    { field: "cluster_protein_count", headerName: "Total Proteins", flex: 1 },
-    { field: "protein_median_count", headerName: "Median Count", flex: 1 },
-    { field: "TAXON_count", headerName: "TAXON Count", flex: 1 },
-    { field: "attribute", headerName: "Attribute", flex: 1 },
-    { field: "attribute_cluster_type", headerName: "Cluster Type", flex: 1 },
+    { field: "cluster_id", headerName: "Cluster ID", minWidth: 140 },
+    {
+      field: "cluster_protein_count",
+      headerName: "Total Proteins",
+      minWidth: 120,
+    },
+    {
+      field: "protein_median_count",
+      headerName: "Median Count",
+      minWidth: 80,
+    },
+    {
+      field: "TAXON_count",
+      headerName: "TAXON Count",
+      minWidth: 80,
+    },
+    { field: "attribute", headerName: "Attribute", minWidth: 80 },
+    {
+      field: "attribute_cluster_type",
+      headerName: "Cluster Type",
+      minWidth: 80,
+    },
   ];
 
   const dynamicColumns = useMemo(() => {
@@ -88,13 +104,20 @@ const ClusterSummary = () => {
     const dynamicKeys = Object.keys(firstRow).filter(
       (key) =>
         key.endsWith("_count") &&
-        !["cluster_protein_count", "TAXON_count"].includes(key)
+        ![
+          "cluster_protein_count",
+          "TAXON_count",
+          "protein_median_count",
+        ].includes(key)
     );
 
     return dynamicKeys.map((key) => ({
       field: key,
-      headerName: key.replace(/_/g, " ").replace("count", "Count"),
-      flex: 1,
+      headerName: key
+        .replace(/_/g, " ")
+        .replace("count", "Count")
+        .replace(/\b\w/g, (l) => l.toUpperCase()),
+      minWidth: 80,
     }));
   }, [processedRows]);
 
@@ -104,7 +127,7 @@ const ClusterSummary = () => {
   );
 
   return (
-    <div className={styles.container}>
+    <div style={{ height: "50vh", width: "100%", overflowX: "auto" }}>
       <DataGrid
         rows={processedRows}
         columns={columns}
@@ -115,8 +138,27 @@ const ClusterSummary = () => {
         pageSizeOptions={pageSizeOptions}
         disableSelectionOnClick
         checkboxSelection={false}
-        autoHeight
         className={styles.listingTable}
+        sx={{
+          "& .MuiDataGrid-cell": {
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: "1.4rem",
+            alignItems: "start",
+            paddingTop: "8px",
+            paddingBottom: "8px",
+          },
+          "& .MuiDataGrid-columnHeader": {
+            whiteSpace: "normal",
+            lineHeight: "normal",
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: "normal",
+            fontWeight: "bold",
+          },
+        }}
       />
     </div>
   );

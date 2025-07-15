@@ -99,86 +99,127 @@ const ClusterMetrics = () => {
 
   const columns = useMemo(
     () => [
-      { field: "cluster_id", headerName: "Cluster ID", flex: 1 },
-      { field: "cluster_status", headerName: "Cluster Status", flex: 1 },
-      { field: "cluster_type", headerName: "Cluster Type", flex: 1 },
+      { field: "cluster_id", headerName: "Cluster ID", flex: 1, minWidth: 120 },
+      {
+        field: "cluster_status",
+        headerName: "Cluster Status",
+        flex: 1,
+        minWidth: 120,
+      },
+      {
+        field: "cluster_type",
+        headerName: "Cluster Type",
+        flex: 1,
+        minWidth: 120,
+      },
       {
         field: "present_in_cluster",
         headerName: "Present in Cluster",
         flex: 1,
+        minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "is_singleton",
         headerName: "Singleton",
         flex: 1,
+        minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "is_specific",
         headerName: "Specific",
         flex: 1,
+        minWidth: 120,
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
         field: "cluster_protein_count",
         headerName: "Cluster Protein Count",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "cluster_proteome_count",
         headerName: "Cluster Proteome Count",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "TAXON_protein_count",
-        headerName: "TAXON Protein Count",
+        headerName: "Taxon Protein Count",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "TAXON_mean_count",
-        headerName: "TAXON Mean Count",
+        headerName: "Taxon Mean Count",
         flex: 1,
+        minWidth: 120,
+        valueFormatter: (value) => {
+          const num = Number(value);
+          return isNaN(num) ? "-" : num.toFixed(2);
+        },
       },
       {
         field: "non_taxon_mean_count",
-        headerName: "Non-TAXON Mean Count",
+        headerName: "Non-Taxon Mean Count",
         flex: 1,
+        minWidth: 120,
+        valueFormatter: (value) => {
+          const num = Number(value);
+          return isNaN(num) ? "-" : num.toFixed(2);
+        },
       },
       {
         field: "representation",
         headerName: "Representation",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "log2_mean(TAXON/others)",
-        headerName: "Log2 Mean (TAXON/Others)",
+        headerName: "Log2 Mean ",
         flex: 1,
+        minWidth: 120,
+        valueFormatter: (value) => {
+          const num = Number(value);
+          return isNaN(num) ? "-" : num.toFixed(2);
+        },
       },
       {
         field: "pvalue(TAXON vs. others)",
-        headerName: "P-value (TAXON vs Others)",
+        headerName: "P-value",
         flex: 1,
+        minWidth: 120,
+        valueFormatter: (value) => {
+          const num = Number(value);
+          return isNaN(num) ? "-" : num.toFixed(2);
+        },
       },
       {
         field: "taxon_coverage",
         headerName: "Taxon Coverage",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "TAXON_count",
         headerName: "TAXON Count",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "non_TAXON_count",
-        headerName: "Non-TAXON Count",
+        headerName: "Non-Taxon Count",
         flex: 1,
+        minWidth: 120,
       },
       {
         field: "TAXON_taxa",
         headerName: "TAXON Taxa",
         flex: 1,
+        minWidth: 120,
         renderCell: ({ value }) =>
           Array.isArray(value) ? value.join(", ") : value ?? "-",
       },
@@ -186,6 +227,7 @@ const ClusterMetrics = () => {
         field: "non_TAXON_taxa",
         headerName: "Non-TAXON Taxa",
         flex: 1,
+        minWidth: 120,
         renderCell: ({ value }) =>
           Array.isArray(value) ? value.join(", ") : value ?? "-",
       },
@@ -206,7 +248,7 @@ const ClusterMetrics = () => {
   );
 
   return (
-    <div style={{ height: "70vh", width: "100%" }}>
+    <div style={{ height: "50vh", width: "100%", overflowX: "auto" }}>
       <DataGrid
         rows={rows}
         columns={columns}
@@ -219,14 +261,23 @@ const ClusterMetrics = () => {
         checkboxSelection={false}
         className={styles.listingTable}
         sx={{
+          "& .MuiDataGrid-cell": {
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: "1.4rem",
+            alignItems: "start",
+            paddingTop: "8px",
+            paddingBottom: "8px",
+          },
           "& .MuiDataGrid-columnHeader": {
             whiteSpace: "normal",
             lineHeight: "normal",
           },
           "& .MuiDataGrid-columnHeaderTitle": {
-            fontWeight: "bold",
             whiteSpace: "normal",
+            wordBreak: "break-word",
             lineHeight: "normal",
+            fontWeight: "bold",
           },
         }}
       />

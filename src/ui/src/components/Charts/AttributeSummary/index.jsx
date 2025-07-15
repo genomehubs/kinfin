@@ -85,31 +85,55 @@ const AttributeSummary = () => {
 
   const columns = useMemo(
     () => [
-      { field: "taxon_set", headerName: "Taxon Set", flex: 1 },
-      { field: "cluster_total_count", headerName: "Total Clusters", flex: 1 },
-      { field: "protein_total_count", headerName: "Total Proteins", flex: 1 },
+      { field: "taxon_set", headerName: "Taxon Set", minWidth: 150, flex: 1 },
+      {
+        field: "cluster_total_count",
+        headerName: "Total Clusters",
+        minWidth: 80,
+        flex: 1,
+      },
+      {
+        field: "protein_total_count",
+        headerName: "Total Proteins",
+        minWidth: 80,
+        flex: 1,
+      },
       {
         field: "singleton_cluster_count",
         headerName: "Singleton Clusters",
+        minWidth: 80,
         flex: 1,
       },
       {
         field: "singleton_protein_count",
         headerName: "Singleton Proteins",
+        minWidth: 80,
         flex: 1,
       },
       {
         field: "specific_cluster_count",
         headerName: "Specific Clusters",
+        minWidth: 80,
         flex: 1,
       },
-      { field: "shared_cluster_count", headerName: "Shared Clusters", flex: 1 },
+      {
+        field: "shared_cluster_count",
+        headerName: "Shared Clusters",
+        minWidth: 80,
+        flex: 1,
+      },
       {
         field: "absent_cluster_total_count",
         headerName: "Absent Clusters",
+        minWidth: 80,
         flex: 1,
       },
-      { field: "TAXON_taxa", headerName: "Taxa", flex: 2 },
+      {
+        field: "TAXON_taxa",
+        headerName: "Taxa",
+        minWidth: 80,
+        flex: 1,
+      },
     ],
     []
   );
@@ -127,7 +151,7 @@ const AttributeSummary = () => {
   );
 
   return (
-    <div style={{ height: "70vh", width: "100%" }}>
+    <div style={{ maxheight: "50vh", width: "100%", overflowX: "auto" }}>
       <DataGrid
         rows={rows}
         columns={columns}
@@ -140,14 +164,23 @@ const AttributeSummary = () => {
         checkboxSelection={false}
         className={styles.listingTable}
         sx={{
+          "& .MuiDataGrid-cell": {
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            lineHeight: "1.4rem",
+            alignItems: "start",
+            paddingTop: "8px",
+            paddingBottom: "8px",
+          },
           "& .MuiDataGrid-columnHeader": {
             whiteSpace: "normal",
             lineHeight: "normal",
           },
           "& .MuiDataGrid-columnHeaderTitle": {
-            fontWeight: "bold",
             whiteSpace: "normal",
+            wordBreak: "break-word",
             lineHeight: "normal",
+            fontWeight: "bold",
           },
         }}
       />
