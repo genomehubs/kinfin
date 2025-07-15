@@ -127,10 +127,10 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page } = action.payload;
+  const { attribute, page, size } = action.payload;
   const data = {
     attribute,
-    size: 10,
+    size,
     page,
   };
   try {
@@ -159,11 +159,11 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page } = action.payload;
+  const { attribute, page, size } = action.payload;
   const data = {
     attribute,
     page,
-    size: 10,
+    size,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -191,12 +191,12 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page } = action.payload;
+  const { attribute, taxonSet, page, size } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
-    size: 10,
+    size,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
