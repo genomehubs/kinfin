@@ -24,6 +24,7 @@ import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import { useNavigate, useParams } from "react-router-dom";
 import { initAnalysis } from "../../app/store/config/actions";
+import { downloadBlobFile } from "../../utilis/downloadBlobFile";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 
@@ -38,6 +39,12 @@ const Dashboard = () => {
   const selectSessionDetailsById = (session_id) => (state) =>
     state?.config?.storeConfig?.data?.[session_id];
   const sessionDetails = useSelector(selectSessionDetailsById(sessionId)); // This returns the actual data
+  const allRarefactionCurveBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.allRarefactionCurve
+  );
+  const clusterSizeDistributionBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
+  );
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem("currentSessionId", sessionId);
@@ -85,7 +92,7 @@ const Dashboard = () => {
 
   const handleDownload = (chartKey) => {
     const attribute = selectedAttributeTaxonset?.attribute;
-    const taxonSet = selectedAttributeTaxonset.taxonset;
+    const taxonSet = selectedAttributeTaxonset?.taxonset;
     const basePayload = {
       attribute,
       taxonSet,
@@ -102,6 +109,26 @@ const Dashboard = () => {
       case "clusterMetrics":
         dispatch(getClusterMetrics(basePayload));
         break;
+      case "allRarefactionCurve": {
+        if (allRarefactionCurveBlob instanceof Blob) {
+          downloadBlobFile(
+            allRarefactionCurveBlob,
+            "all_rarefaction_curve.png",
+            "image/png"
+          );
+        }
+        break;
+      }
+      case "clusterSizeDistribution": {
+        if (clusterSizeDistributionBlob instanceof Blob) {
+          downloadBlobFile(
+            clusterSizeDistributionBlob,
+            "cluster_size_distribution.png",
+            "image/png"
+          );
+        }
+        break;
+      }
       default:
         console.warn("Invalid chart key for download:", chartKey);
     }
