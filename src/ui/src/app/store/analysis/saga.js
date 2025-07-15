@@ -173,11 +173,12 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page, size } = action.payload;
+  const { attribute, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     page,
     size,
+    asFile,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -186,6 +187,16 @@ function* getAttributeSummarySaga(action) {
       return;
     }
     const response = yield call(getAttributeSummary, data);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_attribute_summary.tsv`,
+        "text/tab-separated-values"
+      );
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getAttributeSummarySuccess(response));

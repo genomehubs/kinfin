@@ -812,6 +812,7 @@ async def get_attribute_summary(
     sort_order: Optional[str] = Query("asc"),
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
+    as_file: Optional[bool] = Query(False),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -855,6 +856,45 @@ async def get_attribute_summary(
             )
 
         result = parse_attribute_summary_file(filepath=filepath)
+
+        if as_file:
+            if not result:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="No data available for download.",
+                        error="no_data",
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=404,
+                )
+
+            try:
+                rows = list(result.values())
+
+                first_row = rows[0]
+                with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
+                    writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
+                    writer.writeheader()
+                    writer.writerows(rows)
+                    tmp_file_path = tmp_file.name
+
+                return FileResponse(
+                    tmp_file_path,
+                    media_type="text/tab-separated-values",
+                    filename=f"{attribute}_attribute_summary.tsv",
+                )
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate TSV file",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
+
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -862,9 +902,10 @@ async def get_attribute_summary(
             page,
             size,
         )
+
         response = ResponseSchema(
             status="success",
-            message="Cluster summary retrieved successfully",
+            message="Attribute summary retrieved successfully",
             data=paginated_result,
             query=str(request.url),
             current_page=page,
@@ -872,6 +913,7 @@ async def get_attribute_summary(
             total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
+
     except Exception as e:
         print(e)
         return JSONResponse(

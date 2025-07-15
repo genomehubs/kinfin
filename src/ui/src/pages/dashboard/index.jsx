@@ -5,6 +5,8 @@ import {
   getRunSummary,
   getClusterSummary,
   getCountsByTaxon,
+  getClusterMetrics,
+  getAttributeSummary,
 } from "../../app/store/analysis/actions";
 
 import { getRunStatus } from "../../app/store/config/actions";
@@ -76,17 +78,30 @@ const Dashboard = () => {
     attributeSummary: "Attribute Summary",
     clusterSummary: "Cluster Summary",
     clusterMetrics: "Cluster Metrics",
-    // clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
-    // clusterAbsence: "Cluster Absence Across Taxon Sets",
-    // taxonCount: "Taxon Count per Taxon Set",
   };
 
-  const handleDownload = () => {
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
+  const handleDownload = (chartKey) => {
+    const attribute = selectedAttributeTaxonset?.attribute;
+    const taxonSet = selectedAttributeTaxonset.taxonset;
+    const basePayload = {
+      attribute,
+      taxonSet,
       asFile: true,
     };
-    dispatch(getClusterSummary(payload));
+
+    switch (chartKey) {
+      case "attributeSummary":
+        dispatch(getAttributeSummary(basePayload));
+        break;
+      case "clusterSummary":
+        dispatch(getClusterSummary(basePayload));
+        break;
+      case "clusterMetrics":
+        dispatch(getClusterMetrics(basePayload));
+        break;
+      default:
+        console.warn("Invalid chart key for download:", chartKey);
+    }
   };
 
   const renderModalContent = () => {
