@@ -1,7 +1,9 @@
 import asyncio
+import csv
 import json
 import logging
 import os
+import traceback
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
@@ -10,6 +12,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
+from tempfile import NamedTemporaryFile
 from core.utils import check_file
 
 from api.fileparsers import (
@@ -467,6 +470,7 @@ async def get_cluster_summary(
     sort_order: Optional[str] = Query("asc"),
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
+    as_file: Optional[bool] = Query(False),
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -520,6 +524,45 @@ async def get_cluster_summary(
             min_protein_median_count=min_protein_median_count,
             max_protein_median_count=max_protein_median_count,
         )
+        
+        if as_file:
+            if not result:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="No data available for download.",
+                        error="no_data",
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=404,
+                )
+
+            try:
+                first_row = next(iter(result.values()))
+            except StopIteration:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="No valid rows in data.",
+                        error="empty_result",
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=400,
+                )
+
+            with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
+                writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(result.values())  # write all values as rows
+                tmp_file_path = tmp_file.name
+
+            return FileResponse(
+                tmp_file_path,
+                media_type="text/tab-separated-values",
+                filename=f"{attribute}_cluster_summary.tsv",
+            )
+
+
 
         paginated_result, total_pages = sort_and_paginate_result(
             result,
@@ -541,6 +584,7 @@ async def get_cluster_summary(
         return JSONResponse(response.model_dump())
     except Exception as e:
         print(e)
+        traceback.print_exc()
         return JSONResponse(
             content=ResponseSchema(
                 status="error",

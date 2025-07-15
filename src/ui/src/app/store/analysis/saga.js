@@ -39,6 +39,8 @@ import {
   getPairwiseAnalysis,
   getPlot,
 } from "../../services/client";
+
+import { downloadBlobFile } from "../../../utilis/downloadBlobFile";
 const selectSessionStatusById = (session_id) => (state) => {
   return state?.config?.storeConfig?.data?.[session_id]?.status;
 };
@@ -127,11 +129,12 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page, size } = action.payload;
+  const { attribute, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     size,
     page,
+    asFile,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -140,6 +143,17 @@ function* getClusterSummarySaga(action) {
       return;
     }
     const response = yield call(getClusterSummary, data);
+    console.log("🚀 ~ function*getClusterSummarySaga ~ response:", response);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_cluster_summary.tsv`,
+        "text/tab-separated-values"
+      );
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getClusterSummarySuccess(response));

@@ -3,11 +3,14 @@ import styles from "./Dashboard.module.scss";
 import {
   getAvailableAttributesTaxonsets,
   getRunSummary,
+  getClusterSummary,
   getCountsByTaxon,
 } from "../../app/store/analysis/actions";
+
 import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
+import { MdOutlineFileDownload } from "react-icons/md";
 
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
@@ -76,6 +79,14 @@ const Dashboard = () => {
     // clusterAndProteinDistribution: "Cluster Distribution Per Taxon",
     // clusterAbsence: "Cluster Absence Across Taxon Sets",
     // taxonCount: "Taxon Count per Taxon Set",
+  };
+
+  const handleDownload = () => {
+    const payload = {
+      attribute: selectedAttributeTaxonset?.attribute,
+      asFile: true,
+    };
+    dispatch(getClusterSummary(payload));
   };
 
   const renderModalContent = () => {
@@ -148,12 +159,12 @@ const Dashboard = () => {
                 {Object.entries(modalTitleMap).map(([key, label]) => (
                   <div key={key} className={styles.container}>
                     <div className={styles.header}>
-                      {/* <button
+                      <button
                         className={styles.enlargeButton}
-                        onClick={() => handleEnlarge(key)}
+                        onClick={() => handleDownload(key)}
                       >
-                        <IoOpenOutline />
-                      </button> */}
+                        <MdOutlineFileDownload />
+                      </button>
                       <p className={styles.title}>{label}</p>
                     </div>
                     {/* <div className={styles.chartContainer}> */}
