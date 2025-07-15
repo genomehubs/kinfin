@@ -524,7 +524,6 @@ async def get_cluster_summary(
             min_protein_median_count=min_protein_median_count,
             max_protein_median_count=max_protein_median_count,
         )
-        
         if as_file:
             if not result:
                 return JSONResponse(
@@ -538,30 +537,48 @@ async def get_cluster_summary(
                 )
 
             try:
-                first_row = next(iter(result.values()))
-            except StopIteration:
+                flattened_rows = []
+                for row in result.values():
+                    flat_row = row.copy()
+                    protein_counts = flat_row.pop("protein_counts", {})
+                    flat_row.update(protein_counts) 
+                    flattened_rows.append(flat_row)
+
+                if not flattened_rows:
+                    return JSONResponse(
+                        content=ResponseSchema(
+                            status="error",
+                            message="No valid rows in data.",
+                            error="empty_result",
+                            query=str(request.url),
+                        ).model_dump(),
+                        status_code=400,
+                    )
+
+                first_row = flattened_rows[0]
+
+                with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
+                    writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
+                    writer.writeheader()
+                    writer.writerows(flattened_rows)
+                    tmp_file_path = tmp_file.name
+
+                return FileResponse(
+                    tmp_file_path,
+                    media_type="text/tab-separated-values",
+                    filename=f"{attribute}_cluster_summary.tsv",
+                )
+
+            except Exception as e:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
-                        message="No valid rows in data.",
-                        error="empty_result",
+                        message="Failed to generate TSV file",
+                        error=str(e),
                         query=str(request.url),
                     ).model_dump(),
-                    status_code=400,
+                    status_code=500,
                 )
-
-            with NamedTemporaryFile(mode="w+", delete=False, suffix=".tsv") as tmp_file:
-                writer = csv.DictWriter(tmp_file, fieldnames=first_row.keys(), delimiter="\t")
-                writer.writeheader()
-                writer.writerows(result.values())  # write all values as rows
-                tmp_file_path = tmp_file.name
-
-            return FileResponse(
-                tmp_file_path,
-                media_type="text/tab-separated-values",
-                filename=f"{attribute}_cluster_summary.tsv",
-            )
-
 
 
         paginated_result, total_pages = sort_and_paginate_result(

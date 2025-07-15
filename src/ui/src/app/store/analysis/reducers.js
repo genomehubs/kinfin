@@ -119,7 +119,7 @@ const analysisReducer = (state = initialState, action) => {
     case GET_CLUSTER_SUMMARY:
       return {
         ...state,
-        clusterSummary: { data: null, loading: true, error: null },
+        clusterSummary: { ...state.clusterSummary, loading: true, error: null },
       };
     case GET_CLUSTER_SUMMARY_SUCCESS:
       return {

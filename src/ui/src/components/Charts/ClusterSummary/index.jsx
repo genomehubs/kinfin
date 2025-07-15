@@ -111,7 +111,9 @@ const ClusterSummary = () => {
     const firstRow = processedRows[0] || {};
     const dynamicKeys = Object.keys(firstRow).filter(
       (key) =>
-        key.endsWith("_count") &&
+        (key.endsWith("_count") ||
+          key.endsWith("_median") ||
+          key.endsWith("_cov")) &&
         ![
           "cluster_protein_count",
           "TAXON_count",
@@ -124,8 +126,10 @@ const ClusterSummary = () => {
       headerName: key
         .replace(/_/g, " ")
         .replace("count", "Count")
+        .replace("median", "Median")
+        .replace("cov", "Cov")
         .replace(/\b\w/g, (l) => l.toUpperCase()),
-      minWidth: 80,
+      minWidth: 100,
     }));
   }, [processedRows]);
 
