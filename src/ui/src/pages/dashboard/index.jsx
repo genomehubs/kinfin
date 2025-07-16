@@ -13,7 +13,6 @@ import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
 import { MdOutlineFileDownload } from "react-icons/md";
-
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,6 +24,7 @@ import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribu
 import { useNavigate, useParams } from "react-router-dom";
 import { initAnalysis } from "../../app/store/config/actions";
 import { downloadBlobFile } from "../../utilis/downloadBlobFile";
+import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 
@@ -33,6 +33,7 @@ const Dashboard = () => {
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [parsedData, setParsedData] = useState([]);
+  const [downloadLoading, setDownloadLoading] = useState({});
 
   const dispatch = useDispatch();
   const { sessionId } = useParams();
@@ -91,13 +92,16 @@ const Dashboard = () => {
   };
 
   const handleDownload = (chartKey) => {
+    setDownloadLoading((prev) => ({ ...prev, [chartKey]: true }));
     const attribute = selectedAttributeTaxonset?.attribute;
     const taxonSet = selectedAttributeTaxonset?.taxonset;
     const basePayload = {
       attribute,
       taxonSet,
       asFile: true,
+      setDownloadLoading,
     };
+    dispatchSuccessToast(`${chartKey} download as started`);
 
     switch (chartKey) {
       case "attributeSummary":
@@ -117,6 +121,7 @@ const Dashboard = () => {
             "image/png"
           );
         }
+        setDownloadLoading((prev) => ({ ...prev, [chartKey]: false }));
         break;
       }
       case "clusterSizeDistribution": {
@@ -127,11 +132,15 @@ const Dashboard = () => {
             "image/png"
           );
         }
+        setDownloadLoading((prev) => ({ ...prev, [chartKey]: false }));
         break;
       }
       default:
         console.warn("Invalid chart key for download:", chartKey);
     }
+    setTimeout(() => {
+      setDownloadLoading((prev) => ({ ...prev, [chartKey]: false }));
+    }, 30000);
   };
 
   const renderModalContent = () => {
@@ -212,8 +221,13 @@ const Dashboard = () => {
                         <button
                           className={styles.enlargeButton}
                           onClick={() => handleDownload(key)}
+                          disabled={downloadLoading[key]}
                         >
-                          <MdOutlineFileDownload />
+                          {downloadLoading[key] ? (
+                            <div className={styles.downloadLoader} />
+                          ) : (
+                            <MdOutlineFileDownload />
+                          )}
                         </button>
                         <p className={styles.title}>{modalTitleMap[key]}</p>
                       </div>
@@ -230,8 +244,13 @@ const Dashboard = () => {
                           <button
                             className={styles.enlargeButton}
                             onClick={() => handleDownload(key)}
+                            disabled={downloadLoading[key]}
                           >
-                            <MdOutlineFileDownload />
+                            {downloadLoading[key] ? (
+                              <div className={styles.downloadLoader} />
+                            ) : (
+                              <MdOutlineFileDownload />
+                            )}
                           </button>
                           <p className={styles.title}>{modalTitleMap[key]}</p>
                         </div>

@@ -129,7 +129,13 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
+  const {
+    attribute,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     size,
@@ -143,7 +149,6 @@ function* getClusterSummarySaga(action) {
       return;
     }
     const response = yield call(getClusterSummary, data);
-    console.log("🚀 ~ function*getClusterSummarySaga ~ response:", response);
 
     if (asFile) {
       yield call(
@@ -152,6 +157,15 @@ function* getClusterSummarySaga(action) {
         `${attribute}_cluster_summary.tsv`,
         "text/tab-separated-values"
       );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            clusterSummary: false,
+          }))
+        );
+      }
+
       return;
     }
 
@@ -173,7 +187,13 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
+  const {
+    attribute,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     page,
@@ -195,6 +215,14 @@ function* getAttributeSummarySaga(action) {
         `${attribute}_attribute_summary.tsv`,
         "text/tab-separated-values"
       );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            attributeSummary: false,
+          }))
+        );
+      }
       return;
     }
 
@@ -216,13 +244,21 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page, size, asFile = false } = action.payload;
+  const {
+    attribute,
+    taxonSet,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
     size,
     asFile,
+    setDownloadLoading,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -239,6 +275,14 @@ function* getClusterMetricsSaga(action) {
         `${attribute}_${taxonSet}_cluster_metrics.tsv`,
         "text/tab-separated-values"
       );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            clusterMetrics: false,
+          }))
+        );
+      }
       return;
     }
 
