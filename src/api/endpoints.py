@@ -26,6 +26,7 @@ from api.sessions import query_manager
 from api.utils import (
     CLUSTERING_DATASETS,
     extract_attributes_and_taxon_sets,
+    flatten_dict,
     read_status,
     run_cli_command,
     sort_and_paginate_result,
@@ -536,12 +537,7 @@ async def get_cluster_summary(
                 )
 
             try:
-                flattened_rows = []
-                for row in result.values():
-                    flat_row = row.copy()
-                    protein_counts = flat_row.pop("protein_counts", {})
-                    flat_row.update(protein_counts)
-                    flattened_rows.append(flat_row)
+                flattened_rows = [flatten_dict(row) for row in result.values()]
 
                 if not flattened_rows:
                     return JSONResponse(
@@ -579,7 +575,6 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=500,
                 )
-
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -864,12 +859,12 @@ async def get_attribute_summary(
                 ).to_json_response(status_code=404)
 
             rows = list(result.values())
-            first_row = rows[0]
-
+            flattened_rows = [flatten_dict(row) for row in rows]
+            first_row = flattened_rows[0]
             buffer = io.StringIO()
             writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows(flattened_rows)
             buffer.seek(0)
 
             return StreamingResponse(
@@ -999,12 +994,13 @@ async def get_cluster_metrics(
 
             try:
                 rows = list(result.values())
-                first_row = rows[0] if rows else {}
+                flattened_rows = [flatten_dict(row) for row in rows]
+                first_row = flattened_rows[0] if flattened_rows else {}
 
                 buffer = io.StringIO()
                 writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
                 writer.writeheader()
-                writer.writerows(rows)
+                writer.writerows(flattened_rows)
                 buffer.seek(0)
 
                 return StreamingResponse(
