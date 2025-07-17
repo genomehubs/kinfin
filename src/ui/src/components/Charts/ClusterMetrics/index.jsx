@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterMetrics.module.scss";
 import { getClusterMetrics } from "../../../app/store/analysis/actions";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -65,7 +66,7 @@ const ClusterMetrics = () => {
       const coverage = row?.coverage || {};
 
       return {
-        id: index + paginationModel.page * paginationModel.pageSize,
+        id: uuidv4(),
         ...row,
         cluster_protein_count: counts.cluster_protein_count ?? "-",
         cluster_proteome_count: counts.cluster_proteome_count ?? "-",

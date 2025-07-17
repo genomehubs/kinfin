@@ -1,4 +1,6 @@
 import asyncio
+import csv
+import io
 import json
 import logging
 import os
@@ -7,28 +9,29 @@ from functools import wraps
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from core.utils import check_file
 
 from api.fileparsers import (
     parse_attribute_summary_file,
     parse_cluster_metrics_file,
     parse_cluster_summary_file,
+    parse_clustering_file,
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
-    parse_clustering_file,
 )
 from api.sessions import query_manager
 from api.utils import (
+    CLUSTERING_DATASETS,
     extract_attributes_and_taxon_sets,
+    flatten_dict,
     read_status,
     run_cli_command,
     sort_and_paginate_result,
-    CLUSTERING_DATASETS,
 )
+from core.utils import check_file
 
 LOGGER = logging.getLogger("uvicorn.error")
 LOGGER.setLevel(logging.DEBUG)
@@ -467,6 +470,7 @@ async def get_cluster_summary(
     sort_order: Optional[str] = Query("asc"),
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
+    as_file: Optional[bool] = Query(False),
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -520,7 +524,57 @@ async def get_cluster_summary(
             min_protein_median_count=min_protein_median_count,
             max_protein_median_count=max_protein_median_count,
         )
+        if as_file:
+            if not result:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="No data available for download.",
+                        error="no_data",
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=404,
+                )
 
+            try:
+                flattened_rows = [flatten_dict(row) for row in result.values()]
+
+                if not flattened_rows:
+                    return JSONResponse(
+                        content=ResponseSchema(
+                            status="error",
+                            message="No valid rows in data.",
+                            error="empty_result",
+                            query=str(request.url),
+                        ).model_dump(),
+                        status_code=400,
+                    )
+
+                first_row = flattened_rows[0]
+                buffer = io.StringIO()
+                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(flattened_rows)
+                buffer.seek(0)
+
+                return StreamingResponse(
+                    buffer,
+                    media_type="text/tab-separated-values",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"
+                    },
+                )
+
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate TSV file",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -589,7 +643,6 @@ async def get_valid_taxons_api(
     clusterId: str,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
-    
 ):
     try:
         cluster_info = CLUSTERING_DATASETS.get(clusterId)
@@ -751,6 +804,7 @@ async def get_attribute_summary(
     sort_order: Optional[str] = Query("asc"),
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
+    as_file: Optional[bool] = Query(False),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -794,6 +848,33 @@ async def get_attribute_summary(
             )
 
         result = parse_attribute_summary_file(filepath=filepath)
+
+        if as_file:
+            if not result:
+                return ResponseSchema(
+                    status="error",
+                    message="No data available for download.",
+                    error="no_data",
+                    query=str(request.url),
+                ).to_json_response(status_code=404)
+
+            rows = list(result.values())
+            flattened_rows = [flatten_dict(row) for row in rows]
+            first_row = flattened_rows[0]
+            buffer = io.StringIO()
+            writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+            writer.writeheader()
+            writer.writerows(flattened_rows)
+            buffer.seek(0)
+
+            return StreamingResponse(
+                buffer,
+                media_type="text/tab-separated-values",
+                headers={
+                    "Content-Disposition": f"attachment; filename={attribute}_attribute_summary.tsv"
+                },
+            )
+
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -801,9 +882,10 @@ async def get_attribute_summary(
             page,
             size,
         )
+
         response = ResponseSchema(
             status="success",
-            message="Cluster summary retrieved successfully",
+            message="Attribute summary retrieved successfully",
             data=paginated_result,
             query=str(request.url),
             current_page=page,
@@ -811,6 +893,7 @@ async def get_attribute_summary(
             total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
+
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -840,6 +923,7 @@ async def get_cluster_metrics(
     sort_order: Optional[str] = Query("asc"),
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
+    as_file: Optional[bool] = Query(False),
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -887,7 +971,7 @@ async def get_cluster_metrics(
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"{COUNTS_FILEPATH} File Not Found",
+                    message=f"{CLUSTER_METRICS_FILENAME} File Not Found",
                     error="File does not exist",
                     query=str(request.url),
                 ).model_dump(),
@@ -895,6 +979,49 @@ async def get_cluster_metrics(
             )
 
         result = parse_cluster_metrics_file(filepath, cluster_status, cluster_type)
+
+        if as_file:
+            if not result:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="No data available for download.",
+                        error="no_data",
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=404,
+                )
+
+            try:
+                rows = list(result.values())
+                flattened_rows = [flatten_dict(row) for row in rows]
+                first_row = flattened_rows[0] if flattened_rows else {}
+
+                buffer = io.StringIO()
+                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(flattened_rows)
+                buffer.seek(0)
+
+                return StreamingResponse(
+                    buffer,
+                    media_type="text/tab-separated-values",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
+                    },
+                )
+
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate TSV file",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
+
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -904,7 +1031,7 @@ async def get_cluster_metrics(
         )
         response = ResponseSchema(
             status="success",
-            message="Cluster summary retrieved successfully",
+            message="Cluster metrics retrieved successfully",
             data=paginated_result,
             query=str(request.url),
             current_page=page,

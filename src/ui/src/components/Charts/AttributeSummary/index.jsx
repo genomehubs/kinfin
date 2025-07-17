@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./AttributeSummary.module.scss";
 import { getAttributeSummary } from "../../../app/store/analysis/actions";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -60,7 +61,7 @@ const AttributeSummary = () => {
   const { rows, rowCount } = useMemo(() => {
     const rawData = attributeData?.data ?? {};
     const processedRows = Object.values(rawData).map((row, index) => ({
-      id: index + paginationModel.page * paginationModel.pageSize,
+      id: uuidv4(),
       ...row,
       singleton_cluster_count: row?.singleton?.cluster_count ?? "-",
       singleton_protein_count: row?.singleton?.protein_count ?? "-",

@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
 import { getClusterSummary } from "../../../app/store/analysis/actions";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -59,7 +60,7 @@ const ClusterSummary = () => {
         }, {});
 
       return {
-        id: row.cluster_id,
+        id: uuidv4(),
         ...row,
         ...flatCounts,
       };
@@ -111,7 +112,9 @@ const ClusterSummary = () => {
     const firstRow = processedRows[0] || {};
     const dynamicKeys = Object.keys(firstRow).filter(
       (key) =>
-        key.endsWith("_count") &&
+        (key.endsWith("_count") ||
+          key.endsWith("_median") ||
+          key.endsWith("_cov")) &&
         ![
           "cluster_protein_count",
           "TAXON_count",
@@ -124,8 +127,10 @@ const ClusterSummary = () => {
       headerName: key
         .replace(/_/g, " ")
         .replace("count", "Count")
+        .replace("median", "Median")
+        .replace("cov", "Cov")
         .replace(/\b\w/g, (l) => l.toUpperCase()),
-      minWidth: 80,
+      minWidth: 100,
     }));
   }, [processedRows]);
 

@@ -39,6 +39,8 @@ import {
   getPairwiseAnalysis,
   getPlot,
 } from "../../services/client";
+
+import { downloadBlobFile } from "../../../utilis/downloadBlobFile";
 const selectSessionStatusById = (session_id) => (state) => {
   return state?.config?.storeConfig?.data?.[session_id]?.status;
 };
@@ -127,11 +129,18 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page, size } = action.payload;
+  const {
+    attribute,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     size,
     page,
+    asFile,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -140,6 +149,25 @@ function* getClusterSummarySaga(action) {
       return;
     }
     const response = yield call(getClusterSummary, data);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_cluster_summary.tsv`,
+        "text/tab-separated-values"
+      );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            clusterSummary: false,
+          }))
+        );
+      }
+
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getClusterSummarySuccess(response));
@@ -159,11 +187,18 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page, size } = action.payload;
+  const {
+    attribute,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     page,
     size,
+    asFile,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -172,6 +207,24 @@ function* getAttributeSummarySaga(action) {
       return;
     }
     const response = yield call(getAttributeSummary, data);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_attribute_summary.tsv`,
+        "text/tab-separated-values"
+      );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            attributeSummary: false,
+          }))
+        );
+      }
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getAttributeSummarySuccess(response));
@@ -191,12 +244,21 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page, size } = action.payload;
+  const {
+    attribute,
+    taxonSet,
+    page,
+    size,
+    asFile = false,
+    setDownloadLoading,
+  } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
     size,
+    asFile,
+    setDownloadLoading,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -205,6 +267,24 @@ function* getClusterMetricsSaga(action) {
       return;
     }
     const response = yield call(getClusterMetrics, data);
+
+    if (asFile) {
+      yield call(
+        downloadBlobFile,
+        response,
+        `${attribute}_${taxonSet}_cluster_metrics.tsv`,
+        "text/tab-separated-values"
+      );
+      if (setDownloadLoading) {
+        yield call(() =>
+          setDownloadLoading((prev) => ({
+            ...prev,
+            clusterMetrics: false,
+          }))
+        );
+      }
+      return;
+    }
 
     if (response.status === "success") {
       yield put(getClusterMetricsSuccess(response));

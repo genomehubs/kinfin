@@ -1,7 +1,7 @@
 import asyncio
 import glob
-from collections import defaultdict
 import json
+from collections import defaultdict
 from typing import Dict
 
 
@@ -127,3 +127,16 @@ def load_clustering_datasets(json_path: str):
     with open(json_path, "r") as f:
         datasets = json.load(f)
         CLUSTERING_DATASETS = {item["id"]: item for item in datasets}
+
+
+def flatten_dict(d, parent_key="", sep="_"):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            items.append((new_key, ",".join(map(str, v))))
+        else:
+            items.append((new_key, v))
+    return dict(items)

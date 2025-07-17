@@ -32,10 +32,9 @@ const AllRarefactionCurve = () => {
     <div className={styles.container}>
       {blobUrl ? (
         <img
-          className={styles.image}
           src={blobUrl}
           alt="Cluster Size Distribution"
-          width="100%"
+          className={styles.image}
         />
       ) : (
         <p>Loading image...</p>

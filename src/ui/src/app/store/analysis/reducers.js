@@ -119,7 +119,7 @@ const analysisReducer = (state = initialState, action) => {
     case GET_CLUSTER_SUMMARY:
       return {
         ...state,
-        clusterSummary: { data: null, loading: true, error: null },
+        clusterSummary: { ...state.clusterSummary, loading: true, error: null },
       };
     case GET_CLUSTER_SUMMARY_SUCCESS:
       return {
@@ -136,7 +136,11 @@ const analysisReducer = (state = initialState, action) => {
     case GET_ATTRIBUTE_SUMMARY:
       return {
         ...state,
-        attributeSummary: { data: null, loading: true, error: null },
+        attributeSummary: {
+          ...state.attributeSummary,
+          loading: true,
+          error: null,
+        },
       };
     case GET_ATTRIBUTE_SUMMARY_SUCCESS:
       return {
@@ -153,7 +157,7 @@ const analysisReducer = (state = initialState, action) => {
     case GET_CLUSTER_METRICS:
       return {
         ...state,
-        clusterMetrics: { data: null, loading: true, error: null },
+        clusterMetrics: { ...state.clusterMetrics, loading: true, error: null },
       };
     case GET_CLUSTER_METRICS_SUCCESS:
       return {
