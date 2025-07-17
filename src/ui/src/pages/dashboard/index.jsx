@@ -101,7 +101,7 @@ const Dashboard = () => {
       asFile: true,
       setDownloadLoading,
     };
-    dispatchSuccessToast(`${chartKey} download as started`);
+    dispatchSuccessToast(`${chartKey} download has started`);
 
     switch (chartKey) {
       case "attributeSummary":
