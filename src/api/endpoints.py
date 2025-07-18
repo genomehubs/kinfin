@@ -27,6 +27,7 @@ from api.utils import (
     CLUSTERING_DATASETS,
     extract_attributes_and_taxon_sets,
     flatten_dict,
+    read_json_file,
     read_status,
     run_cli_command,
     sort_and_paginate_result,
@@ -785,6 +786,76 @@ async def get_clustering_sets_api(
     response = ResponseSchema(
         status="success",
         message="Clustering sets fetched successfully",
+        data=paginated_data,
+        query=str(request.url),
+        current_page=page,
+        entries_per_page=size,
+        total_pages=total_pages,
+    )
+    return JSONResponse(response.model_dump(), status_code=200)
+
+
+@router.get("/kinfin/column-descriptions", response_model=ResponseSchema)
+async def get_column_descriptions_api(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(40, ge=1, le=100),
+    sort_by: str = Query(None, description="Comma-separated fields to sort by"),
+    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: asc or desc"),
+):
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        column_data = await asyncio.to_thread(read_json_file, descriptions_file_path)
+    except FileNotFoundError as e:
+        LOGGER.error("Column descriptions file not found", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Column descriptions file not found",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=404,
+        )
+    except ValueError as e:
+        LOGGER.error("Error parsing column descriptions file", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Error parsing column descriptions file",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=422,
+        )
+    except Exception as e:
+        LOGGER.error("Error fetching column descriptions", exc_info=True)
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                query=str(request.url),
+                error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+    data_dict = {str(i): row for i, row in enumerate(column_data)}
+
+    paginated_data_dict, total_pages = sort_and_paginate_result(
+        result=data_dict,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        size=size,
+    )
+
+    paginated_data = list(paginated_data_dict.values())
+
+    response = ResponseSchema(
+        status="success",
+        message="Column descriptions fetched successfully",
         data=paginated_data,
         query=str(request.url),
         current_page=page,
