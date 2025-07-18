@@ -140,3 +140,8 @@ def flatten_dict(d, parent_key="", sep="_"):
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+def read_json_file(file_path: str) -> list:
+    with open(file_path, "r") as f:
+        return json.load(f)
