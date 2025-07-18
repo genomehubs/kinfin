@@ -800,13 +800,13 @@ async def get_column_descriptions_api(
     request: Request,
     page: int = Query(1, ge=1),
     size: int = Query(40, ge=1, le=100),
+    sort_by: str = Query(None, description="Comma-separated fields to sort by"),
+    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: asc or desc"),
 ):
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
-
         column_data = await asyncio.to_thread(read_json_file, descriptions_file_path)
-
     except FileNotFoundError as e:
         LOGGER.error("Column descriptions file not found", exc_info=True)
         return JSONResponse(
@@ -841,11 +841,17 @@ async def get_column_descriptions_api(
             status_code=500,
         )
 
-    total_items = len(column_data)
-    total_pages = (total_items + size - 1) // size
-    start = (page - 1) * size
-    end = start + size
-    paginated_data = column_data[start:end]
+    data_dict = {str(i): row for i, row in enumerate(column_data)}
+
+    paginated_data_dict, total_pages = sort_and_paginate_result(
+        result=data_dict,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        size=size,
+    )
+
+    paginated_data = list(paginated_data_dict.values())
 
     response = ResponseSchema(
         status="success",
