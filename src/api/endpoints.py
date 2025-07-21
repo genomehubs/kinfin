@@ -12,6 +12,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -42,6 +44,9 @@ CLUSTER_SUMMARY_FILENAME = "cluster_summary.txt"
 ATTRIBUTE_METRICS_FILENAME = "attribute_metrics.txt"
 CLUSTER_METRICS_FILENAME = "cluster_metrics.txt"
 PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
+
+limiter = Limiter(key_func=get_remote_address)
+router = APIRouter()
 
 
 class InputSchema(BaseModel):
@@ -167,6 +172,7 @@ def get_session_status(session_id: str) -> Dict:
 
 
 @router.post("/kinfin/init", response_model=ResponseSchema)
+@limiter.limit("1/minute")
 async def initialize(input_data: InputSchema, request: Request):
     """
     Initialize the analysis process.
@@ -277,6 +283,7 @@ async def initialize(input_data: InputSchema, request: Request):
 
 
 @router.get("/kinfin/status", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_run_status(request: Request, session_id: str = Depends(header_scheme)):
     try:
@@ -304,6 +311,7 @@ async def get_run_status(request: Request, session_id: str = Depends(header_sche
 
 
 @router.post("/kinfin/status", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 async def get_batch_status(request: Request, session_ids: List[str] = Body(...)):
     try:
         statuses = [get_session_status(session_id) for session_id in session_ids]
@@ -330,6 +338,7 @@ async def get_batch_status(request: Request, session_ids: List[str] = Body(...))
 
 
 @router.get("/kinfin/run-summary", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_run_summary(
     request: Request,
@@ -381,6 +390,7 @@ async def get_run_summary(
 
 
 @router.get("/kinfin/counts-by-taxon", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_counts_by_tanon(
     request: Request,
@@ -453,6 +463,7 @@ async def get_counts_by_tanon(
 
 
 @router.get("/kinfin/cluster-summary/{attribute}", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_cluster_summary(
     request: Request,
@@ -607,6 +618,7 @@ async def get_cluster_summary(
 
 
 @router.get("/kinfin/available-attributes-taxonsets")
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_available_attributes_and_taxon_sets(
     request: Request,
@@ -638,6 +650,7 @@ async def get_available_attributes_and_taxon_sets(
 
 
 @router.get("/kinfin/valid-proteome-ids", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 async def get_valid_taxons_api(
     request: Request,
     clusterId: str,
@@ -730,6 +743,7 @@ async def get_valid_taxons_api(
 
 
 @router.get("/kinfin/clustering-sets", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 async def get_clustering_sets_api(
     request: Request,
     page: int = Query(1, ge=1),
@@ -795,6 +809,7 @@ async def get_clustering_sets_api(
 
 
 @router.get("/kinfin/attribute-summary/{attribute}", response_model=ResponseSchema)
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_attribute_summary(
     request: Request,
@@ -911,6 +926,7 @@ async def get_attribute_summary(
     "/kinfin/cluster-metrics/{attribute}/{taxon_set}",
     response_model=ResponseSchema,
 )
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_cluster_metrics(
     request: Request,
@@ -1056,6 +1072,7 @@ async def get_cluster_metrics(
     "/kinfin/pairwise-analysis/{attribute}",
     response_model=ResponseSchema,
 )
+@limiter.limit("60/minute")
 @check_kinfin_session
 async def get_pairwise_analysis(
     request: Request,
@@ -1148,6 +1165,7 @@ async def get_pairwise_analysis(
 
 @router.get("/kinfin/plot/{plot_type}")
 @check_kinfin_session
+@limiter.limit("60/minute")
 async def get_plot(
     request: Request,
     plot_type: str,
