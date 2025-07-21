@@ -2,7 +2,7 @@ import asyncio
 import glob
 import json
 from collections import defaultdict
-from typing import Dict
+from typing import Any, Dict
 
 
 def read_status(status_file):
@@ -106,11 +106,26 @@ def sort_and_paginate_result(
     if sort_by:
         sort_keys = sort_by.split(",")
         items = list(result.items())
+
+        def safe_key(item):
+            values = []
+            for key in sort_keys:
+                value = item[1].get(key)
+                # Use lowercase for string comparison
+                if isinstance(value, str):
+                    values.append(value.lower())
+                elif value is not None:
+                    values.append(value)
+                else:
+                    values.append("")
+            return tuple(values)
+
         items.sort(
-            key=lambda item: tuple(item[1].get(key, float("inf")) for key in sort_keys),
+            key=safe_key,
             reverse=(sort_order != "asc"),
         )
         result = dict(items)
+
     start_index = (page - 1) * size
     end_index = start_index + size
     paginated_result = dict(list(result.items())[start_index:end_index])
@@ -140,3 +155,8 @@ def flatten_dict(d, parent_key="", sep="_"):
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+def read_json_file(file_path: str) -> Any:
+    with open(file_path, "r") as f:
+        return json.load(f)

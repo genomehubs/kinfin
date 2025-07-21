@@ -1,0 +1,158 @@
+[
+  {
+    "code": "001",
+    "file": "cluster_counts_by_taxon.txt",
+    "name": "cluster_id",
+    "description": "Unique identifier for cluster"
+  },
+  {
+    "code": "002",
+    "file": "cluster_counts_by_taxon.txt",
+    "name": "taxon_id_X",
+    "description": "Count of proteins for each taxon_id within cluster (one column per taxon)"
+  },
+  {
+    "code": "003",
+    "file": "*.attribute_metrics.txt",
+    "name": "attribute",
+    "description": "Name of attribute or grouping"
+  },
+  {
+    "code": "004",
+    "file": "*.attribute_metrics.txt",
+    "name": "taxon_set",
+    "description": "Taxon ID"
+  },
+  {
+    "code": "005",
+    "file": "*.attribute_metrics.txt",
+    "name": "cluster_total_count",
+    "description": "Total number of clusters in which proteins of taxon_set were found"
+  },
+  {
+    "code": "006",
+    "file": "*.attribute_metrics.txt",
+    "name": "protein_total_count",
+    "description": "Total number of proteins of taxon_set"
+  },
+  {
+    "code": "007",
+    "file": "*.attribute_metrics.txt",
+    "name": "protein_total_span",
+    "description": "Sum of lengths of proteins of taxon_set (0 if no length data)"
+  },
+  {
+    "code": "008",
+    "file": "*.attribute_metrics.txt",
+    "name": "singleton_cluster_count",
+    "description": "Number of singleton clusters (contain only one protein)"
+  },
+  {
+    "code": "009",
+    "file": "*.attribute_metrics.txt",
+    "name": "singleton_protein_count",
+    "description": "Number of proteins in singleton clusters (NOT NEEDED)"
+  },
+  {
+    "code": "010",
+    "file": "*.attribute_metrics.txt",
+    "name": "singleton_protein_span",
+    "description": "Sum of lengths of proteins in singleton clusters"
+  },
+  {
+    "code": "011",
+    "file": "*.attribute_metrics.txt",
+    "name": "specific_cluster_count",
+    "description": "Number of specific clusters (contain >1 proteins of taxon_set)"
+  },
+  {
+    "code": "012",
+    "file": "*.attribute_metrics.txt",
+    "name": "specific_protein_count",
+    "description": "Number of proteins in specific clusters"
+  },
+  {
+    "code": "013",
+    "file": "*.attribute_metrics.txt",
+    "name": "specific_protein_span",
+    "description": "Sum of lengths of proteins in specific clusters"
+  },
+  {
+    "code": "014",
+    "file": "*.attribute_metrics.txt",
+    "name": "shared_cluster_count",
+    "description": "Number of shared clusters (contain proteins of taxon_set and other taxon_sets)"
+  },
+  {
+    "code": "015",
+    "file": "*.attribute_metrics.txt",
+    "name": "shared_protein_count",
+    "description": "Number of proteins in shared clusters"
+  },
+  {
+    "code": "016",
+    "file": "*.attribute_metrics.txt",
+    "name": "shared_protein_span",
+    "description": "Sum of lengths of proteins in shared clusters"
+  },
+  {
+    "code": "017",
+    "file": "*.attribute_metrics.txt",
+    "name": "specific_cluster_true_1to1_count",
+    "description": "Number of specific clusters where all members of taxon_set have 1:1 orthologues"
+  },
+  {
+    "code": "018",
+    "file": "*.attribute_metrics.txt",
+    "name": "specific_cluster_fuzzy_count",
+    "description": "Number of specific clusters where all members of taxon_set have fuzzy orthologues"
+  },
+  {
+    "code": "019",
+    "file": "*.attribute_metrics.txt",
+    "name": "shared_cluster_true_1to1_count",
+    "description": "Number of shared clusters where all members of taxon_set have 1:1 orthologues"
+  },
+  {
+    "code": "020",
+    "file": "*.attribute_metrics.txt",
+    "name": "shared_cluster_fuzzy_count",
+    "description": "Number of shared clusters where all members of taxon_set have fuzzy orthologues"
+  },
+  {
+    "code": "021",
+    "file": "*.attribute_metrics.txt",
+    "name": "absent_cluster_total_count",
+    "description": "Number of clusters from which taxon_set members are absent"
+  },
+  {
+    "code": "022",
+    "file": "*.attribute_metrics.txt",
+    "name": "absent_cluster_singleton_count",
+    "description": "Number of singleton clusters from which taxon_set members are absent"
+  },
+  {
+    "code": "023",
+    "file": "*.attribute_metrics.txt",
+    "name": "absent_cluster_specific_count",
+    "description": "Number of specific clusters from which taxon_set members are absent"
+  },
+  {
+    "code": "024",
+    "file": "*.attribute_metrics.txt",
+    "name": "absent_cluster_shared_count",
+    "description": "Number of shared clusters from which taxon_set members are absent"
+  },
+  {
+    "code": "025",
+    "file": "*.attribute_metrics.txt",
+    "name": "TAXON_count",
+    "description": "Number of taxon_ids in taxon_set"
+  },
+  {
+    "code": "026",
+    "file": "*.attribute_metrics.txt",
+    "name": "TAXON_taxa",
+    "description": "Names of taxon_ids in taxon_set"
+  }
+]
