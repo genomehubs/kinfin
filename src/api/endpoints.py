@@ -12,8 +12,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -35,6 +33,8 @@ from api.utils import (
 )
 from core.utils import check_file
 
+from .core.limiter import limiter
+
 LOGGER = logging.getLogger("uvicorn.error")
 LOGGER.setLevel(logging.DEBUG)
 
@@ -45,7 +45,7 @@ ATTRIBUTE_METRICS_FILENAME = "attribute_metrics.txt"
 CLUSTER_METRICS_FILENAME = "cluster_metrics.txt"
 PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
-limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter()
 
 
@@ -743,7 +743,7 @@ async def get_valid_taxons_api(
 
 
 @router.get("/kinfin/clustering-sets", response_model=ResponseSchema)
-@limiter.limit("60/minute")
+@limiter.limit("2/minute")
 async def get_clustering_sets_api(
     request: Request,
     page: int = Query(1, ge=1),
