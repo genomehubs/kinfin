@@ -2,7 +2,7 @@ import asyncio
 import glob
 import json
 from collections import defaultdict
-from typing import Dict
+from typing import Any, Dict
 
 
 def read_status(status_file):
@@ -157,6 +157,6 @@ def flatten_dict(d, parent_key="", sep="_"):
     return dict(items)
 
 
-def read_json_file(file_path: str) -> list:
+def read_json_file(file_path: str) -> Any:
     with open(file_path, "r") as f:
         return json.load(f)
