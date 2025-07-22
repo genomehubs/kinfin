@@ -1,5 +1,10 @@
-from core.input import ServeArgs
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+
 from api.utils import load_clustering_datasets
+from core.input import ServeArgs
+
+from .core.limiter import limiter
 
 
 def run_server(
@@ -47,6 +52,14 @@ def run_server(
     query_manager.go_mapping_f = go_mapping_f
 
     app = FastAPI()
+    app.state.limiter = limiter
+
+    @app.exception_handler(RateLimitExceeded)
+    def rate_limit_handler(request, exc):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded. Try again later."},
+        )
 
     ALLOWED_ORIGINS = [
         origin.strip()

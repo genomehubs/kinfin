@@ -64,6 +64,9 @@ Start the backend API:
 export KINFIN_PORT=8000
 export RESULTS_BASE_DIR=$KINFIN_WORKDIR/output
 export SESSION_INACTIVITY_THRESHOLD=24  # Files retained for 24 hours
+export KINFIN_LIMIT_INIT=1/minute
+export KINFIN_LIMIT_STANDARD=60/minute
+export KINFIN_LIMIT_LOW=300/minute
 
 ./src/main.py serve -p $KINFIN_PORT
 ```
