@@ -50,6 +50,15 @@ PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
 router = APIRouter()
 
+json_path = os.path.join(os.path.dirname(__file__), "column_descriptions.json")
+
+with open(json_path, "r") as f:
+    COLUMN_DESCRIPTIONS = json.load(f)
+
+# Create a quick lookup for code -> name mapping
+CODE_TO_COLUMN_NAME = {item["code"]: item["name"] for item in COLUMN_DESCRIPTIONS}
+CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
+
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
@@ -1135,6 +1144,142 @@ async def get_cluster_metrics(
                 message="Internal Server Error",
                 query=str(request.url),
                 error=str(e),
+            ).model_dump(),
+            status_code=500,
+        )
+
+
+@router.get("/kinfin/combined-summary/{attribute}", response_model=ResponseSchema)
+@limiter.limit(LIMIT_STANDARD)
+@check_kinfin_session
+async def get_combined_summary(
+    request: Request,
+    attribute: str,
+    codes: List[str] = Query(..., description="List of column codes to retrieve"),
+    session_id: str = Depends(header_scheme),
+    taxon_set: Optional[str] = Query(None),
+    page: Optional[int] = Query(1),
+    size: Optional[int] = Query(10),
+    sort_by: Optional[str] = Query(None),
+    sort_order: Optional[str] = Query("asc"),
+):
+    try:
+        result_dir = query_manager.get_session_dir(session_id)
+
+        # Validate session
+        config_f = os.path.join(result_dir, "config.json")
+        if not os.path.exists(config_f):
+            return ResponseSchema(
+                status="error",
+                message="Kinfin analysis not initialized",
+                error="session_not_initialized",
+                query=str(request.url),
+            ).to_json_response(status_code=428)
+
+        # Validate attribute
+        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
+        if attribute not in valid_endpoints["attributes"]:
+            return ResponseSchema(
+                status="error",
+                message=f"Invalid attribute: {attribute}",
+                error="invalid_attribute",
+                query=str(request.url),
+            ).to_json_response(status_code=400)
+
+        # Get relevant file types and column names for the requested codes
+        file_map = {}
+        for code in codes:
+            if code not in CODE_TO_COLUMN_NAME:
+                return ResponseSchema(
+                    status="error",
+                    message=f"Invalid code: {code}",
+                    error="invalid_code",
+                    query=str(request.url),
+                ).to_json_response(status_code=400)
+            filetype = CODE_TO_FILETYPE[code]
+            file_map.setdefault(filetype, []).append(CODE_TO_COLUMN_NAME[code])
+
+        print(f"{file_map}")
+        combined_data = {}
+
+        # Handle .cluster_summary.txt
+        if "*.cluster_summary.txt" in file_map:
+            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.cluster_summary.txt")
+            if os.path.exists(filepath):
+                cluster_data = parse_cluster_summary_file(filepath=filepath)
+                for cluster_id, row in cluster_data.items():
+                    if cluster_id not in combined_data:
+                        combined_data[cluster_id] = {}
+                    for col in file_map["*.cluster_summary.txt"]:
+                        combined_data[cluster_id][col] = row.get(col)
+
+        # Handle .attribute_metrics.txt
+        if "*.attribute_metrics.txt" in file_map:
+            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.attribute_metrics.txt")
+            if os.path.exists(filepath):
+                attr_data = parse_attribute_summary_file(filepath=filepath)
+                for attr_id, row in attr_data.items():
+                    if attr_id not in combined_data:
+                        combined_data[attr_id] = {}
+                    for col in file_map["*.attribute_metrics.txt"]:
+                        combined_data[attr_id][col] = row.get(col)
+
+        # Handle .cluster_metrics.txt (needs taxon_set)
+        if "*.cluster_metrics.txt" in file_map:
+            if not taxon_set:
+                return ResponseSchema(
+                    status="error",
+                    message="Missing taxon_set for cluster_metrics",
+                    error="missing_taxon_set",
+                    query=str(request.url),
+                ).to_json_response(status_code=400)
+
+            valid_taxon_sets = valid_endpoints["taxon_set"].get(attribute, [])
+            if taxon_set not in valid_taxon_sets:
+                return ResponseSchema(
+                    status="error",
+                    message=f"Invalid taxon_set: {taxon_set}",
+                    error="invalid_taxon_set",
+                    query=str(request.url),
+                ).to_json_response(status_code=400)
+
+            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.{taxon_set}.cluster_metrics.txt")
+            if os.path.exists(filepath):
+                cluster_metric_data = parse_cluster_metrics_file(filepath)
+                for cluster_id, row in cluster_metric_data.items():
+                    if cluster_id not in combined_data:
+                        combined_data[cluster_id] = {}
+                    for col in file_map["*.cluster_metrics.txt"]:
+                        combined_data[cluster_id][col] = row.get(col)
+
+        # Pagination and sorting
+        paginated_result, total_pages = sort_and_paginate_result(
+            combined_data,
+            sort_by,
+            sort_order,
+            page,
+            size,
+        )
+
+        return JSONResponse(
+            ResponseSchema(
+                status="success",
+                message="Combined summary retrieved",
+                data=paginated_result,
+                total_pages=total_pages,
+                entries_per_page=size,
+                current_page=page,
+                query=str(request.url),
+            ).model_dump()
+        )
+
+    except Exception as e:
+        return JSONResponse(
+            ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                error=str(e),
+                query=str(request.url),
             ).model_dump(),
             status_code=500,
         )
