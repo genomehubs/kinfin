@@ -27,6 +27,10 @@ import {
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
   SET_SELECTED_CLUSTER_SET,
+  GET_COLUMN_DESCRIPTIONS,
+  GET_COLUMN_DESCRIPTIONS_SUCCESS,
+  GET_COLUMN_DESCRIPTIONS_FAILURE,
+  GET_COLUMN_DESCRIPTIONS_RESET,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -165,3 +169,22 @@ export const setSelectedClusterSet = (data) => {
     payload: data,
   };
 };
+
+export const getColumnDescriptions = (data) => ({
+  type: GET_COLUMN_DESCRIPTIONS,
+  payload: data,
+});
+
+export const getColumnDescriptionsSuccess = (data) => ({
+  type: GET_COLUMN_DESCRIPTIONS_SUCCESS,
+  payload: data,
+});
+
+export const getColumnDescriptionsFailure = (data) => ({
+  type: GET_COLUMN_DESCRIPTIONS_FAILURE,
+  payload: data,
+});
+
+export const getColumnDescriptionsReset = () => ({
+  type: GET_COLUMN_DESCRIPTIONS_RESET,
+});

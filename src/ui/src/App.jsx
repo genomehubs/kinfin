@@ -8,6 +8,7 @@ import { Dashboard, Home, DefineNodeLabels } from "./pages";
 import { ThemeProvider } from "@mui/material/styles";
 import { lightTheme, darkTheme } from "./utilis/theme";
 import { useTheme } from "./hooks/useTheme";
+import CustomTable from "./pages/custom-table";
 
 function App() {
   const { theme } = useTheme();
@@ -24,6 +25,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/custom-table" element={<CustomTable />} />
               <Route path="/:sessionId/dashboard" element={<Dashboard />} />
               <Route
                 path="/define-node-labels"

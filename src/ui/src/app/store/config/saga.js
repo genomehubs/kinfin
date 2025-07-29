@@ -13,6 +13,7 @@ import {
   GET_BATCH_STATUS,
   GET_VALID_PROTEOME_IDS,
   GET_CLUSTERING_SETS,
+  GET_COLUMN_DESCRIPTIONS,
 } from "./actionTypes";
 
 import {
@@ -29,6 +30,8 @@ import {
   updateSessionMeta,
   getClusteringSetsFailure,
   getClusteringSetsSuccess,
+  getColumnDescriptionsSuccess,
+  getColumnDescriptionsFailure,
 } from "./actions";
 
 import {
@@ -42,6 +45,7 @@ import {
   getBatchStatus,
   getValidProteomeIds,
   getClusteringSets,
+  getColumnDescriptions,
 } from "../../services/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
@@ -251,8 +255,44 @@ function* getClusteringSetsSaga() {
   }
 }
 
+function* getColumnDescriptionsSaga(action) {
+  console.log("first");
+  const data = {
+    page: 1,
+    size: 100,
+  };
+  try {
+    const response = yield call(getColumnDescriptions, data);
+    console.log("🚀 ~ getColumnDescriptionsSaga ~ response:", response);
+
+    if (response.status === "success") {
+      yield put(getColumnDescriptionsSuccess(response.data));
+      yield call(
+        dispatchSuccessToast,
+        "Column descriptions fetched successfully!"
+      );
+    } else {
+      yield put(getColumnDescriptionsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch column descriptions"
+      );
+    }
+  } catch (err) {
+    yield put(getColumnDescriptionsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch column descriptions"
+    );
+  }
+}
+
 export function* watchInitAnalysisSaga() {
   yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
+}
+
+export function* watchGetColumnDescriptionsSaga() {
+  yield takeEvery(GET_COLUMN_DESCRIPTIONS, getColumnDescriptionsSaga);
 }
 export function* watchGetRunStatusSaga() {
   yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
@@ -276,5 +316,6 @@ export default function* configSaga() {
     fork(watchGetValidProteomeIdsSaga),
     fork(watchGetBatchStatusSaga),
     fork(watchGetClusteringSets),
+    fork(watchGetColumnDescriptionsSaga),
   ]);
 }
