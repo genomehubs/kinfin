@@ -256,14 +256,12 @@ function* getClusteringSetsSaga() {
 }
 
 function* getColumnDescriptionsSaga(action) {
-  console.log("first");
   const data = {
     page: 1,
     size: 100,
   };
   try {
     const response = yield call(getColumnDescriptions, data);
-    console.log("🚀 ~ getColumnDescriptionsSaga ~ response:", response);
 
     if (response.status === "success") {
       yield put(getColumnDescriptionsSuccess(response.data));
