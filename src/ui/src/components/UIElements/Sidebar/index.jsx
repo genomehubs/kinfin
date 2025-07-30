@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
-
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate, useParams } from "react-router-dom";
-import Tooltip from "rc-tooltip";
-import "rc-tooltip/assets/bootstrap.css";
 import Modal from "../Modal";
 import { useDispatch, useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
-import { Box } from "@mui/material";
+import { Box, Menu, MenuItem, IconButton } from "@mui/material";
 
 // MUI Icons
 import MenuIcon from "@mui/icons-material/Menu";
@@ -29,7 +26,6 @@ import {
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
-
   if (!config || typeof config !== "object") return;
 
   const keys = Object.keys(config[0] || {});
@@ -58,8 +54,9 @@ const Sidebar = ({ open, setOpen }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
-  const [sessionIdClicked, setSessionIdClicked] = useState("");
-  const [visibleTooltip, setVisibleTooltip] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
 
@@ -69,11 +66,10 @@ const Sidebar = ({ open, setOpen }) => {
   const pollingLoadingBySessionId = useSelector(
     (state) => state.config.pollingLoadingBySessionId || {}
   );
-  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
-  const tooltipRef = useRef(null);
   const selectedClusterSet = useSelector(
     (state) => state?.config?.selectedClusterSet
   );
+  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
   useEffect(() => {
     if (selectedClusterSet) {
@@ -82,7 +78,6 @@ const Sidebar = ({ open, setOpen }) => {
   }, [selectedClusterSet]);
 
   const hasFetchedStatusRef = useRef(false);
-
   useEffect(() => {
     if (!hasFetchedStatusRef.current && analysisList?.length) {
       const sessionIds = analysisList.map((item) => item.sessionId);
@@ -110,12 +105,24 @@ const Sidebar = ({ open, setOpen }) => {
     }
     const payload = {
       newName: userName.trim(),
-      sessionId: sessionIdClicked,
+      sessionId: selectedItem?.sessionId,
     };
     dispatch(renameConfig(payload));
     setNameError("");
     setUserName("");
     setModalOpen(false);
+  };
+
+  const handleMenuOpen = (event, item) => {
+    event.stopPropagation();
+    setSelectedItem(item);
+    setAnchorEl(event.currentTarget);
+
+    setUserName(item.name);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
   };
 
   return (
@@ -129,7 +136,6 @@ const Sidebar = ({ open, setOpen }) => {
         </div>
 
         <div className={styles.menu}>
-          {/* Default item */}
           <div className={styles.defaultSection}>
             <div
               onClick={() => {
@@ -144,7 +150,6 @@ const Sidebar = ({ open, setOpen }) => {
 
           <div className={styles.divider}></div>
 
-          {/* Analysis list */}
           <div className={styles.otherSection}>
             {!analysisList?.length ? (
               <div className={styles.emptyState}>No saved analyses</div>
@@ -157,10 +162,7 @@ const Sidebar = ({ open, setOpen }) => {
                       <div
                         key={item.sessionId}
                         className={`${styles.menuItem} ${
-                          visibleTooltip === item.sessionId ||
-                          sessionId === item.sessionId
-                            ? styles.active
-                            : ""
+                          sessionId === item.sessionId ? styles.active : ""
                         }`}
                         onClick={() => navigate(`/${item.sessionId}/dashboard`)}
                       >
@@ -191,65 +193,12 @@ const Sidebar = ({ open, setOpen }) => {
                           )}
                         </Box>
                         <span className={styles.label}>{item.name}</span>
-                        <div className={styles.refContainer} ref={tooltipRef}>
-                          <Tooltip
-                            placement="rightTop"
-                            styles={{ root: { pointerEvents: "auto" } }}
-                            onVisibleChange={(visible) => {
-                              if (!visible) setVisibleTooltip(null);
-                            }}
-                            trigger={["click"]}
-                            overlay={
-                              <div className={styles.tooltipContent}>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    downloadAsTSV(item);
-                                  }}
-                                >
-                                  <DownloadIcon fontSize="small" /> Download
-                                </div>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setModalOpen(true);
-                                  }}
-                                >
-                                  <EditOutlinedIcon fontSize="small" /> Rename
-                                </div>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    dispatch(deleteConfig(sessionIdClicked));
-                                  }}
-                                >
-                                  <DeleteIcon fontSize="small" /> Delete
-                                </div>
-                              </div>
-                            }
-                            visible={visibleTooltip === item.sessionId}
-                            showArrow={false}
-                            defaultVisible={false}
-                          >
-                            <MoreHorizIcon
-                              fontSize="small"
-                              className={styles.downloadIcon}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSessionIdClicked(item.sessionId);
-                                setUserName(item.name);
-                                setVisibleTooltip((prev) =>
-                                  prev === item.sessionId
-                                    ? null
-                                    : item.sessionId
-                                );
-                              }}
-                            />
-                          </Tooltip>
-                        </div>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, item)}
+                        >
+                          <MoreHorizIcon fontSize="small" />
+                        </IconButton>
                       </div>
                     ))}
                   </div>
@@ -260,51 +209,53 @@ const Sidebar = ({ open, setOpen }) => {
         </div>
 
         <div className={styles.bottom}>
-          <Tooltip
-            placement="rightTop"
-            trigger={["click"]}
-            overlay={
-              <div className={styles.tooltipTheme}>
-                <div className={styles.themeHeading}>
-                  <p>Switch Appearance</p>
-                  <DarkModeIcon fontSize="small" />
-                </div>
-                <div className={styles.toggleWrapper} onClick={toggleTheme}>
-                  <span className={styles.toggleText}>Dark Mode</span>
-                  <div
-                    className={`${styles.toggle} ${
-                      theme === "dark" ? styles.active : ""
-                    }`}
-                  >
-                    <div className={styles.icon}>
-                      {theme === "dark" ? (
-                        <DarkModeIcon fontSize="small" />
-                      ) : (
-                        <LightModeIcon fontSize="small" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            }
-            showArrow={false}
-          >
-            <div className={styles.themeTrigger}>
-              {theme === "dark" ? (
-                <DarkModeIcon fontSize="small" />
-              ) : (
-                <LightModeIcon fontSize="small" />
-              )}{" "}
-              Theme
-            </div>
-          </Tooltip>
+          <div className={styles.themeTrigger} onClick={toggleTheme}>
+            {theme === "dark" ? (
+              <DarkModeIcon fontSize="small" />
+            ) : (
+              <LightModeIcon fontSize="small" />
+            )}{" "}
+            Theme
+          </div>
         </div>
       </div>
+
+      {/* MUI Menu for actions */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem
+          onClick={() => {
+            downloadAsTSV(selectedItem);
+            handleMenuClose();
+          }}
+        >
+          <DownloadIcon fontSize="small" sx={{ mr: 1 }} /> Download
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setModalOpen(true);
+            handleMenuClose();
+          }}
+        >
+          <EditOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> Rename
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            dispatch(deleteConfig(selectedItem.sessionId));
+            handleMenuClose();
+          }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
+        </MenuItem>
+      </Menu>
 
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Initialize Analysis"
+        title="Rename Analysis"
       >
         <div className={styles.container}>
           <label htmlFor="analysis-name" className={styles.label}>
