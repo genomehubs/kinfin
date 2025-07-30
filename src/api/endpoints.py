@@ -83,6 +83,7 @@ header_scheme = APIKeyHeader(name="x-session-id")
 router = APIRouter()
 
 
+
 def check_kinfin_session(func):
     @wraps(func)
     async def wrapper(request: Request, session_id: str, *args, **kwargs):
@@ -1219,10 +1220,11 @@ async def get_combined_summary(
             if os.path.exists(filepath):
                 attr_data = parse_attribute_summary_file(filepath=filepath)
                 for attr_id, row in attr_data.items():
+                    flat_row = flatten_dict(row)  # <== flattening here only
                     if attr_id not in combined_data:
                         combined_data[attr_id] = {}
                     for col in file_map["*.attribute_metrics.txt"]:
-                        combined_data[attr_id][col] = row.get(col)
+                        combined_data[attr_id][col] = flat_row.get(col)
 
         # Handle .cluster_metrics.txt (needs taxon_set)
         if "*.cluster_metrics.txt" in file_map:
