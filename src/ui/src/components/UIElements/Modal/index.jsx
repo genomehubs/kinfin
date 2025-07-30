@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./Modal.module.scss";
-import { IoMdClose } from "react-icons/io";
+import CloseIcon from "@mui/icons-material/Close";
 
 const Modal = ({ isOpen, onClose, children, noClose = false, title = "" }) => {
   if (!isOpen) {
@@ -22,7 +22,7 @@ const Modal = ({ isOpen, onClose, children, noClose = false, title = "" }) => {
               className={styles.closeButton}
               onClick={onClose}
             >
-              <IoMdClose />
+              <CloseIcon />
             </button>
           )}
         </div>

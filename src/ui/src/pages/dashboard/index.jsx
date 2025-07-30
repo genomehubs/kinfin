@@ -12,7 +12,8 @@ import {
 import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
-import { MdOutlineFileDownload } from "react-icons/md";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
 import { useDispatch, useSelector } from "react-redux";
@@ -226,7 +227,7 @@ const Dashboard = () => {
                           {downloadLoading[key] ? (
                             <div className={styles.downloadLoader} />
                           ) : (
-                            <MdOutlineFileDownload />
+                            <FileDownloadOutlinedIcon size="small" />
                           )}
                         </button>
                         <p className={styles.title}>{modalTitleMap[key]}</p>
@@ -249,7 +250,7 @@ const Dashboard = () => {
                             {downloadLoading[key] ? (
                               <div className={styles.downloadLoader} />
                             ) : (
-                              <MdOutlineFileDownload />
+                              <FileDownloadOutlinedIcon size="small" />
                             )}
                           </button>
                           <p className={styles.title}>{modalTitleMap[key]}</p>

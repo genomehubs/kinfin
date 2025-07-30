@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
-import { FiMenu, FiDownload } from "react-icons/fi";
-import { GoKebabHorizontal } from "react-icons/go";
-import { FaSun, FaMoon } from "react-icons/fa";
+
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate, useParams } from "react-router-dom";
 import Tooltip from "rc-tooltip";
 import "rc-tooltip/assets/bootstrap.css";
-import { AiFillDelete } from "react-icons/ai";
 import Modal from "../Modal";
-
-import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
+import { Box } from "@mui/material";
+
+// MUI Icons
+import MenuIcon from "@mui/icons-material/Menu";
+import DownloadIcon from "@mui/icons-material/Download";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+
 import {
   renameConfig,
   deleteConfig,
@@ -20,14 +26,11 @@ import {
   getBatchStatus,
   setSelectedClusterSet,
 } from "../../../app/store/config/actions";
-import { Box } from "@mui/material";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
 
-  if (!config || typeof config !== "object") {
-    return;
-  }
+  if (!config || typeof config !== "object") return;
 
   const keys = Object.keys(config[0] || {});
   const tsvRows = [
@@ -59,6 +62,7 @@ const Sidebar = ({ open, setOpen }) => {
   const [visibleTooltip, setVisibleTooltip] = useState(null);
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
+
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data
   );
@@ -98,6 +102,7 @@ const Sidebar = ({ open, setOpen }) => {
     acc[clusterId].configs.push(item);
     return acc;
   }, {});
+
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
@@ -107,7 +112,6 @@ const Sidebar = ({ open, setOpen }) => {
       newName: userName.trim(),
       sessionId: sessionIdClicked,
     };
-
     dispatch(renameConfig(payload));
     setNameError("");
     setUserName("");
@@ -120,7 +124,7 @@ const Sidebar = ({ open, setOpen }) => {
         <div className={styles.top}>
           <h2>KinFin</h2>
           <button className={styles.toggleBtn} onClick={() => setOpen(false)}>
-            <FiMenu />
+            <MenuIcon />
           </button>
         </div>
 
@@ -204,7 +208,7 @@ const Sidebar = ({ open, setOpen }) => {
                                     downloadAsTSV(item);
                                   }}
                                 >
-                                  <FiDownload /> Download
+                                  <DownloadIcon fontSize="small" /> Download
                                 </div>
                                 <div
                                   className={styles.tooltipItem}
@@ -213,7 +217,7 @@ const Sidebar = ({ open, setOpen }) => {
                                     setModalOpen(true);
                                   }}
                                 >
-                                  <MdOutlineEdit /> Rename
+                                  <EditOutlinedIcon fontSize="small" /> Rename
                                 </div>
                                 <div
                                   className={styles.tooltipItem}
@@ -222,7 +226,7 @@ const Sidebar = ({ open, setOpen }) => {
                                     dispatch(deleteConfig(sessionIdClicked));
                                   }}
                                 >
-                                  <AiFillDelete /> Delete
+                                  <DeleteIcon fontSize="small" /> Delete
                                 </div>
                               </div>
                             }
@@ -230,7 +234,8 @@ const Sidebar = ({ open, setOpen }) => {
                             showArrow={false}
                             defaultVisible={false}
                           >
-                            <GoKebabHorizontal
+                            <MoreHorizIcon
+                              fontSize="small"
                               className={styles.downloadIcon}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -262,7 +267,7 @@ const Sidebar = ({ open, setOpen }) => {
               <div className={styles.tooltipTheme}>
                 <div className={styles.themeHeading}>
                   <p>Switch Appearance</p>
-                  <FaMoon />
+                  <DarkModeIcon fontSize="small" />
                 </div>
                 <div className={styles.toggleWrapper} onClick={toggleTheme}>
                   <span className={styles.toggleText}>Dark Mode</span>
@@ -272,7 +277,11 @@ const Sidebar = ({ open, setOpen }) => {
                     }`}
                   >
                     <div className={styles.icon}>
-                      {theme === "dark" ? <FaMoon /> : <FaSun />}
+                      {theme === "dark" ? (
+                        <DarkModeIcon fontSize="small" />
+                      ) : (
+                        <LightModeIcon fontSize="small" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -281,11 +290,17 @@ const Sidebar = ({ open, setOpen }) => {
             showArrow={false}
           >
             <div className={styles.themeTrigger}>
-              {theme === "dark" ? <FaMoon /> : <FaSun />} Theme
+              {theme === "dark" ? (
+                <DarkModeIcon fontSize="small" />
+              ) : (
+                <LightModeIcon fontSize="small" />
+              )}{" "}
+              Theme
             </div>
           </Tooltip>
         </div>
       </div>
+
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -313,9 +328,10 @@ const Sidebar = ({ open, setOpen }) => {
           </button>
         </div>
       </Modal>
+
       {!open && (
         <button className={styles.floatingToggle} onClick={() => setOpen(true)}>
-          <FiMenu />
+          <MenuIcon />
         </button>
       )}
     </>

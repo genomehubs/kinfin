@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styles from "./ClusterSummary.module.scss";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useSelector } from "react-redux";
 
 const ClusterSummary = () => {
@@ -50,9 +51,9 @@ const ClusterSummary = () => {
                 <td>
                   <button onClick={() => toggleRow(cluster.cluster_id)}>
                     {expandedRow === cluster.cluster_id ? (
-                      <FaChevronUp />
+                      <KeyboardArrowUpIcon />
                     ) : (
-                      <FaChevronDown />
+                      <KeyboardArrowDownIcon />
                     )}
                   </button>
                 </td>
