@@ -66,6 +66,7 @@ const Sidebar = ({ open, setOpen }) => {
   const [nameError, setNameError] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
@@ -253,7 +254,7 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            dispatch(deleteConfig(selectedItem.sessionId));
+            setDeleteDialogOpen(true);
             handleMenuClose();
           }}
         >
@@ -282,9 +283,43 @@ const Sidebar = ({ open, setOpen }) => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setModalOpen(false);
+              setUserName("");
+              setNameError("");
+            }}
+          >
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} variant="contained">
             Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <p>
+            Are you sure you want to delete{" "}
+            <strong>{selectedItem?.name || "this analysis"}</strong>? This
+            action cannot be undone.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              dispatch(deleteConfig(selectedItem?.sessionId));
+              setDeleteDialogOpen(false);
+            }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
