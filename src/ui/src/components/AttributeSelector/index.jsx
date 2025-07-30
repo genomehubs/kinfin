@@ -1,52 +1,66 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
 import styles from "./AttributeSelector.module.scss";
+
 const AttributeSelector = () => {
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const responseData = useSelector(
     (state) => state?.analysis?.availableAttributesTaxonsets?.data
   );
 
-  const persistedSelection = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
-  );
+  // Read from URL initially
+  const initialAttribute = searchParams.get("attribute") || "";
+  const initialTaxon = searchParams.get("taxonset") || "";
 
-  const [selectedAttribute, setSelectedAttribute] = useState("");
-  const [selectedTaxon, setSelectedTaxon] = useState("");
+  const [attribute, setAttribute] = useState(initialAttribute);
+  const [taxon, setTaxon] = useState(initialTaxon);
 
+  // Apply selection when URL params change
   useEffect(() => {
-    if (persistedSelection) {
-      setSelectedAttribute(persistedSelection.attribute || "");
-      setSelectedTaxon(persistedSelection.taxonset || "");
-    }
-  }, [persistedSelection]);
-
-  const handleAttributeChange = (e) => {
-    const attribute = e.target.value;
-    setSelectedAttribute(attribute);
-    setSelectedTaxon("");
-  };
-
-  const handleTaxonChange = (e) => {
-    setSelectedTaxon(e.target.value);
-  };
-
-  const handleApply = () => {
-    if (selectedAttribute && selectedTaxon) {
+    if (initialAttribute && initialTaxon) {
       dispatch(
         setSelectedAttributeTaxonset({
-          attribute: selectedAttribute,
-          taxonset: selectedTaxon,
+          attribute: initialAttribute,
+          taxonset: initialTaxon,
         })
       );
     }
+  }, [initialAttribute, initialTaxon, dispatch]);
+
+  const handleAttributeChange = (e) => {
+    const newAttribute = e.target.value;
+    setAttribute(newAttribute);
+    setTaxon(""); // Reset taxonset when attribute changes
+  };
+
+  const handleTaxonChange = (e) => {
+    setTaxon(e.target.value);
+  };
+
+  const handleApply = () => {
+    setSearchParams({
+      attribute,
+      taxonset: taxon,
+    });
+    dispatch(
+      setSelectedAttributeTaxonset({
+        attribute,
+        taxonset: taxon,
+      })
+    );
   };
 
   const handleClear = () => {
-    setSelectedAttribute("");
-    setSelectedTaxon("");
+    setAttribute("all");
+    setTaxon("all");
+    setSearchParams({
+      attribute: "all",
+      taxonset: "all",
+    });
     dispatch(
       setSelectedAttributeTaxonset({
         attribute: "all",
@@ -59,11 +73,11 @@ const AttributeSelector = () => {
     <div className={styles.container}>
       <div className={styles.selectors}>
         <div className={styles.selectContainer}>
-          <label>Attribute: </label>
+          <label>Attribute:</label>
           <select
             className={styles.dropdown}
             onChange={handleAttributeChange}
-            value={selectedAttribute}
+            value={attribute}
           >
             <option value="">Select Attribute</option>
             {responseData?.attributes?.map((attr) => (
@@ -75,18 +89,18 @@ const AttributeSelector = () => {
         </div>
 
         <div className={styles.selectContainer}>
-          <label> Taxon Set: </label>
+          <label>Taxon Set:</label>
           <select
             className={styles.dropdown}
             onChange={handleTaxonChange}
-            value={selectedTaxon}
-            disabled={!selectedAttribute}
+            value={taxon}
+            disabled={!attribute}
           >
             <option value="">Select Taxon Set</option>
-            {selectedAttribute &&
-              responseData?.taxon_set[selectedAttribute]?.map((taxon) => (
-                <option key={taxon} value={taxon}>
-                  {taxon}
+            {attribute &&
+              responseData?.taxon_set[attribute]?.map((tx) => (
+                <option key={tx} value={tx}>
+                  {tx}
                 </option>
               ))}
           </select>
@@ -94,11 +108,7 @@ const AttributeSelector = () => {
       </div>
 
       <div className={styles.buttonContainer}>
-        <button
-          className={styles.applyButton}
-          onClick={handleApply}
-          disabled={!selectedAttribute || !selectedTaxon}
-        >
+        <button className={styles.applyButton} onClick={handleApply}>
           Apply
         </button>
         <button className={styles.clearButton} onClick={handleClear}>

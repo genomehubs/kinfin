@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
 import { getClusterSummary } from "../../../app/store/analysis/actions";
@@ -9,11 +10,7 @@ const pageSizeOptions = [5, 10, 25];
 
 const ClusterSummary = () => {
   const dispatch = useDispatch();
-
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 5,
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const clusterSummaryData = useSelector(
     (state) => state?.analysis?.clusterSummary?.data
@@ -22,21 +19,33 @@ const ClusterSummary = () => {
     (state) => state?.config?.selectedAttributeTaxonset || null
   );
 
-  const handlePaginationModelChange = useCallback(
-    (newPaginationModel) => {
-      if (
-        newPaginationModel.page !== paginationModel.page ||
-        newPaginationModel.pageSize !== paginationModel.pageSize
-      ) {
-        setPaginationModel(newPaginationModel);
-      }
-    },
-    [paginationModel]
+  // Parse pagination params from URL or fallback
+  const page = Math.max(
+    parseInt(searchParams.get("CS_page") || "1", 10) - 1,
+    0
+  );
+  const pageSize = Math.max(
+    parseInt(searchParams.get("CS_pageSize") || "5", 10),
+    1
   );
 
+  // Set defaults only if not already present in the URL
   useEffect(() => {
-    const { page, pageSize } = paginationModel;
+    const hasPage = searchParams.has("CS_page");
+    const hasPageSize = searchParams.has("CS_pageSize");
 
+    if (!hasPage || !hasPageSize) {
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        if (!hasPage) newParams.set("CS_page", "1");
+        if (!hasPageSize) newParams.set("CS_pageSize", "5");
+        return newParams;
+      });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Fetch cluster summary data
+  useEffect(() => {
     const payload = {
       page: page + 1, // Backend is 1-based
       size: pageSize,
@@ -46,7 +55,17 @@ const ClusterSummary = () => {
     if (payload.attribute) {
       dispatch(getClusterSummary(payload));
     }
-  }, [paginationModel, dispatch, selectedAttributeTaxonset]);
+  }, [page, pageSize, dispatch, selectedAttributeTaxonset]);
+
+  const handlePaginationModelChange = useCallback(
+    (newModel) => {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("CS_page", (newModel.page + 1).toString());
+      newParams.set("CS_pageSize", newModel.pageSize.toString());
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   const processedRows = useMemo(() => {
     const rawData = clusterSummaryData?.data ?? {};
@@ -66,6 +85,7 @@ const ClusterSummary = () => {
       };
     });
   }, [clusterSummaryData]);
+
   const rowCount = useMemo(() => {
     if (clusterSummaryData?.total_entries != null) {
       return clusterSummaryData.total_entries;
@@ -145,7 +165,7 @@ const ClusterSummary = () => {
         rows={processedRows}
         columns={columns}
         paginationMode="server"
-        paginationModel={paginationModel}
+        paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
         rowCount={rowCount}
         pageSizeOptions={pageSizeOptions}
