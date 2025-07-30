@@ -8,6 +8,7 @@ import {
   getClusterMetrics,
   getAttributeSummary,
 } from "../../app/store/analysis/actions";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import { getRunStatus } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
@@ -80,6 +81,22 @@ const Dashboard = () => {
       setShowDataModal(true);
     } catch (error) {
       console.error("Failed to parse session data:", error);
+    }
+  };
+  const handleNavigate = (chartKey) => {
+    if (!sessionId) return;
+
+    const basePaths = {
+      attributeSummary: "attribute-summary",
+      clusterSummary: "cluster-summary",
+      clusterMetrics: "cluster-metrics",
+    };
+
+    const path = basePaths[chartKey];
+    if (path) {
+      navigate(`/${sessionId}/${path}`);
+    } else {
+      console.warn("Unknown chart key:", chartKey);
     }
   };
 
@@ -218,6 +235,17 @@ const Dashboard = () => {
                   (key) => (
                     <div key={key} className={styles.container}>
                       <div className={styles.header}>
+                        <button
+                          className={styles.enlargeButton}
+                          onClick={() => handleNavigate(key)}
+                        >
+                          {downloadLoading[key] ? (
+                            <div className={styles.downloadLoader} />
+                          ) : (
+                            <OpenInNewIcon fontSize="small" />
+                          )}
+                        </button>
+
                         <button
                           className={styles.enlargeButton}
                           onClick={() => handleDownload(key)}
