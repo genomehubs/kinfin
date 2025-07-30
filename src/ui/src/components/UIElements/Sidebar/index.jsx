@@ -2,10 +2,20 @@ import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate, useParams } from "react-router-dom";
-import Modal from "../Modal";
 import { useDispatch, useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
-import { Box, Menu, MenuItem, IconButton } from "@mui/material";
+import {
+  Box,
+  Menu,
+  MenuItem,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+} from "@mui/material";
 
 // MUI Icons
 import MenuIcon from "@mui/icons-material/Menu";
@@ -117,7 +127,6 @@ const Sidebar = ({ open, setOpen }) => {
     event.stopPropagation();
     setSelectedItem(item);
     setAnchorEl(event.currentTarget);
-
     setUserName(item.name);
   };
 
@@ -252,33 +261,33 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
       </Menu>
 
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Rename Analysis"
-      >
-        <div className={styles.container}>
-          <label htmlFor="analysis-name" className={styles.label}>
-            Enter a name for this analysis:
-          </label>
-          <input
-            id="analysis-name"
+      {/* MUI Dialog for Rename */}
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth>
+        <DialogTitle>Rename Analysis</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Enter a name for this analysis"
             type="text"
+            fullWidth
+            variant="outlined"
             value={userName}
+            error={!!nameError}
+            helperText={nameError}
             onChange={(e) => {
               setUserName(e.target.value);
-              if (nameError) {
-                setNameError("");
-              }
+              if (nameError) setNameError("");
             }}
-            className={`${styles.input} ${nameError ? styles.error : ""}`}
           />
-          {nameError && <p className={styles.errorMessage}>{nameError}</p>}
-          <button onClick={handleSubmit} className={styles.submitButton}>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">
             Submit
-          </button>
-        </div>
-      </Modal>
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {!open && (
         <button className={styles.floatingToggle} onClick={() => setOpen(true)}>
