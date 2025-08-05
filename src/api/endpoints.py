@@ -63,6 +63,7 @@ CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
     clusterId: str
+    isAdvanced: bool
 
 
 class ResponseSchema(BaseModel):
@@ -231,6 +232,10 @@ async def initialize(input_data: InputSchema, request: Request):
         cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
         sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
         taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+        species_id = os.path.join(cluster_path, "kinfin.SpeciesIDs.txt")
+        fasta_dir = os.path.join(cluster_path, "fastas")
+        tree = os.path.join(cluster_path, "kinfin.tree.nwk")
+        annotations = os.path.join(cluster_path, "kinfin.functional_annotation.txt")
 
         try:
             check_file(cluster_f, install_kinfin=True)
@@ -269,6 +274,13 @@ async def initialize(input_data: InputSchema, request: Request):
             "--plot_format",
             "png",
         ]
+        if (input_data.isAdvanced) :
+            command.extend([
+                "-p", species_id,
+                "-a", fasta_dir,
+                "-t", tree,
+                "-f", annotations,
+            ])
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
         asyncio.create_task(run_cli_command(command, status_file))

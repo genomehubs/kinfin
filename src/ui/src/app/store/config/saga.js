@@ -136,6 +136,7 @@ function* initAnalysisSaga(action) {
     }
   } catch (err) {
     yield put(initAnalysisFailure(err));
+    console.error(err);
     yield call(
       dispatchErrorToast,
       err?.response?.data?.error?.message || "Failed to initialize analysis"

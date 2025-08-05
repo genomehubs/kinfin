@@ -17,6 +17,7 @@ export const initAnalysis = async (data) => {
   const response = await apiClient.post("/init", {
     config: data.config,
     clusterId: data.clusterId,
+    isAdvanced: false,
   });
   return response.data;
 };

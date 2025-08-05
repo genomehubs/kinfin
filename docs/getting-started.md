@@ -50,6 +50,7 @@ curl -X POST "$KINFIN_HOST/kinfin/init" \
 -H "Content-Type: application/json" \
 -d '{
   "clusterId": "155a0782-2203-4168-b002-8ebc5ccaea7c",
+  "isAdvanced": false,
   "config": [
     {"taxon": "CBRIG", "clade": "CBRIG", "host": "outgroup"},
     {"taxon": "DMEDI", "clade": "DMEDI", "host": "human"},
