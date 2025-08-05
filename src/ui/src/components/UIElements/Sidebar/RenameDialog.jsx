@@ -32,6 +32,15 @@ const RenameDialog = ({
     setError("");
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSubmit();
+    } else if (e.key === "Escape") {
+      handleCancel();
+    }
+  };
+
   return (
     <Dialog open={open} onClose={handleCancel} fullWidth>
       <DialogTitle>{title}</DialogTitle>
@@ -47,6 +56,7 @@ const RenameDialog = ({
           error={!!error}
           helperText={error}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
         />
       </DialogContent>
       <DialogActions>
