@@ -36,7 +36,9 @@ import {
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
-  if (!config || typeof config !== "object") return;
+  if (!config || typeof config !== "object") {
+    return;
+  }
 
   const keys = Object.keys(config[0] || {});
   const tsvRows = [
@@ -161,9 +163,7 @@ const Sidebar = ({ open, setOpen }) => {
           <div className={styles.divider}></div>
 
           <div className={styles.otherSection}>
-            {!analysisList?.length ? (
-              <div className={styles.emptyState}>No saved analyses</div>
-            ) : (
+            {analysisList?.length ? (
               Object.entries(groupedAnalysis).map(
                 ([clusterId, { clusterName, configs }]) => (
                   <div key={clusterId} className={styles.clusterGroup}>
@@ -214,6 +214,8 @@ const Sidebar = ({ open, setOpen }) => {
                   </div>
                 )
               )
+            ) : (
+              <div className={styles.emptyState}>No saved analyses</div>
             )}
           </div>
         </div>
@@ -278,7 +280,9 @@ const Sidebar = ({ open, setOpen }) => {
             helperText={nameError}
             onChange={(e) => {
               setUserName(e.target.value);
-              if (nameError) setNameError("");
+              if (nameError) {
+                setNameError("");
+              }
             }}
           />
         </DialogContent>
