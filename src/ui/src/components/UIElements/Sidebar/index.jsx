@@ -17,6 +17,8 @@ import {
   Button,
 } from "@mui/material";
 
+import RenameDialog from "./RenameDialog";
+
 // MUI Icons
 import MenuIcon from "@mui/icons-material/Menu";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -264,43 +266,15 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
       </Menu>
 
-      {/* MUI Dialog for Rename */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth>
-        <DialogTitle>Rename Analysis</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Enter a name for this analysis"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={userName}
-            error={!!nameError}
-            helperText={nameError}
-            onChange={(e) => {
-              setUserName(e.target.value);
-              if (nameError) {
-                setNameError("");
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setModalOpen(false);
-              setUserName("");
-              setNameError("");
-            }}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} variant="contained">
-            Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RenameDialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmit}
+        value={userName}
+        setValue={setUserName}
+        error={nameError}
+        setError={setNameError}
+      />
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
