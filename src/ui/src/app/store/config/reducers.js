@@ -27,6 +27,10 @@ import {
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
   SET_SELECTED_CLUSTER_SET,
+  GET_COLUMN_DESCRIPTIONS,
+  GET_COLUMN_DESCRIPTIONS_SUCCESS,
+  GET_COLUMN_DESCRIPTIONS_FAILURE,
+  GET_COLUMN_DESCRIPTIONS_RESET,
 } from "./actionTypes";
 
 const initialState = {
@@ -52,6 +56,7 @@ const initialState = {
   pollingLoading: {},
   batchStatus: { data: null, loading: false, error: null },
   clusteringSets: { data: null, loading: false, error: null },
+  columnDescriptions: { data: null, loading: false, error: null },
   selectedClusterSet: null,
 };
 
@@ -254,6 +259,38 @@ const configReducer = (state = initialState, action) => {
       return {
         ...state,
         clusteringSets: initialState.clusteringSets,
+      };
+
+    case GET_COLUMN_DESCRIPTIONS:
+      return {
+        ...state,
+        columnDescriptions: { data: null, loading: true, error: null },
+      };
+
+    case GET_COLUMN_DESCRIPTIONS_SUCCESS:
+      return {
+        ...state,
+        columnDescriptions: {
+          data: action.payload,
+          loading: false,
+          error: null,
+        },
+      };
+
+    case GET_COLUMN_DESCRIPTIONS_FAILURE:
+      return {
+        ...state,
+        columnDescriptions: {
+          data: null,
+          loading: false,
+          error: action.payload,
+        },
+      };
+
+    case GET_COLUMN_DESCRIPTIONS_RESET:
+      return {
+        ...state,
+        columnDescriptions: initialState.columnDescriptions,
       };
     case SET_SELECTED_CLUSTER_SET:
       return { ...state, selectedClusterSet: action.payload };
