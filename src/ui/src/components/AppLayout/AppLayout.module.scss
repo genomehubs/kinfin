@@ -1,21 +1,18 @@
-.appLayout {
-  display: flex;
+.childContainer {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  margin-left: 240px;
+  margin-top: 64px; // <-- Add this (AppBar default height)
+  box-sizing: border-box;
+  position: relative;
 
-  .childContainer {
-    flex: 1;
-    overflow-x: hidden;
-    overflow-y: auto;
-    transition: margin-left 0.3s ease;
-    margin-left: 240px;
-    box-sizing: border-box;
-    position: relative;
+  &.closed {
+    margin-left: 0;
+  }
 
-    &.closed {
-      margin-left: 0;
-    }
-
-    > div {
-      width: 100%;
-    }
+  > div {
+    width: 100%;
   }
 }

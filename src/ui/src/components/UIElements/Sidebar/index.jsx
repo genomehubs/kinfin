@@ -117,13 +117,6 @@ const Sidebar = ({ open, setOpen }) => {
   return (
     <>
       <div className={`${styles.sidebar} ${open ? "" : styles.closed}`}>
-        <div className={styles.top}>
-          <h2>KinFin</h2>
-          <button className={styles.toggleBtn} onClick={() => setOpen(false)}>
-            <FiMenu />
-          </button>
-        </div>
-
         <div className={styles.menu}>
           {/* Default item */}
           <div className={styles.defaultSection}>
