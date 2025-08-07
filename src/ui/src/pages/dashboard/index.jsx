@@ -12,7 +12,8 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { getRunStatus, initAnalysis } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
-import { MdOutlineFileDownload } from "react-icons/md";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
 import { useDispatch, useSelector } from "react-redux";

@@ -1,18 +1,33 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./Sidebar.module.scss";
-import { FiMenu, FiDownload } from "react-icons/fi";
-import { GoKebabHorizontal } from "react-icons/go";
-import { FaSun, FaMoon } from "react-icons/fa";
 import { useTheme } from "../../../hooks/useTheme";
 import { useNavigate, useParams } from "react-router-dom";
-import Tooltip from "rc-tooltip";
-import "rc-tooltip/assets/bootstrap.css";
-import { AiFillDelete } from "react-icons/ai";
-import Modal from "../Modal";
-
-import { MdOutlineEdit } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
+import {
+  Box,
+  Menu,
+  MenuItem,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+} from "@mui/material";
+
+import RenameDialog from "./RenameDialog";
+
+// MUI Icons
+import MenuIcon from "@mui/icons-material/Menu";
+import DownloadIcon from "@mui/icons-material/Download";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+
 import {
   renameConfig,
   deleteConfig,
@@ -20,11 +35,9 @@ import {
   getBatchStatus,
   setSelectedClusterSet,
 } from "../../../app/store/config/actions";
-import { Box } from "@mui/material";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
-
   if (!config || typeof config !== "object") {
     return;
   }
@@ -55,21 +68,23 @@ const Sidebar = ({ open, setOpen }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState("");
-  const [sessionIdClicked, setSessionIdClicked] = useState("");
-  const [visibleTooltip, setVisibleTooltip] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
   const navigate = useNavigate();
   const defaultItem = { label: "New Analysis", isNew: true };
+
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data
   );
   const pollingLoadingBySessionId = useSelector(
     (state) => state.config.pollingLoadingBySessionId || {}
   );
-  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
-  const tooltipRef = useRef(null);
   const selectedClusterSet = useSelector(
     (state) => state?.config?.selectedClusterSet
   );
+  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
   useEffect(() => {
     if (selectedClusterSet) {
@@ -78,7 +93,6 @@ const Sidebar = ({ open, setOpen }) => {
   }, [selectedClusterSet]);
 
   const hasFetchedStatusRef = useRef(false);
-
   useEffect(() => {
     if (!hasFetchedStatusRef.current && analysisList?.length) {
       const sessionIds = analysisList.map((item) => item.sessionId);
@@ -98,6 +112,7 @@ const Sidebar = ({ open, setOpen }) => {
     acc[clusterId].configs.push(item);
     return acc;
   }, {});
+
   const handleSubmit = () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
@@ -105,20 +120,29 @@ const Sidebar = ({ open, setOpen }) => {
     }
     const payload = {
       newName: userName.trim(),
-      sessionId: sessionIdClicked,
+      sessionId: selectedItem?.sessionId,
     };
-
     dispatch(renameConfig(payload));
     setNameError("");
     setUserName("");
     setModalOpen(false);
   };
 
+  const handleMenuOpen = (event, item) => {
+    event.stopPropagation();
+    setSelectedItem(item);
+    setAnchorEl(event.currentTarget);
+    setUserName(item.name);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   return (
     <>
       <div className={`${styles.sidebar} ${open ? "" : styles.closed}`}>
         <div className={styles.menu}>
-          {/* Default item */}
           <div className={styles.defaultSection}>
             <div
               onClick={() => {
@@ -133,11 +157,8 @@ const Sidebar = ({ open, setOpen }) => {
 
           <div className={styles.divider}></div>
 
-          {/* Analysis list */}
           <div className={styles.otherSection}>
-            {!analysisList?.length ? (
-              <div className={styles.emptyState}>No saved analyses</div>
-            ) : (
+            {analysisList?.length ? (
               Object.entries(groupedAnalysis).map(
                 ([clusterId, { clusterName, configs }]) => (
                   <div key={clusterId} className={styles.clusterGroup}>
@@ -146,10 +167,7 @@ const Sidebar = ({ open, setOpen }) => {
                       <div
                         key={item.sessionId}
                         className={`${styles.menuItem} ${
-                          visibleTooltip === item.sessionId ||
-                          sessionId === item.sessionId
-                            ? styles.active
-                            : ""
+                          sessionId === item.sessionId ? styles.active : ""
                         }`}
                         onClick={() => navigate(`/${item.sessionId}/dashboard`)}
                       >
@@ -180,135 +198,106 @@ const Sidebar = ({ open, setOpen }) => {
                           )}
                         </Box>
                         <span className={styles.label}>{item.name}</span>
-                        <div className={styles.refContainer} ref={tooltipRef}>
-                          <Tooltip
-                            placement="rightTop"
-                            styles={{ root: { pointerEvents: "auto" } }}
-                            onVisibleChange={(visible) => {
-                              if (!visible) setVisibleTooltip(null);
-                            }}
-                            trigger={["click"]}
-                            overlay={
-                              <div className={styles.tooltipContent}>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    downloadAsTSV(item);
-                                  }}
-                                >
-                                  <FiDownload /> Download
-                                </div>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setModalOpen(true);
-                                  }}
-                                >
-                                  <MdOutlineEdit /> Rename
-                                </div>
-                                <div
-                                  className={styles.tooltipItem}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    dispatch(deleteConfig(sessionIdClicked));
-                                  }}
-                                >
-                                  <AiFillDelete /> Delete
-                                </div>
-                              </div>
-                            }
-                            visible={visibleTooltip === item.sessionId}
-                            showArrow={false}
-                            defaultVisible={false}
-                          >
-                            <GoKebabHorizontal
-                              className={styles.downloadIcon}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSessionIdClicked(item.sessionId);
-                                setUserName(item.name);
-                                setVisibleTooltip((prev) =>
-                                  prev === item.sessionId
-                                    ? null
-                                    : item.sessionId
-                                );
-                              }}
-                            />
-                          </Tooltip>
-                        </div>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, item)}
+                        >
+                          <MoreHorizIcon fontSize="small" />
+                        </IconButton>
                       </div>
                     ))}
                   </div>
                 )
               )
+            ) : (
+              <div className={styles.emptyState}>No saved analyses</div>
             )}
           </div>
         </div>
 
         <div className={styles.bottom}>
-          <Tooltip
-            placement="rightTop"
-            trigger={["click"]}
-            overlay={
-              <div className={styles.tooltipTheme}>
-                <div className={styles.themeHeading}>
-                  <p>Switch Appearance</p>
-                  <FaMoon />
-                </div>
-                <div className={styles.toggleWrapper} onClick={toggleTheme}>
-                  <span className={styles.toggleText}>Dark Mode</span>
-                  <div
-                    className={`${styles.toggle} ${
-                      theme === "dark" ? styles.active : ""
-                    }`}
-                  >
-                    <div className={styles.icon}>
-                      {theme === "dark" ? <FaMoon /> : <FaSun />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            }
-            showArrow={false}
-          >
-            <div className={styles.themeTrigger}>
-              {theme === "dark" ? <FaMoon /> : <FaSun />} Theme
-            </div>
-          </Tooltip>
+          <div className={styles.themeTrigger} onClick={toggleTheme}>
+            {theme === "dark" ? (
+              <DarkModeIcon fontSize="small" />
+            ) : (
+              <LightModeIcon fontSize="small" />
+            )}{" "}
+            Theme
+          </div>
         </div>
       </div>
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Initialize Analysis"
+
+      {/* MUI Menu for actions */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
       >
-        <div className={styles.container}>
-          <label htmlFor="analysis-name" className={styles.label}>
-            Enter a name for this analysis:
-          </label>
-          <input
-            id="analysis-name"
-            type="text"
-            value={userName}
-            onChange={(e) => {
-              setUserName(e.target.value);
-              if (nameError) {
-                setNameError("");
-              }
+        <MenuItem
+          onClick={() => {
+            downloadAsTSV(selectedItem);
+            handleMenuClose();
+          }}
+        >
+          <DownloadIcon fontSize="small" sx={{ mr: 1 }} /> Download
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setModalOpen(true);
+            handleMenuClose();
+          }}
+        >
+          <EditOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> Rename
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setDeleteDialogOpen(true);
+            handleMenuClose();
+          }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
+        </MenuItem>
+      </Menu>
+
+      <RenameDialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmit}
+        value={userName}
+        setValue={setUserName}
+        error={nameError}
+        setError={setNameError}
+      />
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <p>
+            Are you sure you want to delete{" "}
+            <strong>{selectedItem?.name || "this analysis"}</strong>? This
+            action cannot be undone.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              dispatch(deleteConfig(selectedItem?.sessionId));
+              setDeleteDialogOpen(false);
             }}
-            className={`${styles.input} ${nameError ? styles.error : ""}`}
-          />
-          {nameError && <p className={styles.errorMessage}>{nameError}</p>}
-          <button onClick={handleSubmit} className={styles.submitButton}>
-            Submit
-          </button>
-        </div>
-      </Modal>
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {!open && (
         <button className={styles.floatingToggle} onClick={() => setOpen(true)}>
-          <FiMenu />
+          <MenuIcon />
         </button>
       )}
     </>

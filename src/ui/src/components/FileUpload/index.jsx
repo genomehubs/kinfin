@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./FileUpload.module.scss";
-import { MdOutlineFileUpload } from "react-icons/md";
 import { read, utils } from "xlsx";
 import Papa from "papaparse";
 import { useSelector } from "react-redux";
