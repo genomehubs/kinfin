@@ -1,28 +1,59 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./AttributeSummary.module.scss";
 import AppLayout from "../../components/AppLayout";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import AttributeSelector from "../../components/AttributeSelector";
+import ChartCard from "../../components/ChartCard";
+import { useDispatch, useSelector } from "react-redux";
+import { getAttributeSummary } from "../../app/store/analysis/actions";
+import { dispatchSuccessToast } from "../../utilis/tostNotifications";
+import { setDownloadLoading } from "../../app/store/config/actions";
 
 const AttributeSummaryPage = () => {
+  const dispatch = useDispatch();
+  const selectedAttributeTaxonset = useSelector(
+    (state) => state?.config?.selectedAttributeTaxonset
+  );
+  const downloadLoading = useSelector(
+    (state) => state?.config?.downloadLoading
+  );
+
+  const handleDownload = () => {
+    dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
+    const payload = {
+      attribute: selectedAttributeTaxonset?.attribute,
+      taxonSet: selectedAttributeTaxonset?.taxonset,
+      asFile: true,
+    };
+    dispatchSuccessToast("Attribute Summary download has started");
+    dispatch(getAttributeSummary(payload));
+
+    setTimeout(
+      () =>
+        dispatch(
+          setDownloadLoading({ type: "attributeSummary", loading: false })
+        ),
+      30000
+    );
+  };
+
   return (
-    <>
-      <AppLayout>
-        <div className={styles.pageHeader}>
-          <AttributeSelector />
+    <AppLayout>
+      <div className={styles.pageHeader}>
+        <AttributeSelector />
+      </div>
+      <div className={styles.page}>
+        <div className={styles.chartsContainer}>
+          <ChartCard
+            title="Attribute Summary"
+            isDownloading={downloadLoading?.downloadLoading?.attributeSummary}
+            onDownload={handleDownload}
+          >
+            <AttributeSummary />
+          </ChartCard>
         </div>
-        <div className={styles.page}>
-          <div className={styles.chartsContainer}>
-            <div className={styles.container}>
-              <div className={styles.header}>
-                <p className={styles.title}>Attribute Summary</p>
-              </div>
-              <AttributeSummary />
-            </div>
-          </div>
-        </div>
-      </AppLayout>
-    </>
+      </div>
+    </AppLayout>
   );
 };
 
