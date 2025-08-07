@@ -42,10 +42,13 @@ const AttributeSelector = () => {
   };
 
   const handleApply = () => {
-    setSearchParams({
-      attribute,
-      taxonset: taxon,
-    });
+    setSearchParams(
+      {
+        attribute,
+        taxonset: taxon,
+      },
+      { replace: true }
+    );
     dispatch(
       setSelectedAttributeTaxonset({
         attribute,
@@ -57,10 +60,13 @@ const AttributeSelector = () => {
   const handleClear = () => {
     setAttribute("all");
     setTaxon("all");
-    setSearchParams({
-      attribute: "all",
-      taxonset: "all",
-    });
+    setSearchParams(
+      {
+        attribute: "all",
+        taxonset: "all",
+      },
+      { replace: true }
+    );
     dispatch(
       setSelectedAttributeTaxonset({
         attribute: "all",

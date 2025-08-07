@@ -62,7 +62,7 @@ const ClusterSummary = () => {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("CS_page", (newModel.page + 1).toString());
       newParams.set("CS_pageSize", newModel.pageSize.toString());
-      setSearchParams(newParams);
+      setSearchParams(newParams, { replace: true });
     },
     [searchParams, setSearchParams]
   );

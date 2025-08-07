@@ -131,7 +131,7 @@ const AttributeSummary = () => {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("AS_page", (newModel.page + 1).toString());
       newParams.set("AS_pageSize", newModel.pageSize.toString());
-      setSearchParams(newParams);
+      setSearchParams(newParams, { replace: true });
     },
     [searchParams, setSearchParams]
   );

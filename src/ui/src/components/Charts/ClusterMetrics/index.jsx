@@ -197,7 +197,7 @@ const ClusterMetrics = () => {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("CM_page", (newModel.page + 1).toString());
       newParams.set("CM_pageSize", newModel.pageSize.toString());
-      setSearchParams(newParams);
+      setSearchParams(newParams, { replace: true });
     },
     [searchParams, setSearchParams]
   );
