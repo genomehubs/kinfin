@@ -5,6 +5,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
 import { getClusterSummary } from "../../../app/store/analysis/actions";
 import { v4 as uuidv4 } from "uuid";
+import { updatePaginationParams } from "@/utilis/urlPagination";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -59,10 +60,13 @@ const ClusterSummary = () => {
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("CS_page", (newModel.page + 1).toString());
-      newParams.set("CS_pageSize", newModel.pageSize.toString());
-      setSearchParams(newParams, { replace: true });
+      updatePaginationParams(
+        searchParams,
+        setSearchParams,
+        "CS",
+        newModel.page,
+        newModel.pageSize
+      );
     },
     [searchParams, setSearchParams]
   );

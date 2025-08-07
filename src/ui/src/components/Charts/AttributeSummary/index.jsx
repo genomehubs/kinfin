@@ -5,6 +5,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import styles from "./AttributeSummary.module.scss";
 import { getAttributeSummary } from "../../../app/store/analysis/actions";
 import { v4 as uuidv4 } from "uuid";
+import { updatePaginationParams } from "@/utilis/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -128,10 +129,13 @@ const AttributeSummary = () => {
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("AS_page", (newModel.page + 1).toString());
-      newParams.set("AS_pageSize", newModel.pageSize.toString());
-      setSearchParams(newParams, { replace: true });
+      updatePaginationParams(
+        searchParams,
+        setSearchParams,
+        "AS",
+        newModel.page,
+        newModel.pageSize
+      );
     },
     [searchParams, setSearchParams]
   );
