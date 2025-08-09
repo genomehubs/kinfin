@@ -141,7 +141,14 @@ const AttributeSummary = () => {
   );
 
   return (
-    <div style={{ height: "50vh", width: "100%", overflowX: "auto" }}>
+    <div
+      style={{
+        height: "50vh",
+        width: "100%",
+        overflowX: "auto",
+        borderRadius: "12px",
+      }}
+    >
       <DataGrid
         rows={rows}
         columns={columns}
@@ -152,7 +159,6 @@ const AttributeSummary = () => {
         pageSizeOptions={pageSizeOptions}
         disableSelectionOnClick
         checkboxSelection={false}
-        className={styles.listingTable}
         sx={{
           "& .MuiDataGrid-cell": {
             whiteSpace: "normal",
@@ -171,6 +177,19 @@ const AttributeSummary = () => {
             wordBreak: "break-word",
             lineHeight: "normal",
             fontWeight: "bold",
+          },
+
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "#f5f5f5",
+            borderBottom: "1px solid  #cccccc",
+            borderTop: "1px solid  #cccccc",
+          },
+
+          "& .MuiDataGrid-row:nth-of-type(odd)": {
+            backgroundColor: "#ffffff",
+          },
+          "& .MuiDataGrid-row:nth-of-type(even)": {
+            backgroundColor: "#fafafa",
           },
         }}
       />

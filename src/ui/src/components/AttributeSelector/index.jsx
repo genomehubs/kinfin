@@ -4,6 +4,15 @@ import { useSearchParams } from "react-router-dom";
 import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
 import styles from "./AttributeSelector.module.scss";
 
+import {
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Box,
+} from "@mui/material";
+
 const AttributeSelector = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -76,52 +85,66 @@ const AttributeSelector = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.selectors}>
-        <div className={styles.selectContainer}>
-          <label>Attribute:</label>
-          <select
-            className={styles.dropdown}
-            onChange={handleAttributeChange}
+    <Box className={styles.container}>
+      <Box className={styles.selectors}>
+        <FormControl fullWidth size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Attribute</InputLabel>
+          <Select
             value={attribute}
+            onChange={handleAttributeChange}
+            label="Attribute"
           >
-            <option value="">Select Attribute</option>
+            <MenuItem value="">Select Attribute</MenuItem>
             {responseData?.attributes?.map((attr) => (
-              <option key={attr} value={attr}>
+              <MenuItem key={attr} value={attr}>
                 {attr}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FormControl>
 
-        <div className={styles.selectContainer}>
-          <label>Taxon Set:</label>
-          <select
-            className={styles.dropdown}
-            onChange={handleTaxonChange}
-            value={taxon}
-            disabled={!attribute}
-          >
-            <option value="">Select Taxon Set</option>
+        <FormControl
+          fullWidth
+          size="small"
+          sx={{ minWidth: 200 }}
+          disabled={!attribute}
+        >
+          <InputLabel>Taxon Set</InputLabel>
+          <Select value={taxon} onChange={handleTaxonChange} label="Taxon Set">
+            <MenuItem value="">Select Taxon Set</MenuItem>
             {attribute &&
               responseData?.taxon_set[attribute]?.map((tx) => (
-                <option key={tx} value={tx}>
+                <MenuItem key={tx} value={tx}>
                   {tx}
-                </option>
+                </MenuItem>
               ))}
-          </select>
-        </div>
-      </div>
+          </Select>
+        </FormControl>
+      </Box>
 
-      <div className={styles.buttonContainer}>
-        <button className={styles.applyButton} onClick={handleApply}>
+      <Box className={styles.buttonContainer} sx={{ display: "flex", gap: 1 }}>
+        <Button
+          sx={{
+            textTransform: "none",
+          }}
+          variant="contained"
+          color="primary"
+          onClick={handleApply}
+        >
           Apply
-        </button>
-        <button className={styles.clearButton} onClick={handleClear}>
+        </Button>
+        <Button
+          sx={{
+            textTransform: "none",
+          }}
+          variant="outlined"
+          color="primary"
+          onClick={handleClear}
+        >
           Clear
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,14 +1,20 @@
 .container {
   width: 100%;
-  padding: 12px;
+
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  background-color: var(--bg-color);
+  background-color: var(--menu-hover);
 
   .header {
-    padding: 8px 0px;
+    padding: 16px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+
+    .titleContainer {
+      display: flex;
+      align-items: center;
+    }
 
     .enlargeButton {
       outline: none;
@@ -24,7 +30,8 @@
     .title {
       margin: 0;
       color: var(--text-color);
-      font-size: 1em;
+      font-size: 1.1rem;
+      font-weight: 600;
     }
   }
 
