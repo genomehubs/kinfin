@@ -27,6 +27,7 @@ import {
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
   SET_SELECTED_CLUSTER_SET,
+  SET_DOWNLOAD_LOADING,
 } from "./actionTypes";
 
 export const initAnalysis = (data) => ({
@@ -113,6 +114,11 @@ export const getValidProteomeIdsReset = () => ({
 
 export const setPollingLoading = (data) => ({
   type: SET_POLLING_LOADING,
+  payload: data,
+});
+
+export const setDownloadLoading = (data) => ({
+  type: SET_DOWNLOAD_LOADING,
   payload: data,
 });
 

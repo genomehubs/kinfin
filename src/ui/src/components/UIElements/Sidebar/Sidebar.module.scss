@@ -1,6 +1,6 @@
 .sidebar {
   width: 240px;
-  height: 100vh;
+  height: calc(100vh - 104px);
   background-color: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   color: var(--text-color);
@@ -11,7 +11,8 @@
   display: flex;
   flex-direction: column;
   z-index: 1000;
-
+  margin-top: 104px;
+  padding-top: 12px;
   &.closed {
     transform: translateX(-100%);
   }

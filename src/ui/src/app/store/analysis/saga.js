@@ -10,6 +10,7 @@ import {
   GET_PLOT,
   GET_RUN_SUMMARY,
 } from "./actionTypes";
+import { setDownloadLoading } from "../config/actions";
 import {
   getPlotSuccess,
   getPlotFailure,
@@ -129,13 +130,7 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const {
-    attribute,
-    page,
-    size,
-    asFile = false,
-    setDownloadLoading,
-  } = action.payload;
+  const { attribute, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     size,
@@ -158,11 +153,8 @@ function* getClusterSummarySaga(action) {
         "text/tab-separated-values"
       );
       if (setDownloadLoading) {
-        yield call(() =>
-          setDownloadLoading((prev) => ({
-            ...prev,
-            clusterSummary: false,
-          }))
+        yield put(
+          setDownloadLoading({ type: "clusterSummary", loading: false })
         );
       }
 
@@ -187,13 +179,7 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const {
-    attribute,
-    page,
-    size,
-    asFile = false,
-    setDownloadLoading,
-  } = action.payload;
+  const { attribute, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     page,
@@ -216,11 +202,8 @@ function* getAttributeSummarySaga(action) {
         "text/tab-separated-values"
       );
       if (setDownloadLoading) {
-        yield call(() =>
-          setDownloadLoading((prev) => ({
-            ...prev,
-            attributeSummary: false,
-          }))
+        yield put(
+          setDownloadLoading({ type: "attributeSummary", loading: false })
         );
       }
       return;
@@ -244,21 +227,13 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const {
-    attribute,
-    taxonSet,
-    page,
-    size,
-    asFile = false,
-    setDownloadLoading,
-  } = action.payload;
+  const { attribute, taxonSet, page, size, asFile = false } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
     size,
     asFile,
-    setDownloadLoading,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
@@ -276,11 +251,8 @@ function* getClusterMetricsSaga(action) {
         "text/tab-separated-values"
       );
       if (setDownloadLoading) {
-        yield call(() =>
-          setDownloadLoading((prev) => ({
-            ...prev,
-            clusterMetrics: false,
-          }))
+        yield put(
+          setDownloadLoading({ type: "clusterMetrics", loading: false })
         );
       }
       return;

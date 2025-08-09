@@ -97,7 +97,7 @@ npm run dev
 - Open your browser and visit: http://localhost:5173/define-node-labels
 - Create a file called node_labels.json and paste the following content into it:
 - Use the upload feature to upload node_labels.json.
-- Visit http://localhost:5173/6599179a64accf331ffe653db00a0e24/dashboard after 1-2 min to see the results.
+- Visit http://localhost:5173/6599179a64accf331ffe653db00a0e24/ after 1-2 min to see the results.
 
 ```bash
 [

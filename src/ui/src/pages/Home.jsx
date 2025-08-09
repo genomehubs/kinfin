@@ -21,7 +21,7 @@ const Home = () => {
     dispatch(getRunSummary());
     dispatch(getCountsByTaxon());
     dispatch(getClusterSummary({ attribute: "host" }));
-    dispatch(getAttributeSummary({ attribute: "host" }));
+    // dispatch(getAttributeSummary({ attribute: "host" }));
     dispatch(
       getClusterMetrics({
         attribute: "host",
