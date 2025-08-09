@@ -54,6 +54,7 @@ const Navbar = ({ onMenuClick, breadcrumbs = [] }) => {
             variant="dense"
             sx={{ borderTop: "1px solid #ddd", minHeight: "40px" }}
           >
+            {" "}
             <BreadcrumbsNav items={breadcrumbs} />
           </Toolbar>
         )}

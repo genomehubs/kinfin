@@ -14,9 +14,28 @@ const AppLayout = ({ children }) => {
   const { sessionId } = useParams();
   const { pathname } = useLocation();
 
+  const analysisConfigs = useSelector(
+    (state) => state?.config?.storeConfig?.data
+  );
+  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
+
+  const sessionMetaMap = {};
+  analysisList?.forEach((item) => {
+    sessionMetaMap[item.sessionId] = {
+      name: item.name,
+      clusterName: item.clusterName || "Unassigned Cluster",
+    };
+  });
+
   const pathSegments = pathname.split("/").filter(Boolean);
   const breadcrumbItems = pathSegments.map((segment, index) => {
-    const label = breadcrumbMap[segment] || segment;
+    let label = breadcrumbMap[segment] || segment;
+
+    if (sessionMetaMap[segment]) {
+      const { name, clusterName } = sessionMetaMap[segment];
+      label = `${name} (${clusterName})`;
+    }
+
     const url = "/" + pathSegments.slice(0, index + 1).join("/");
     return {
       label,
@@ -35,7 +54,6 @@ const AppLayout = ({ children }) => {
         onMenuClick={() => setSidebarOpen((prev) => !prev)}
         breadcrumbs={breadcrumbItems}
       />
-
       <div className={styles.appLayout}>
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <div
