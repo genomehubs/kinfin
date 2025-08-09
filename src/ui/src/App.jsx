@@ -31,7 +31,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/:sessionId/dashboard" element={<Dashboard />} />
+              <Route path="/:sessionId/" element={<Dashboard />} />
               <Route
                 path="/:sessionId/attribute-summary"
                 element={<AttributeSummaryPage />}

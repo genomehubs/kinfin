@@ -6,15 +6,18 @@ import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import Button from "@mui/material/Button";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setSelectedClusterSet } from "../../app/store/config/actions";
+import BreadcrumbsNav from "../BreadcrumbsNav";
 
-const Navbar = ({ onMenuClick }) => {
+const Navbar = ({ onMenuClick, breadcrumbs = [] }) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar
-        position="fixed"
-        color="primary"
-        sx={{ zIndex: 1002 }} // ensure it's above sidebar (1000)
-      >
+      <AppBar position="fixed" color="inherit" sx={{ zIndex: 1002 }}>
         <Toolbar>
           <IconButton
             size="large"
@@ -29,14 +32,31 @@ const Navbar = ({ onMenuClick }) => {
           <Typography
             variant="h6"
             component="div"
+            color="primary"
             sx={{ flexGrow: 1, fontWeight: "bold" }}
           >
             KinFin
           </Typography>
-          <Button color="inherit">Home</Button>
-          <Button color="inherit">About</Button>
-          <Button color="inherit">Contact</Button>
+          <Button
+            onClick={() => {
+              navigate("/define-node-labels");
+              dispatch(setSelectedClusterSet(null));
+            }}
+            color="primary"
+            variant="contained"
+          >
+            New Analysis
+          </Button>
         </Toolbar>
+
+        {breadcrumbs.length > 0 && (
+          <Toolbar
+            variant="dense"
+            sx={{ borderTop: "1px solid #ddd", minHeight: "40px" }}
+          >
+            <BreadcrumbsNav items={breadcrumbs} />
+          </Toolbar>
+        )}
       </AppBar>
     </Box>
   );

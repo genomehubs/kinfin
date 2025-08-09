@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import styles from "./AttributeSummary.module.scss";
 import AppLayout from "../../components/AppLayout";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
@@ -8,8 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAttributeSummary } from "../../app/store/analysis/actions";
 import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/actions";
-import BreadcrumbsNav from "../../components/BreadcrumbsNav";
-import { Box } from "@mui/material";
+
 import { useParams } from "react-router-dom";
 
 const AttributeSummaryPage = () => {
@@ -41,15 +40,12 @@ const AttributeSummaryPage = () => {
     );
   };
   const breadcrumbItems = [
-    { label: "Dashboard", href: `/${sessionId}/dashboard` },
+    { label: "Dashboard", href: `/${sessionId}` },
     { label: "Attribute Summary", href: `/${sessionId}/attribute-summary` },
   ];
 
   return (
     <AppLayout>
-      <Box mb={2}>
-        <BreadcrumbsNav items={breadcrumbItems} />
-      </Box>
       <div className={styles.pageHeader}>
         <AttributeSelector />
       </div>
