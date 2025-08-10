@@ -31,6 +31,7 @@ import {
   GET_COLUMN_DESCRIPTIONS_SUCCESS,
   GET_COLUMN_DESCRIPTIONS_FAILURE,
   GET_COLUMN_DESCRIPTIONS_RESET,
+  SET_DOWNLOAD_LOADING,
 } from "./actionTypes";
 
 const initialState = {
@@ -54,6 +55,7 @@ const initialState = {
   },
   validProteomeIds: { data: null, loading: false, error: null },
   pollingLoading: {},
+  downloadLoading: {},
   batchStatus: { data: null, loading: false, error: null },
   clusteringSets: { data: null, loading: false, error: null },
   columnDescriptions: { data: null, loading: false, error: null },
@@ -193,6 +195,15 @@ const configReducer = (state = initialState, action) => {
           [action.payload.sessionId]: action.payload.loading,
         },
       };
+    case SET_DOWNLOAD_LOADING:
+      return {
+        ...state,
+        downloadLoading: {
+          ...state.downloadLoading,
+          [action.payload.type]: action.payload.loading,
+        },
+      };
+
     case GET_BATCH_STATUS:
       return {
         ...state,

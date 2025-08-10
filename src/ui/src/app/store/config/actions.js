@@ -27,6 +27,7 @@ import {
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
   SET_SELECTED_CLUSTER_SET,
+  SET_DOWNLOAD_LOADING,
   GET_COLUMN_DESCRIPTIONS,
   GET_COLUMN_DESCRIPTIONS_SUCCESS,
   GET_COLUMN_DESCRIPTIONS_FAILURE,
@@ -117,6 +118,11 @@ export const getValidProteomeIdsReset = () => ({
 
 export const setPollingLoading = (data) => ({
   type: SET_POLLING_LOADING,
+  payload: data,
+});
+
+export const setDownloadLoading = (data) => ({
+  type: SET_DOWNLOAD_LOADING,
   payload: data,
 });
 

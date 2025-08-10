@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { MdOutlineFileUpload } from "react-icons/md";
+import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import styles from "./FileDropZone.module.scss";
 
 const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
@@ -39,7 +39,7 @@ const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
       onDragOver={(e) => e.preventDefault()}
     >
       <p className={styles.icon}>
-        <MdOutlineFileUpload />
+        <FileUploadOutlinedIcon fontSize="large" />
       </p>
       <h3>{selectedName || "Click or drag a file to upload config"}</h3>
       <p>Maximum file size 10MB</p>

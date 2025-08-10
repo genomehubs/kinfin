@@ -10,6 +10,7 @@ import {
 } from "../../app/store/config/actions";
 import { useNavigate } from "react-router-dom";
 import styles from "./DefineNodeLabels.module.scss";
+import RenameDialog from "../../components/UIElements/Sidebar/RenameDialog";
 
 // MUI imports
 import {
@@ -153,7 +154,7 @@ const DefineNodeLabels = () => {
         </div>
         <div
           className={`${styles.workflowStep} ${
-            !selectedClusterSet ? styles.disabled : ""
+            selectedClusterSet ? "" : styles.disabled
           }`}
         >
           <div className={styles.stepHeader}>
@@ -183,38 +184,17 @@ const DefineNodeLabels = () => {
             </button>
           </div>
         </div>
-        {/* Modal for Analysis Name */}
-        <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth>
-          <DialogTitle>Initialize Analysis</DialogTitle>
-          <DialogContent>
-            <div className={styles.container}>
-              <label htmlFor="analysis-name" className={styles.label}>
-                Enter a name for this analysis:
-              </label>
-              <TextField
-                id="analysis-name"
-                fullWidth
-                value={userName}
-                onChange={(e) => {
-                  setUserName(e.target.value);
-                  if (nameError) {
-                    setNameError("");
-                  }
-                }}
-                error={Boolean(nameError)}
-                helperText={nameError}
-                variant="outlined"
-                margin="dense"
-              />
-            </div>
-          </DialogContent>
-          <DialogActions>
-            <MuiButton onClick={() => setModalOpen(false)}>Cancel</MuiButton>
-            <MuiButton onClick={handleSubmit} variant="contained">
-              Submit
-            </MuiButton>
-          </DialogActions>
-        </Dialog>
+
+        <RenameDialog
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleSubmit}
+          value={userName}
+          setValue={setUserName}
+          error={nameError}
+          setError={setNameError}
+          title="Name Analysis"
+        />
 
         {/* Confirm Cluster Change */}
         <Dialog

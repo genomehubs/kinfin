@@ -1,0 +1,75 @@
+.container {
+  width: 100%;
+
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--menu-hover);
+
+  .header {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .titleContainer {
+      display: flex;
+      align-items: center;
+    }
+
+    .enlargeButton {
+      outline: none;
+      border: none;
+      background: transparent;
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+    }
+
+    .title {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+  }
+
+  .chartContainer {
+    width: 100%;
+    // max-height: 400px;
+    // min-height: 400px;
+    overflow: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 992px) {
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 24px;
+    gap: 12px;
+  }
+
+  .container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.downloadLoader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

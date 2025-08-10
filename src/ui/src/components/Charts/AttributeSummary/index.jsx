@@ -1,66 +1,65 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./AttributeSummary.module.scss";
 import { getAttributeSummary } from "../../../app/store/analysis/actions";
 import { v4 as uuidv4 } from "uuid";
+import { updatePaginationParams } from "@/utilis/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
 
 const AttributeSummary = () => {
   const dispatch = useDispatch();
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 10,
-  });
-
-  const isInitialMount = useRef(true);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const attributeData = useSelector(
     (state) => state?.analysis?.attributeSummary?.data || null
   );
-  const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset || null
+
+  // Pull params directly from the URL
+  const attribute = searchParams.get("attribute");
+  const taxonset = searchParams.get("taxonset");
+  const page = Math.max(
+    parseInt(searchParams.get("AS_page") || "1", 10) - 1,
+    0
+  );
+  const pageSize = Math.max(
+    parseInt(searchParams.get("AS_pageSize") || "10", 10),
+    1
   );
 
-  // Reset page to 0 when attribute changes
+  // Only set default pagination if missing from URL
   useEffect(() => {
-    if (selectedAttributeTaxonset?.attribute) {
-      setPaginationModel((prev) => ({
-        ...prev,
-        page: 0,
-      }));
+    const hasPage = searchParams.has("AS_page");
+    const hasPageSize = searchParams.has("AS_pageSize");
+
+    if (!hasPage || !hasPageSize) {
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        if (!hasPage) newParams.set("AS_page", "1");
+        if (!hasPageSize) newParams.set("AS_pageSize", "10");
+        return newParams;
+      });
     }
-  }, [selectedAttributeTaxonset?.attribute]);
+  }, [attribute, taxonset, searchParams, setSearchParams]);
 
-  // Fetch attribute summary
+  // Fetch data on page, pageSize, attribute changes
   useEffect(() => {
-    const { page, pageSize } = paginationModel;
-
-    if (!selectedAttributeTaxonset?.attribute) return;
+    if (!attribute) return;
 
     const payload = {
-      attribute: selectedAttributeTaxonset.attribute,
-      page: page + 1, // Convert 0-based to 1-based for API
+      attribute,
+      page: page + 1,
       size: pageSize,
     };
 
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    }
-
     dispatch(getAttributeSummary(payload));
-  }, [paginationModel, selectedAttributeTaxonset?.attribute, dispatch]);
+  }, [attribute, page, pageSize, dispatch]);
 
   const { rows, rowCount } = useMemo(() => {
     const rawData = attributeData?.data ?? {};
-    const processedRows = Object.values(rawData).map((row, index) => ({
+    const processedRows = Object.values(rawData).map((row) => ({
       id: uuidv4(),
       ...row,
       cluster_total_count: row.cluster_total_count ?? "-",
@@ -100,14 +99,13 @@ const AttributeSummary = () => {
       attributeData?.total_entries ??
       (attributeData?.total_pages && attributeData?.entries_per_page
         ? attributeData.total_pages * attributeData.entries_per_page
-        : undefined) ??
-      processedRows.length;
+        : processedRows.length);
 
     return {
       rows: processedRows,
       rowCount: totalRows,
     };
-  }, [attributeData, paginationModel.page, paginationModel.pageSize]);
+  }, [attributeData]);
 
   const columns = useMemo(
     () => [
@@ -229,30 +227,37 @@ const AttributeSummary = () => {
   );
 
   const handlePaginationModelChange = useCallback(
-    (newPaginationModel) => {
-      if (
-        newPaginationModel.page !== paginationModel.page ||
-        newPaginationModel.pageSize !== paginationModel.pageSize
-      ) {
-        setPaginationModel(newPaginationModel);
-      }
+    (newModel) => {
+      updatePaginationParams(
+        searchParams,
+        setSearchParams,
+        "AS",
+        newModel.page,
+        newModel.pageSize
+      );
     },
-    [paginationModel]
+    [searchParams, setSearchParams]
   );
 
   return (
-    <div style={{ maxheight: "50vh", width: "100%", overflowX: "auto" }}>
+    <div
+      style={{
+        height: "50vh",
+        width: "100%",
+        overflowX: "auto",
+        borderRadius: "12px",
+      }}
+    >
       <DataGrid
         rows={rows}
         columns={columns}
         paginationMode="server"
-        paginationModel={paginationModel}
+        paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
         rowCount={rowCount}
         pageSizeOptions={pageSizeOptions}
         disableSelectionOnClick
         checkboxSelection={false}
-        className={styles.listingTable}
         sx={{
           "& .MuiDataGrid-cell": {
             whiteSpace: "normal",
@@ -271,6 +276,19 @@ const AttributeSummary = () => {
             wordBreak: "break-word",
             lineHeight: "normal",
             fontWeight: "bold",
+          },
+
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "#f5f5f5",
+            borderBottom: "1px solid  #cccccc",
+            borderTop: "1px solid  #cccccc",
+          },
+
+          "& .MuiDataGrid-row:nth-of-type(odd)": {
+            backgroundColor: "#ffffff",
+          },
+          "& .MuiDataGrid-row:nth-of-type(even)": {
+            backgroundColor: "#fafafa",
           },
         }}
       />

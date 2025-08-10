@@ -1,52 +1,81 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
 import styles from "./AttributeSelector.module.scss";
+
+import {
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Box,
+} from "@mui/material";
+
 const AttributeSelector = () => {
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const responseData = useSelector(
     (state) => state?.analysis?.availableAttributesTaxonsets?.data
   );
 
-  const persistedSelection = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
-  );
+  // Read from URL initially
+  const initialAttribute = searchParams.get("attribute") || "";
+  const initialTaxon = searchParams.get("taxonset") || "";
 
-  const [selectedAttribute, setSelectedAttribute] = useState("");
-  const [selectedTaxon, setSelectedTaxon] = useState("");
+  const [attribute, setAttribute] = useState(initialAttribute);
+  const [taxon, setTaxon] = useState(initialTaxon);
 
+  // Apply selection when URL params change
   useEffect(() => {
-    if (persistedSelection) {
-      setSelectedAttribute(persistedSelection.attribute || "");
-      setSelectedTaxon(persistedSelection.taxonset || "");
-    }
-  }, [persistedSelection]);
-
-  const handleAttributeChange = (e) => {
-    const attribute = e.target.value;
-    setSelectedAttribute(attribute);
-    setSelectedTaxon("");
-  };
-
-  const handleTaxonChange = (e) => {
-    setSelectedTaxon(e.target.value);
-  };
-
-  const handleApply = () => {
-    if (selectedAttribute && selectedTaxon) {
+    if (initialAttribute && initialTaxon) {
       dispatch(
         setSelectedAttributeTaxonset({
-          attribute: selectedAttribute,
-          taxonset: selectedTaxon,
+          attribute: initialAttribute,
+          taxonset: initialTaxon,
         })
       );
     }
+  }, [initialAttribute, initialTaxon, dispatch]);
+
+  const handleAttributeChange = (e) => {
+    const newAttribute = e.target.value;
+    setAttribute(newAttribute);
+    setTaxon(""); // Reset taxonset when attribute changes
+  };
+
+  const handleTaxonChange = (e) => {
+    setTaxon(e.target.value);
+  };
+
+  const handleApply = () => {
+    setSearchParams(
+      {
+        attribute,
+        taxonset: taxon,
+      },
+      { replace: true }
+    );
+    dispatch(
+      setSelectedAttributeTaxonset({
+        attribute,
+        taxonset: taxon,
+      })
+    );
   };
 
   const handleClear = () => {
-    setSelectedAttribute("");
-    setSelectedTaxon("");
+    setAttribute("all");
+    setTaxon("all");
+    setSearchParams(
+      {
+        attribute: "all",
+        taxonset: "all",
+      },
+      { replace: true }
+    );
     dispatch(
       setSelectedAttributeTaxonset({
         attribute: "all",
@@ -56,56 +85,66 @@ const AttributeSelector = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.selectors}>
-        <div className={styles.selectContainer}>
-          <label>Attribute: </label>
-          <select
-            className={styles.dropdown}
+    <Box className={styles.container}>
+      <Box className={styles.selectors}>
+        <FormControl fullWidth size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Attribute</InputLabel>
+          <Select
+            value={attribute}
             onChange={handleAttributeChange}
-            value={selectedAttribute}
+            label="Attribute"
           >
-            <option value="">Select Attribute</option>
+            <MenuItem value="">Select Attribute</MenuItem>
             {responseData?.attributes?.map((attr) => (
-              <option key={attr} value={attr}>
+              <MenuItem key={attr} value={attr}>
                 {attr}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FormControl>
 
-        <div className={styles.selectContainer}>
-          <label> Taxon Set: </label>
-          <select
-            className={styles.dropdown}
-            onChange={handleTaxonChange}
-            value={selectedTaxon}
-            disabled={!selectedAttribute}
-          >
-            <option value="">Select Taxon Set</option>
-            {selectedAttribute &&
-              responseData?.taxon_set[selectedAttribute]?.map((taxon) => (
-                <option key={taxon} value={taxon}>
-                  {taxon}
-                </option>
+        <FormControl
+          fullWidth
+          size="small"
+          sx={{ minWidth: 200 }}
+          disabled={!attribute}
+        >
+          <InputLabel>Taxon Set</InputLabel>
+          <Select value={taxon} onChange={handleTaxonChange} label="Taxon Set">
+            <MenuItem value="">Select Taxon Set</MenuItem>
+            {attribute &&
+              responseData?.taxon_set[attribute]?.map((tx) => (
+                <MenuItem key={tx} value={tx}>
+                  {tx}
+                </MenuItem>
               ))}
-          </select>
-        </div>
-      </div>
+          </Select>
+        </FormControl>
+      </Box>
 
-      <div className={styles.buttonContainer}>
-        <button
-          className={styles.applyButton}
+      <Box className={styles.buttonContainer} sx={{ display: "flex", gap: 1 }}>
+        <Button
+          sx={{
+            textTransform: "none",
+          }}
+          variant="contained"
+          color="primary"
           onClick={handleApply}
-          disabled={!selectedAttribute || !selectedTaxon}
         >
           Apply
-        </button>
-        <button className={styles.clearButton} onClick={handleClear}>
+        </Button>
+        <Button
+          sx={{
+            textTransform: "none",
+          }}
+          variant="outlined"
+          color="primary"
+          onClick={handleClear}
+        >
           Clear
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 };
 
