@@ -63,12 +63,35 @@ const AttributeSummary = () => {
     const processedRows = Object.values(rawData).map((row, index) => ({
       id: uuidv4(),
       ...row,
-      singleton_cluster_count: row?.singleton?.cluster_count ?? "-",
-      singleton_protein_count: row?.singleton?.protein_count ?? "-",
-      specific_cluster_count: row?.specific?.cluster_count ?? "-",
-      shared_cluster_count: row?.shared?.cluster_count ?? "-",
-      absent_cluster_total_count: row?.absent?.cluster_total_count ?? "-",
-      TAXON_taxa: Array.isArray(row?.TAXON_taxa)
+      cluster_total_count: row.cluster_total_count ?? "-",
+      protein_total_count: row.protein_total_count ?? "-",
+      protein_total_span: row.protein_total_span ?? "-",
+
+      singleton_cluster_count: row.singleton?.cluster_count ?? "-",
+      singleton_protein_count: row.singleton?.protein_count ?? "-",
+      singleton_protein_span: row.singleton?.protein_span ?? "-",
+
+      specific_cluster_count: row.specific?.cluster_count ?? "-",
+      specific_protein_count: row.specific?.protein_count ?? "-",
+      specific_protein_span: row.specific?.protein_span ?? "-",
+      cluster_true_1to1_count: row.specific?.cluster_true_1to1_count ?? "-",
+      cluster_fuzzy_count: row.specific?.cluster_fuzzy_count ?? "-",
+
+      shared_cluster_count: row.shared?.cluster_count ?? "-",
+      shared_protein_count: row.shared?.protein_count ?? "-",
+      shared_protein_span: row.shared?.protein_span ?? "-",
+      shared_cluster_true_1to1_count:
+        row.shared?.cluster_true_1to1_count ?? "-",
+      shared_cluster_fuzzy_count: row.shared?.cluster_fuzzy_count ?? "-",
+
+      absent_cluster_total_count: row.absent?.cluster_total_count ?? "-",
+      absent_cluster_singleton_count:
+        row.absent?.cluster_singleton_count ?? "-",
+      absent_cluster_specific_count: row.absent?.cluster_specific_count ?? "-",
+      absent_cluster_shared_count: row.absent?.cluster_shared_count ?? "-",
+
+      TAXON_count: row.TAXON_count ?? "-",
+      TAXON_taxa: Array.isArray(row.TAXON_taxa)
         ? row.TAXON_taxa.join(", ")
         : "-",
     }));
@@ -89,46 +112,118 @@ const AttributeSummary = () => {
   const columns = useMemo(
     () => [
       { field: "taxon_set", headerName: "Taxon Set", minWidth: 150 },
+
       {
         field: "cluster_total_count",
         headerName: "Total Clusters",
-        minWidth: 80,
+        minWidth: 100,
       },
       {
         field: "protein_total_count",
         headerName: "Total Proteins",
-        minWidth: 80,
+        minWidth: 100,
       },
+      {
+        field: "protein_total_span",
+        headerName: "Protein Span",
+        minWidth: 100,
+      },
+
+      // Singleton
       {
         field: "singleton_cluster_count",
         headerName: "Singleton Clusters",
-        minWidth: 80,
+        minWidth: 100,
       },
       {
         field: "singleton_protein_count",
         headerName: "Singleton Proteins",
-        minWidth: 80,
+        minWidth: 100,
       },
+      {
+        field: "singleton_protein_span",
+        headerName: "Singleton Protein Span",
+        minWidth: 120,
+      },
+
+      // Specific
       {
         field: "specific_cluster_count",
         headerName: "Specific Clusters",
-        minWidth: 80,
+        minWidth: 100,
       },
+      {
+        field: "specific_protein_count",
+        headerName: "Specific Proteins",
+        minWidth: 100,
+      },
+      {
+        field: "specific_protein_span",
+        headerName: "Specific Protein Span",
+        minWidth: 120,
+      },
+      {
+        field: "cluster_true_1to1_count",
+        headerName: "True 1-to-1 Count",
+        minWidth: 130,
+      },
+      {
+        field: "cluster_fuzzy_count",
+        headerName: "Fuzzy Count",
+        minWidth: 100,
+      },
+
+      // Shared
       {
         field: "shared_cluster_count",
         headerName: "Shared Clusters",
-        minWidth: 80,
+        minWidth: 100,
       },
+      {
+        field: "shared_protein_count",
+        headerName: "Shared Proteins",
+        minWidth: 100,
+      },
+      {
+        field: "shared_protein_span",
+        headerName: "Shared Protein Span",
+        minWidth: 120,
+      },
+      {
+        field: "shared_cluster_true_1to1_count",
+        headerName: "Shared True 1-to-1 Count",
+        minWidth: 160,
+      },
+      {
+        field: "shared_cluster_fuzzy_count",
+        headerName: "Shared Fuzzy Count",
+        minWidth: 120,
+      },
+
+      // Absent
       {
         field: "absent_cluster_total_count",
         headerName: "Absent Clusters",
-        minWidth: 80,
+        minWidth: 100,
       },
       {
-        field: "TAXON_taxa",
-        headerName: "Taxa",
-        minWidth: 80,
+        field: "absent_cluster_singleton_count",
+        headerName: "Absent Singleton Clusters",
+        minWidth: 160,
       },
+      {
+        field: "absent_cluster_specific_count",
+        headerName: "Absent Specific Clusters",
+        minWidth: 160,
+      },
+      {
+        field: "absent_cluster_shared_count",
+        headerName: "Absent Shared Clusters",
+        minWidth: 160,
+      },
+
+      { field: "TAXON_count", headerName: "Taxon Count", minWidth: 100 },
+      { field: "TAXON_taxa", headerName: "Taxa", minWidth: 150 },
     ],
     []
   );
