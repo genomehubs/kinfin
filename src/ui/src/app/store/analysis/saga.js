@@ -179,12 +179,13 @@ function* getClusterSummarySaga(action) {
   }
 }
 function* getAttributeSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
+  const { attribute, page, size, asFile = false, AS_code } = action.payload;
   const data = {
     attribute,
     page,
     size,
     asFile,
+    AS_code,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));

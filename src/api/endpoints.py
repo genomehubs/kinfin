@@ -184,6 +184,15 @@ def get_session_status(session_id: str) -> Dict:
     }
 
 
+def get_nested_value(data, path):
+    keys = path.split(".")
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key, {})
+        else:
+            return None
+    return data if data != {} else None
+
 @router.post("/kinfin/init", response_model=ResponseSchema)
 @limiter.limit(LIMIT_INIT)
 async def initialize(input_data: InputSchema, request: Request):
@@ -914,8 +923,10 @@ async def get_attribute_summary(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    AS_code: Optional[List[str]] = Query(None, alias="AS_code"),
 ):
     try:
+        # ---- Validate Kinfin session ----
         result_dir = query_manager.get_session_dir(session_id)
         config_f = os.path.join(result_dir, "config.json")
         if not os.path.exists(config_f):
@@ -929,9 +940,9 @@ async def get_attribute_summary(
                 status_code=428,
             )
 
+        # ---- Validate attribute ----
         valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
-
         if attribute and attribute not in valid_attributes:
             return JSONResponse(
                 content=ResponseSchema(
@@ -942,9 +953,16 @@ async def get_attribute_summary(
                 status_code=400,
             )
 
+        # ---- Load mapping file ----
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+
+        # ---- Read attribute file ----
         filename = f"{attribute}/{attribute}.{ATTRIBUTE_METRICS_FILENAME}"
         filepath = os.path.join(result_dir, filename)
-
         if not os.path.exists(filepath):
             return JSONResponse(
                 content=ResponseSchema(
@@ -958,8 +976,26 @@ async def get_attribute_summary(
 
         result = parse_attribute_summary_file(filepath=filepath)
 
+        # ---- Flatten rows ----
+        flat_result = {k: flatten_dict(v) for k, v in result.items()}
+
+        # ---- Apply AS_code filter ----
+        if AS_code:
+            selected_columns = []
+            for code in AS_code:
+                if code in code_to_column:
+                    col_name = code_to_column[code]
+                    flat_name = col_name.replace(".", "_")
+                    selected_columns.append(flat_name)
+
+            flat_result = {
+                k: {col: v.get(col, "-") for col in selected_columns}
+                for k, v in flat_result.items()
+            }
+
+        # ---- File download mode ----
         if as_file:
-            if not result:
+            if not flat_result:
                 return ResponseSchema(
                     status="error",
                     message="No data available for download.",
@@ -967,13 +1003,17 @@ async def get_attribute_summary(
                     query=str(request.url),
                 ).to_json_response(status_code=404)
 
-            rows = list(result.values())
-            flattened_rows = [flatten_dict(row) for row in rows]
-            first_row = flattened_rows[0]
+            rows = list(flat_result.values())
+            fieldnames = (
+                list(flat_result[next(iter(flat_result))].keys())
+                if rows
+                else []
+            )
+
             buffer = io.StringIO()
-            writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+            writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
             writer.writeheader()
-            writer.writerows(flattened_rows)
+            writer.writerows(rows)
             buffer.seek(0)
 
             return StreamingResponse(
@@ -984,24 +1024,26 @@ async def get_attribute_summary(
                 },
             )
 
+        # ---- Paginate ----
         paginated_result, total_pages = sort_and_paginate_result(
-            result,
+            flat_result,
             sort_by,
             sort_order,
             page,
             size,
         )
 
-        response = ResponseSchema(
-            status="success",
-            message="Attribute summary retrieved successfully",
-            data=paginated_result,
-            query=str(request.url),
-            current_page=page,
-            entries_per_page=size,
-            total_pages=total_pages,
+        return JSONResponse(
+            ResponseSchema(
+                status="success",
+                message="Attribute summary retrieved successfully",
+                data=paginated_result,
+                query=str(request.url),
+                current_page=page,
+                entries_per_page=size,
+                total_pages=total_pages,
+            ).model_dump()
         )
-        return JSONResponse(response.model_dump())
 
     except Exception as e:
         print(e)
@@ -1014,7 +1056,6 @@ async def get_attribute_summary(
             ).model_dump(),
             status_code=500,
         )
-
 
 @router.get(
     "/kinfin/cluster-metrics/{attribute}/{taxon_set}",

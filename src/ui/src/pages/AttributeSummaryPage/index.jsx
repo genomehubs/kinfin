@@ -20,21 +20,6 @@ import {
   Button,
 } from "@mui/material";
 
-const CHECKLIST_DATA = [
-  {
-    code: "001",
-    file: "cluster_counts_by_taxon.txt",
-    name: "cluster_id",
-    description: "Unique identifier for cluster",
-  },
-  {
-    code: "002",
-    file: "cluster_counts_by_taxon.txt",
-    name: "taxon_id_X",
-    description:
-      "Count of proteins for each taxon_id within cluster (one column per taxon)",
-  },
-];
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,12 +31,15 @@ const AttributeSummaryPage = () => {
   );
   const { sessionId } = useParams();
 
+  const columnDescriptions = useSelector(
+    (state) => state?.config?.columnDescriptions?.data || []
+  );
+
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState([]);
 
-  // On first render → check query params and set initial selection
   useEffect(() => {
-    const paramsCodes = searchParams.getAll("AS_code"); // changed from "code"
+    const paramsCodes = searchParams.getAll("AS_code");
     setSelectedCodes(paramsCodes);
   }, [searchParams]);
 
@@ -79,19 +67,14 @@ const AttributeSummaryPage = () => {
   };
 
   const handleCheckboxChange = (code) => {
-    setSelectedCodes(
-      (prev) =>
-        prev.includes(code)
-          ? prev.filter((c) => c !== code) // remove if exists
-          : [...prev, code] // add if not exists
+    setSelectedCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
     );
   };
 
   const handleApply = () => {
-    const newParams = new URLSearchParams(searchParams); // preserve other params
-    // Remove existing AS_code params
+    const newParams = new URLSearchParams(searchParams);
     newParams.delete("AS_code");
-    // Append new ones
     selectedCodes.forEach((c) => newParams.append("AS_code", c));
     setSearchParams(newParams);
     setCustomiseOpen(false);
@@ -135,7 +118,7 @@ const AttributeSummaryPage = () => {
               gap: "12px",
             }}
           >
-            {CHECKLIST_DATA.map((item) => (
+            {columnDescriptions.map((item) => (
               <FormControlLabel
                 key={item.code}
                 control={
