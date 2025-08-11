@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./ChartCard.module.scss";
 import { MdOutlineFileDownload } from "react-icons/md";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import TuneIcon from "@mui/icons-material/Tune"; // Customise icon
 import Button from "@mui/material/Button";
 
 const ChartCard = ({
@@ -10,6 +11,7 @@ const ChartCard = ({
   isDownloading,
   onDownload,
   onOpen,
+  onCustomise,
   children,
 }) => {
   return (
@@ -24,10 +26,27 @@ const ChartCard = ({
               <OpenInNewIcon fontSize="small" />
             </button>
           )}
-
           <p className={styles.title}>{title}</p>
         </div>
-        <div>
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          {onCustomise && (
+            <Button
+              variant="outlined"
+              onClick={onCustomise}
+              startIcon={<TuneIcon size={18} />}
+              sx={{
+                borderRadius: "50px",
+                textTransform: "none",
+                fontSize: "0.9rem",
+                padding: "6px 16px",
+                minWidth: "auto",
+              }}
+            >
+              Customise
+            </Button>
+          )}
+
           {onDownload && (
             <Button
               variant="outlined"
@@ -35,10 +54,7 @@ const ChartCard = ({
               disabled={isDownloading}
               startIcon={
                 isDownloading ? (
-                  <>
-                    {" "}
-                    <div className={styles.downloadLoader} />
-                  </>
+                  <div className={styles.downloadLoader} />
                 ) : (
                   <MdOutlineFileDownload size={18} />
                 )
@@ -56,6 +72,7 @@ const ChartCard = ({
           )}
         </div>
       </div>
+
       {children}
     </div>
   );
