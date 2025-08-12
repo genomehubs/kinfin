@@ -266,10 +266,10 @@ function* getColumnDescriptionsSaga(action) {
 
     if (response.status === "success") {
       yield put(getColumnDescriptionsSuccess(response.data));
-      yield call(
-        dispatchSuccessToast,
-        "Column descriptions fetched successfully!"
-      );
+      // yield call(
+      //   dispatchSuccessToast,
+      //   "Column descriptions fetched successfully!"
+      // );
     } else {
       yield put(getColumnDescriptionsFailure(response));
       yield call(
