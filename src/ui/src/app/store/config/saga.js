@@ -121,7 +121,7 @@ function* initAnalysisSaga(action) {
         clusterName: clusterName,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
-      yield call(navigate, `/${response.data.session_id}/dashboard`);
+      yield call(navigate, `/${response.data.session_id}`);
       yield fork(pollRunStatusSaga, response.data.session_id); // start polling
     } else {
       yield put(initAnalysisFailure(response));

@@ -142,28 +142,7 @@ const Sidebar = ({ open, setOpen }) => {
   return (
     <>
       <div className={`${styles.sidebar} ${open ? "" : styles.closed}`}>
-        <div className={styles.top}>
-          <h2>KinFin</h2>
-          <button className={styles.toggleBtn} onClick={() => setOpen(false)}>
-            <MenuIcon />
-          </button>
-        </div>
-
         <div className={styles.menu}>
-          <div className={styles.defaultSection}>
-            <div
-              onClick={() => {
-                navigate(`/define-node-labels`);
-                dispatch(setSelectedClusterSet(null));
-              }}
-              className={`${styles.menuItem} ${styles.newAnalysis}`}
-            >
-              <span className={styles.label}>{defaultItem.label}</span>
-            </div>
-          </div>
-
-          <div className={styles.divider}></div>
-
           <div className={styles.otherSection}>
             {analysisList?.length ? (
               Object.entries(groupedAnalysis).map(
@@ -176,7 +155,7 @@ const Sidebar = ({ open, setOpen }) => {
                         className={`${styles.menuItem} ${
                           sessionId === item.sessionId ? styles.active : ""
                         }`}
-                        onClick={() => navigate(`/${item.sessionId}/dashboard`)}
+                        onClick={() => navigate(`/${item.sessionId}`)}
                       >
                         <Box
                           sx={{

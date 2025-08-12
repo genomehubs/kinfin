@@ -27,6 +27,7 @@ import {
   GET_CLUSTERING_SETS_FAILURE,
   GET_CLUSTERING_SETS_RESET,
   SET_SELECTED_CLUSTER_SET,
+  SET_DOWNLOAD_LOADING,
 } from "./actionTypes";
 
 const initialState = {
@@ -50,6 +51,7 @@ const initialState = {
   },
   validProteomeIds: { data: null, loading: false, error: null },
   pollingLoading: {},
+  downloadLoading: {},
   batchStatus: { data: null, loading: false, error: null },
   clusteringSets: { data: null, loading: false, error: null },
   selectedClusterSet: null,
@@ -188,6 +190,15 @@ const configReducer = (state = initialState, action) => {
           [action.payload.sessionId]: action.payload.loading,
         },
       };
+    case SET_DOWNLOAD_LOADING:
+      return {
+        ...state,
+        downloadLoading: {
+          ...state.downloadLoading,
+          [action.payload.type]: action.payload.loading,
+        },
+      };
+
     case GET_BATCH_STATUS:
       return {
         ...state,

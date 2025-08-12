@@ -1,26 +1,17 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterMetrics.module.scss";
 import { getClusterMetrics } from "../../../app/store/analysis/actions";
 import { v4 as uuidv4 } from "uuid";
+import { updatePaginationParams } from "@/utilis/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
 
 const ClusterMetrics = () => {
   const dispatch = useDispatch();
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 10,
-  });
-
-  const isInitialMount = useRef(true);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const clusterMetrics = useSelector(
     (state) => state?.analysis?.clusterMetrics?.data || null
@@ -29,39 +20,53 @@ const ClusterMetrics = () => {
     (state) => state?.config?.selectedAttributeTaxonset || null
   );
 
-  // Reset page to 0 when attribute changes
+  const attribute = selectedAttributeTaxonset?.attribute || null;
+  const taxonSet = selectedAttributeTaxonset?.taxonset || null;
+
+  const page = Math.max(
+    parseInt(searchParams.get("CM_page") || "1", 10) - 1,
+    0
+  );
+  const pageSize = Math.max(
+    parseInt(searchParams.get("CM_pageSize") || "10", 10),
+    1
+  );
+
+  // Set default URL params if missing
   useEffect(() => {
-    if (selectedAttributeTaxonset?.attribute) {
-      setPaginationModel((prev) => ({
-        ...prev,
-        page: 0,
-      }));
-    }
-  }, [selectedAttributeTaxonset?.attribute]);
+    const hasPage = searchParams.has("CM_page");
+    const hasPageSize = searchParams.has("CM_pageSize");
 
-  // Fetch attribute summary
+    if (!hasPage || !hasPageSize) {
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          if (!hasPage) newParams.set("CM_page", "1");
+          if (!hasPageSize) newParams.set("CM_pageSize", "10");
+          return newParams;
+        },
+        { replace: true }
+      );
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Fetch cluster metrics
   useEffect(() => {
-    const { page, pageSize } = paginationModel;
+    if (!attribute || !taxonSet) return;
 
-    if (!selectedAttributeTaxonset?.attribute) return;
-
-    const payload = {
-      attribute: selectedAttributeTaxonset.attribute,
-      taxonSet: selectedAttributeTaxonset.taxonset,
-      page: page + 1, // Convert 0-based to 1-based for API
-      size: pageSize,
-    };
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    }
-
-    dispatch(getClusterMetrics(payload));
-  }, [paginationModel, selectedAttributeTaxonset?.attribute, dispatch]);
+    dispatch(
+      getClusterMetrics({
+        attribute,
+        taxonSet,
+        page: page + 1,
+        size: pageSize,
+      })
+    );
+  }, [dispatch, attribute, taxonSet, page, pageSize]);
 
   const { rows, rowCount } = useMemo(() => {
-    const rawData = clusterMetrics?.data ?? {};
-    const processedRows = Object.values(rawData).map((row, index) => {
+    const rawData = clusterMetrics?.data ?? [];
+    const processed = Object.values(rawData).map((row) => {
       const counts = row?.counts || {};
       const coverage = row?.coverage || {};
 
@@ -91,28 +96,19 @@ const ClusterMetrics = () => {
       clusterMetrics?.total_entries ??
       (clusterMetrics?.total_pages && clusterMetrics?.entries_per_page
         ? clusterMetrics.total_pages * clusterMetrics.entries_per_page
-        : undefined) ??
-      processedRows.length;
+        : processed.length);
 
     return {
-      rows: processedRows,
+      rows: processed,
       rowCount: totalRows,
     };
-  }, [clusterMetrics, paginationModel.page, paginationModel.pageSize]);
+  }, [clusterMetrics]);
 
   const columns = useMemo(
     () => [
       { field: "cluster_id", headerName: "Cluster ID", minWidth: 120 },
-      {
-        field: "cluster_status",
-        headerName: "Cluster Status",
-        minWidth: 120,
-      },
-      {
-        field: "cluster_type",
-        headerName: "Cluster Type",
-        minWidth: 120,
-      },
+      { field: "cluster_status", headerName: "Cluster Status", minWidth: 120 },
+      { field: "cluster_type", headerName: "Cluster Type", minWidth: 120 },
       {
         field: "present_in_cluster",
         headerName: "Present in Cluster",
@@ -150,56 +146,36 @@ const ClusterMetrics = () => {
         field: "TAXON_mean_count",
         headerName: "Taxon Mean Count",
         minWidth: 120,
-        valueFormatter: (value) => {
-          const num = Number(value);
-          return isNaN(num) ? "-" : num.toFixed(2);
-        },
+        valueFormatter: (value) =>
+          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
       {
         field: "non_taxon_mean_count",
         headerName: "Non-Taxon Mean Count",
         minWidth: 120,
-        valueFormatter: (value) => {
-          const num = Number(value);
-          return isNaN(num) ? "-" : num.toFixed(2);
-        },
+        valueFormatter: (value) =>
+          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
-      {
-        field: "representation",
-        headerName: "Representation",
-        minWidth: 120,
-      },
+      { field: "representation", headerName: "Representation", minWidth: 120 },
       {
         field: "log2_mean(TAXON/others)",
-        headerName: "Log2 Mean ",
+        headerName: "Log2 Mean",
         minWidth: 120,
-        valueFormatter: (value) => {
-          const num = Number(value);
-          return isNaN(num) ? "-" : num.toFixed(2);
-        },
+        valueFormatter: (value) =>
+          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
       {
         field: "pvalue(TAXON vs. others)",
         headerName: "P-value",
         minWidth: 120,
-        valueFormatter: (value) => {
-          const num = Number(value);
-          return isNaN(num) ? "-" : num.toFixed(2);
-        },
+        valueFormatter: (value) =>
+          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
-      {
-        field: "taxon_coverage",
-        headerName: "Taxon Coverage",
-        minWidth: 120,
-      },
-      {
-        field: "TAXON_count",
-        headerName: "TAXON Count",
-        minWidth: 120,
-      },
+      { field: "taxon_coverage", headerName: "Taxon Coverage", minWidth: 120 },
+      { field: "TAXON_count", headerName: "TAXON Count", minWidth: 120 },
       {
         field: "non_TAXON_count",
-        headerName: "Non-Taxon Count",
+        headerName: "Non-TAXON Count",
         minWidth: 120,
       },
       {
@@ -221,24 +197,32 @@ const ClusterMetrics = () => {
   );
 
   const handlePaginationModelChange = useCallback(
-    (newPaginationModel) => {
-      if (
-        newPaginationModel.page !== paginationModel.page ||
-        newPaginationModel.pageSize !== paginationModel.pageSize
-      ) {
-        setPaginationModel(newPaginationModel);
-      }
+    (newModel) => {
+      updatePaginationParams(
+        searchParams,
+        setSearchParams,
+        "CM",
+        newModel.page,
+        newModel.pageSize
+      );
     },
-    [paginationModel]
+    [searchParams, setSearchParams]
   );
 
   return (
-    <div style={{ height: "50vh", width: "100%", overflowX: "auto" }}>
+    <div
+      style={{
+        height: "50vh",
+        width: "100%",
+        overflowX: "auto",
+        borderRadius: "12px",
+      }}
+    >
       <DataGrid
         rows={rows}
         columns={columns}
         paginationMode="server"
-        paginationModel={paginationModel}
+        paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
         rowCount={rowCount}
         pageSizeOptions={pageSizeOptions}
@@ -263,6 +247,17 @@ const ClusterMetrics = () => {
             wordBreak: "break-word",
             lineHeight: "normal",
             fontWeight: "bold",
+          },
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "#f5f5f5",
+            borderBottom: "1px solid  #cccccc",
+            borderTop: "1px solid  #cccccc",
+          },
+          "& .MuiDataGrid-row:nth-of-type(odd)": {
+            backgroundColor: "#ffffff",
+          },
+          "& .MuiDataGrid-row:nth-of-type(even)": {
+            backgroundColor: "#fafafa",
           },
         }}
       />

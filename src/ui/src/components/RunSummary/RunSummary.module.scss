@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 24px;
 }
 
@@ -17,6 +17,7 @@
   justify-content: flex-start;
   flex-direction: column;
   color: var(--text-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); // subtle shadow
 }
 
 .container::after {
@@ -29,7 +30,7 @@
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-  color: var(--text-color);
+  color: var(--accent-color);
 }
 
 .statContainer .dataName {
