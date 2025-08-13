@@ -28,7 +28,39 @@ const AttributeSelector = () => {
   const [attribute, setAttribute] = useState(initialAttribute);
   const [taxon, setTaxon] = useState(initialTaxon);
 
-  // Apply selection when URL params change
+  useEffect(() => {
+    if (responseData && (!initialAttribute || !initialTaxon)) {
+      const firstAttribute = responseData.attributes?.[0];
+      const firstTaxonset = firstAttribute
+        ? responseData.taxon_set?.[firstAttribute]?.[0]
+        : null;
+
+      if (firstAttribute && firstTaxonset) {
+        const newAttribute = initialAttribute || firstAttribute;
+        const newTaxonset = initialTaxon || firstTaxonset;
+
+        setAttribute(newAttribute);
+        setTaxon(newTaxonset);
+
+        setSearchParams(
+          {
+            attribute: newAttribute,
+            taxonset: newTaxonset,
+          },
+          { replace: true }
+        );
+
+        dispatch(
+          setSelectedAttributeTaxonset({
+            attribute: newAttribute,
+            taxonset: newTaxonset,
+          })
+        );
+      }
+    }
+  }, [responseData, initialAttribute, initialTaxon, setSearchParams, dispatch]);
+
+  // Apply selection when URL params change (existing functionality)
   useEffect(() => {
     if (initialAttribute && initialTaxon) {
       dispatch(
