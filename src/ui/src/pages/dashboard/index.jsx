@@ -78,6 +78,7 @@ const Dashboard = () => {
     const payload = {
       name: sessionDetails.name,
       config: sessionDetails.config,
+      clusterId: sessionDetails.clusterId,
       navigate,
     };
     dispatch(initAnalysis(payload));
