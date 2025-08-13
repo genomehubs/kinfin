@@ -100,6 +100,12 @@ const DataTable = ({
                       contentEditable: true,
                       suppressContentEditableWarning: true,
                       onBlur: (e) => handleCellEdit(e, idx, head),
+                      onKeyDown: (e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.target.blur();
+                        }
+                      },
                     })}
                   >
                     {row[head]?.toString() || ""}
