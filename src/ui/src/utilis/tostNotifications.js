@@ -1,4 +1,3 @@
-// snackbarNotifications.js
 import { enqueueSnackbar } from "notistack";
 
 const dispatchSuccessToast = (message) => {
