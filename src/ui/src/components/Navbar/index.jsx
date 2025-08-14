@@ -33,7 +33,10 @@ const Navbar = ({ onMenuClick, breadcrumbs = [] }) => {
             variant="h6"
             component="div"
             color="primary"
-            sx={{ flexGrow: 1, fontWeight: "bold" }}
+            onClick={() => {
+              navigate("/");
+            }}
+            sx={{ flexGrow: 1, fontWeight: "bold", cursor: "pointer" }}
           >
             KinFin
           </Typography>
