@@ -11,53 +11,85 @@ import { useDispatch } from "react-redux";
 import { setSelectedClusterSet } from "../../app/store/config/actions";
 import BreadcrumbsNav from "../BreadcrumbsNav";
 
-const Navbar = ({ onMenuClick, breadcrumbs = [] }) => {
+const Navbar = ({
+  onMenuClick,
+  breadcrumbs = [],
+  variant = "analysis", // "landing" or "analysis"
+}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const handleNewAnalysis = () => {
+    navigate("/define-node-labels");
+    dispatch(setSelectedClusterSet(null));
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="fixed" color="inherit" sx={{ zIndex: 1002 }}>
         <Toolbar>
-          <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-            onClick={onMenuClick}
-          >
-            <MenuIcon />
-          </IconButton>
+          {variant === "analysis" && (
+            <IconButton
+              size="large"
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              sx={{ mr: 2 }}
+              onClick={onMenuClick}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+
           <Typography
             variant="h6"
             component="div"
             color="primary"
-            onClick={() => {
-              navigate("/");
+            onClick={() => navigate("/")}
+            sx={{
+              flexGrow: 1,
+              fontWeight: "bold",
+              cursor: "pointer",
+              outline: "none",
             }}
-            sx={{ flexGrow: 1, fontWeight: "bold", cursor: "pointer" }}
+            tabIndex={0} // keyboard focusable
+            role="button"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                navigate("/");
+              }
+            }}
           >
             KinFin
           </Typography>
-          <Button
-            onClick={() => {
-              navigate("/define-node-labels");
-              dispatch(setSelectedClusterSet(null));
-            }}
-            color="primary"
-            variant="contained"
-          >
-            New Analysis
-          </Button>
+
+          {variant === "landing" && (
+            <Button
+              onClick={handleNewAnalysis}
+              color="primary"
+              variant="contained"
+              sx={{ padding: "6px 16px" }}
+            >
+              Start Analysis
+            </Button>
+          )}
+
+          {variant === "analysis" && (
+            <Button
+              onClick={handleNewAnalysis}
+              color="primary"
+              variant="contained"
+            >
+              New Analysis
+            </Button>
+          )}
         </Toolbar>
 
-        {breadcrumbs.length > 0 && (
+        {variant === "analysis" && breadcrumbs.length > 0 && (
           <Toolbar
             variant="dense"
             sx={{ borderTop: "1px solid #ddd", minHeight: "40px" }}
           >
-            {" "}
             <BreadcrumbsNav items={breadcrumbs} />
           </Toolbar>
         )}

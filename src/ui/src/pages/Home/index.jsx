@@ -1,78 +1,32 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Home.module.scss";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Dialog,
-  DialogContent,
-  IconButton,
-  Box,
-} from "@mui/material";
+import { Button, Dialog, DialogContent, IconButton, Box } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { setSelectedClusterSet } from "../../app/store/config/actions";
-
-const carouselImages = [
-  "https://files.readme.io/af61828-network.png",
-  "https://files.readme.io/af2cb93-kinfin.loglogpowerlaw.png",
-  "https://www.researchgate.net/publication/345712334/figure/fig2/AS:981066009546754@1610915772838/Rarefaction-curve-of-proteomes-within-sets-defined-by-major-clades-within-the-2.ppm",
-];
+import { CAROUSEL_IMAGES } from "../../utilis/constants";
+import Navbar from "../../components/Navbar";
 
 const Home = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
+  const [fade, setFade] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % carouselImages.length);
+      setFade(true);
+      setTimeout(() => {
+        setCurrentImage((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
+        setFade(false);
+      }, 500);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar
-        position="sticky"
-        color="inherit"
-        sx={{
-          zIndex: 1002,
-          backgroundColor: "var(--bg-color)",
-          boxShadow: "0px 2px 6px rgba(0,0,0,0.05)",
-        }}
-      >
-        <Toolbar>
-          <Typography
-            variant="h6"
-            component="div"
-            color="primary"
-            onClick={() => navigate("/")}
-            sx={{
-              flexGrow: 1,
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-          >
-            KinFin
-          </Typography>
-
-          <Button
-            onClick={() => {
-              navigate("/define-node-labels");
-              dispatch(setSelectedClusterSet(null));
-            }}
-            color="primary"
-            variant="contained"
-            sx={{ borderRadius: "20px", padding: "6px 16px" }}
-          >
-            Start Analysis
-          </Button>
-        </Toolbar>
-      </AppBar>
+      <Navbar variant="landing" />
 
       <div className={styles.homeContainer}>
         <div className={styles.contentWrapper}>
@@ -87,15 +41,17 @@ const Home = () => {
                 variant="outlined"
                 color="primary"
                 onClick={() => setIsVideoOpen(true)}
-                sx={{ borderRadius: "25px", padding: "10px 20px" }}
+                sx={{ padding: "10px 20px" }}
               >
                 View Demo
               </Button>
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => navigate("/define-node-labels")}
-                sx={{ borderRadius: "25px", padding: "10px 20px" }}
+                onClick={() => {
+                  navigate("/define-node-labels");
+                }}
+                sx={{ padding: "10px 20px" }}
               >
                 Start Analysis
               </Button>
@@ -104,9 +60,15 @@ const Home = () => {
 
           <div className={styles.rightSection}>
             <img
-              src={carouselImages[currentImage]}
+              src={CAROUSEL_IMAGES[currentImage]}
               alt={`KinFin slide ${currentImage + 1}`}
-              className={styles.carouselImage}
+              className={`${styles.carouselImage} ${
+                fade ? styles.fadeOut : ""
+              }`}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/images/fallback.png";
+              }}
             />
           </div>
         </div>
@@ -132,16 +94,16 @@ const Home = () => {
             >
               <CloseIcon />
             </IconButton>
-            <iframe
-              width="100%"
-              height="500"
-              src="https://www.youtube.com/embed/n-Jghkfi5fQ?si=-2VrDNf32AhtOvOW"
-              title="KinFin Demo Video"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{ display: "block" }}
-            ></iframe>
+
+            <div className={styles.videoWrapper}>
+              <iframe
+                src="https://www.youtube.com/embed/n-Jghkfi5fQ?si=-2VrDNf32AhtOvOW"
+                title="KinFin Demo Video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>

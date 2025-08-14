@@ -1,11 +1,10 @@
 .homeContainer {
   background-color: var(--bg-color);
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
-
   background-image: linear-gradient(
       to right,
       rgba(0, 0, 0, 0.03) 1px,
@@ -40,22 +39,6 @@
       line-height: 1.6;
       margin-bottom: 2rem;
     }
-
-    .exploreBtn {
-      background-color: var(--accent-color);
-      color: #fff;
-      padding: 0.75rem 1.5rem;
-      border-radius: 25px;
-      border: none;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-
-      &:hover {
-        filter: brightness(0.9);
-      }
-    }
   }
 
   .rightSection {
@@ -67,64 +50,14 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-
-    .verticalLine {
-      width: 2px;
-      height: 200px;
-      background: linear-gradient(to bottom, #4d90fe, #0066ff);
-    }
   }
 }
+
 .buttonGroup {
   display: flex;
   gap: 1rem;
 }
-.stepsSection {
-  margin-top: 4rem;
-  text-align: center;
 
-  h2 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 2rem;
-    color: var(--text-color);
-  }
-}
-
-.stepsWrapper {
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.stepCard {
-  background-color: var(--preview-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: 300px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-
-  h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.75rem;
-    color: var(--accent-color);
-  }
-
-  p {
-    font-size: 0.95rem;
-    color: var(--text-color);
-    margin-bottom: 1rem;
-  }
-}
-
-.stepActions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
 .carouselImage {
   width: 100%;
   height: 350px;
@@ -132,4 +65,24 @@
   border-radius: 10px;
   background-color: #fff;
   transition: opacity 0.5s ease-in-out;
+  opacity: 1;
+}
+
+.fadeOut {
+  opacity: 0;
+}
+
+.videoWrapper {
+  position: relative;
+  padding-bottom: 56.25%; // 16:9 ratio
+  height: 0;
+  overflow: hidden;
+
+  iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
 }
