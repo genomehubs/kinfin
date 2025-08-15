@@ -3,7 +3,7 @@ import styles from "./Home.module.scss";
 import { Button, Dialog, DialogContent, IconButton, Box } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
-import { CAROUSEL_IMAGES } from "../../utilis/constants";
+import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "../../utilis/constants";
 import Navbar from "../../components/Navbar";
 
 const Home = () => {
@@ -20,7 +20,7 @@ const Home = () => {
         setCurrentImage((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
         setFade(false);
       }, 500);
-    }, 3000);
+    }, HOME_PAGE_CONFIG.carouselInterval);
     return () => clearInterval(interval);
   }, []);
 
@@ -31,11 +31,9 @@ const Home = () => {
       <div className={styles.homeContainer}>
         <div className={styles.contentWrapper}>
           <div className={styles.leftSection}>
-            <h1>KinFin Analysis</h1>
-            <p>
-              Interactive exploration of gene homology across taxa, bringing
-              protein clustering insights to your browser.
-            </p>
+            <h1>{HOME_PAGE_CONFIG.title}</h1>
+            <p>{HOME_PAGE_CONFIG.description}</p>
+
             <div className={styles.buttonGroup}>
               <Button
                 variant="outlined"
@@ -59,17 +57,25 @@ const Home = () => {
           </div>
 
           <div className={styles.rightSection}>
-            <img
-              src={CAROUSEL_IMAGES[currentImage]}
-              alt={`KinFin slide ${currentImage + 1}`}
-              className={`${styles.carouselImage} ${
-                fade ? styles.fadeOut : ""
-              }`}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "/images/fallback.png";
-              }}
-            />
+            <div className={styles.carouselWrapper}>
+              <img
+                src={CAROUSEL_IMAGES[currentImage].src}
+                alt={CAROUSEL_IMAGES[currentImage].caption}
+                title={CAROUSEL_IMAGES[currentImage].tooltip}
+                className={`${styles.carouselImage} ${
+                  fade ? styles.fadeOut : ""
+                }`}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "/images/fallback.png";
+                }}
+              />
+              {CAROUSEL_IMAGES[currentImage].caption && (
+                <p className={styles.caption}>
+                  {CAROUSEL_IMAGES[currentImage].caption}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -97,7 +103,7 @@ const Home = () => {
 
             <div className={styles.videoWrapper}>
               <iframe
-                src="https://www.youtube.com/embed/n-Jghkfi5fQ?si=-2VrDNf32AhtOvOW"
+                src={HOME_PAGE_CONFIG.demoVideoUrl}
                 title="KinFin Demo Video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
