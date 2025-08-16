@@ -16,6 +16,11 @@ import {
   TextField,
   Button,
 } from "@mui/material";
+import Tooltip from "@mui/material/Tooltip";
+import ErrorIcon from "@mui/icons-material/Error";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import RenameDialog from "./RenameDialog";
 
@@ -59,6 +64,41 @@ const downloadAsTSV = (analysis) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+};
+
+const getStatusInfo = (status) => {
+  switch (status) {
+    case "error":
+      return {
+        color: "#ee2f42",
+        icon: <ErrorIcon fontSize="inherit" />,
+        label: "Error",
+      };
+    case "inactive":
+      return {
+        color: "#817b7b",
+        icon: <PauseCircleIcon fontSize="inherit" />,
+        label: "Inactive",
+      };
+    case "initialising":
+      return {
+        color: "#f39c12",
+        icon: <HourglassEmptyIcon fontSize="inherit" />,
+        label: "Initialising",
+      };
+    case "active":
+      return {
+        color: "#2ecc71",
+        icon: <CheckCircleIcon fontSize="inherit" />,
+        label: "Active",
+      };
+    default:
+      return {
+        color: "#bdc3c7",
+        icon: <PauseCircleIcon fontSize="inherit" />,
+        label: "Unknown",
+      };
+  }
 };
 
 const Sidebar = ({ open, setOpen }) => {
@@ -159,8 +199,8 @@ const Sidebar = ({ open, setOpen }) => {
                       >
                         <Box
                           sx={{
-                            width: 12,
-                            height: 12,
+                            width: 16,
+                            height: 16,
                             marginRight: "8px",
                             flexShrink: 0,
                             display: "flex",
@@ -168,19 +208,34 @@ const Sidebar = ({ open, setOpen }) => {
                             justifyContent: "center",
                           }}
                         >
-                          {pollingLoadingBySessionId[item.sessionId] ? (
-                            <CircularProgress size={10} thickness={8} />
+                          {pollingLoadingBySessionId[item?.sessionId] ? (
+                            <CircularProgress size={12} thickness={6} />
                           ) : (
-                            <Box
-                              sx={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: "50%",
-                                backgroundColor: item.status
-                                  ? "#2ecc71"
-                                  : "#ee2f42",
-                              }}
-                            />
+                            (() => {
+                              const { color, icon, label } = getStatusInfo(
+                                item.status
+                              );
+                              return (
+                                <Tooltip title={label} arrow>
+                                  <Box
+                                    sx={{
+                                      width: 16,
+                                      height: 16,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: color,
+                                      "& svg": {
+                                        color: color,
+                                        fill: color,
+                                      },
+                                    }}
+                                  >
+                                    {icon}
+                                  </Box>
+                                </Tooltip>
+                              );
+                            })()
                           )}
                         </Box>
                         <span className={styles.label}>{item.name}</span>

@@ -198,7 +198,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      {sessionDetails?.status ? (
+      {sessionDetails?.status === "active" ? (
         <>
           <Modal open={!!enlargedChart} onClose={closeModal}>
             <Box
