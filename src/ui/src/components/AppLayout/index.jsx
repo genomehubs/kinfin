@@ -18,6 +18,7 @@ const AppLayout = ({ children }) => {
     (state) => state?.config?.storeConfig?.data
   );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
+  console.log("🚀 ~ AppLayout ~ analysisList:", analysisList);
 
   const sessionMetaMap = {};
   analysisList?.forEach((item) => {
@@ -26,6 +27,7 @@ const AppLayout = ({ children }) => {
       clusterName: item.clusterName || "Unassigned Cluster",
     };
   });
+  console.log("🚀 ~ AppLayout ~ sessionMetaMap:", sessionMetaMap);
 
   const pathSegments = pathname.split("/").filter(Boolean);
   const breadcrumbItems = pathSegments.map((segment, index) => {
