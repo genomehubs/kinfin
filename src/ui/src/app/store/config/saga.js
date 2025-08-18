@@ -46,7 +46,7 @@ import { setPollingLoading } from "./slices/uiStateSlice";
 import {
   dispatchErrorToast,
   dispatchSuccessToast,
-} from "../../../utils/tostNotifications";
+} from "../../../utils/toastNotifications";
 
 import {
   initAnalysis as initAnalysisApi,

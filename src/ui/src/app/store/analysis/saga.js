@@ -45,7 +45,7 @@ import {
 
 import { getPlot, getPlotSuccess, getPlotFailure } from "./slices/plotSlice";
 
-import { dispatchErrorToast } from "../../../utils/tostNotifications";
+import { dispatchErrorToast } from "../../../utils/toastNotifications";
 import {
   getAvailableAttributes,
   getCountsByTaxon as apiGetCountsByTaxon,

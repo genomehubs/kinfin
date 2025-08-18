@@ -21,7 +21,7 @@ import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import { useNavigate, useParams } from "react-router-dom";
 import { downloadBlobFile } from "../../utils/downloadBlobFile";
-import { dispatchSuccessToast } from "../../utils/tostNotifications";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import ChartCard from "../../components/ChartCard";
