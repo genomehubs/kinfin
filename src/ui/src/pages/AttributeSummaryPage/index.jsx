@@ -5,7 +5,7 @@ import AttributeSummary from "../../components/Charts/AttributeSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getAttributeSummary } from "../../app/store/analysis/actions";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
 import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/actions";
 

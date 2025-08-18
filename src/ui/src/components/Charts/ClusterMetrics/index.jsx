@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterMetrics.module.scss";
-import { getClusterMetrics } from "../../../app/store/analysis/actions";
+import { getClusterMetrics } from "../../../app/store/analysis/slices/clusterMetricsSlice";
 import { v4 as uuidv4 } from "uuid";
 import { updatePaginationParams } from "@/utilis/urlPagination";
 

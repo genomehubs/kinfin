@@ -5,7 +5,7 @@ import ClusterSummary from "../../components/Charts/ClusterSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getClusterSummary } from "../../app/store/analysis/actions";
+import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
 import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/actions";
 

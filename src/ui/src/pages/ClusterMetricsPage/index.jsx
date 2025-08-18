@@ -5,7 +5,7 @@ import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getClusterMetrics } from "../../app/store/analysis/actions";
+import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
 import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/actions";
 

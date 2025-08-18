@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Dashboard.module.scss";
-import {
-  getAvailableAttributesTaxonsets,
-  getRunSummary,
-  getClusterSummary,
-  getCountsByTaxon,
-  getClusterMetrics,
-  getAttributeSummary,
-} from "../../app/store/analysis/actions";
+// import {
+// getAvailableAttributesTaxonsets,
+// getRunSummary,
+// getClusterSummary,
+// getCountsByTaxon,
+// getClusterMetrics,
+// getAttributeSummary,
+// } from "../../app/store/analysis/actions";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
+import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
+import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
+import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
+import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
+import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { getRunStatus, initAnalysis } from "../../app/store/config/actions";
 import AppLayout from "../../components/AppLayout";
