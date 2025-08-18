@@ -109,7 +109,6 @@ const Sidebar = ({ open, setOpen }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const navigate = useNavigate();
-  const defaultItem = { label: "New Analysis", isNew: true };
 
   const analysisConfigs = useSelector(
     (state) => state?.config?.storeConfig?.data

@@ -9,8 +9,6 @@ import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSu
 import { dispatchSuccessToast } from "../../utils/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 
-import { useParams } from "react-router-dom";
-
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const selectedAttributeTaxonset = useSelector(
@@ -19,7 +17,6 @@ const AttributeSummaryPage = () => {
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
   );
-  const { sessionId } = useParams();
 
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
@@ -39,10 +36,6 @@ const AttributeSummaryPage = () => {
       30000
     );
   };
-  const breadcrumbItems = [
-    { label: "Dashboard", href: `/${sessionId}` },
-    { label: "Attribute Summary", href: `/${sessionId}/attribute-summary` },
-  ];
 
   return (
     <AppLayout>

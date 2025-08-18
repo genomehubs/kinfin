@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
-import styles from "./AttributeSummary.module.scss";
 import { getAttributeSummary } from "../../../app/store/analysis/slices/attributeSummarySlice";
 import { v4 as uuidv4 } from "uuid";
 import { updatePaginationParams } from "@/utils/urlPagination";

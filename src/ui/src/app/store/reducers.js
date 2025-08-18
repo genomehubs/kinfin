@@ -1,23 +1,22 @@
 import { combineReducers } from "redux";
-import configReducer from "./config/reducers";
 
 // --- slices ---
-import runSummaryReducer from "./analysis/slices/runSummarySlice";
-import availableAttributesReducer from "./analysis/slices/availableAttributesTaxonsetsSlice";
-import countsByTaxonReducer from "./analysis/slices/countsByTaxonSlice";
-import clusterSummaryReducer from "./analysis/slices/clusterSummarySlice";
 import attributeSummaryReducer from "./analysis/slices/attributeSummarySlice";
+import availableAttributesReducer from "./analysis/slices/availableAttributesTaxonsetsSlice";
 import clusterMetricsReducer from "./analysis/slices/clusterMetricsSlice";
+import clusterSummaryReducer from "./analysis/slices/clusterSummarySlice";
+import countsByTaxonReducer from "./analysis/slices/countsByTaxonSlice";
 import pairwiseAnalysisReducer from "./analysis/slices/pairwiseAnalysisSlice";
 import plotReducer from "./analysis/slices/plotSlice";
+import runSummaryReducer from "./analysis/slices/runSummarySlice";
 
 import analysisReducer from "./config/slices/analysisSlice";
-import runStatusReducer from "./config/slices/runStatusSlice";
-import configSliceReducer from "./config/slices/configSlice";
-import proteomeIdsReducer from "./config/slices/proteomeIdsSlice";
-import uiStateReducer from "./config/slices/uiStateSlice";
 import batchStatusReducer from "./config/slices/batchStatusSlice";
 import clusteringSetsReducer from "./config/slices/clusteringSetsSlice";
+import configSliceReducer from "./config/slices/configSlice";
+import proteomeIdsReducer from "./config/slices/proteomeIdsSlice";
+import runStatusReducer from "./config/slices/runStatusSlice";
+import uiStateReducer from "./config/slices/uiStateSlice";
 
 const rootReducer = combineReducers({
   analysis: combineReducers({
