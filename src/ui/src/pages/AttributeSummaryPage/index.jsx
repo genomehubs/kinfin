@@ -6,18 +6,18 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
 import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
-import { setDownloadLoading } from "../../app/store/config/actions";
+import { dispatchSuccessToast } from "../../utils/tostNotifications";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 
 import { useParams } from "react-router-dom";
 
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
   const downloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading
   );
   const { sessionId } = useParams();
 

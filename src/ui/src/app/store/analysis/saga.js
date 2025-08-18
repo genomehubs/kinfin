@@ -1,5 +1,5 @@
 import { takeEvery, fork, put, all, call, select } from "redux-saga/effects";
-import { setDownloadLoading } from "../config/actions";
+import { setDownloadLoading } from "../config/slices/uiStateSlice";
 
 import {
   getAvailableAttributesTaxonsets,

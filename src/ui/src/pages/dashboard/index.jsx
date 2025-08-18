@@ -1,24 +1,15 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Dashboard.module.scss";
-// import {
-// getAvailableAttributesTaxonsets,
-// getRunSummary,
-// getClusterSummary,
-// getCountsByTaxon,
-// getClusterMetrics,
-// getAttributeSummary,
-// } from "../../app/store/analysis/actions";
 import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
 import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
 import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
 import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
 import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
 import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { getRunStatus, initAnalysis } from "../../app/store/config/actions";
+import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
+import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
@@ -29,12 +20,12 @@ import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import { useNavigate, useParams } from "react-router-dom";
-import { downloadBlobFile } from "../../utilis/downloadBlobFile";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
+import { downloadBlobFile } from "../../utils/downloadBlobFile";
+import { dispatchSuccessToast } from "../../utils/tostNotifications";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import ChartCard from "../../components/ChartCard";
-import { setDownloadLoading } from "../../app/store/config/actions";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -50,11 +41,11 @@ const Dashboard = () => {
   );
 
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
 
   const downloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading
   );
 
   const allRarefactionCurveBlob = useSelector(
@@ -91,7 +82,9 @@ const Dashboard = () => {
   };
 
   const handleSessionClick = () => {
-    if (!sessionDetails?.config) return;
+    if (!sessionDetails?.config) {
+      return;
+    }
     try {
       setParsedData(sessionDetails?.config);
       setShowDataModal(true);

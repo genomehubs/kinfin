@@ -11,9 +11,15 @@ import clusterMetricsReducer from "./analysis/slices/clusterMetricsSlice";
 import pairwiseAnalysisReducer from "./analysis/slices/pairwiseAnalysisSlice";
 import plotReducer from "./analysis/slices/plotSlice";
 
-const rootReducer = combineReducers({
-  config: configReducer,
+import analysisReducer from "./config/slices/analysisSlice";
+import runStatusReducer from "./config/slices/runStatusSlice";
+import configSliceReducer from "./config/slices/configSlice";
+import proteomeIdsReducer from "./config/slices/proteomeIdsSlice";
+import uiStateReducer from "./config/slices/uiStateSlice";
+import batchStatusReducer from "./config/slices/batchStatusSlice";
+import clusteringSetsReducer from "./config/slices/clusteringSetsSlice";
 
+const rootReducer = combineReducers({
   analysis: combineReducers({
     runSummary: runSummaryReducer,
     availableAttributesTaxonsets: availableAttributesReducer,
@@ -23,6 +29,16 @@ const rootReducer = combineReducers({
     clusterMetrics: clusterMetricsReducer,
     pairwiseAnalysis: pairwiseAnalysisReducer,
     plot: plotReducer,
+  }),
+
+  config: combineReducers({
+    initAnalysis: analysisReducer,
+    runStatus: runStatusReducer,
+    validProteomeIds: proteomeIdsReducer,
+    uiState: uiStateReducer,
+    batchStatus: batchStatusReducer,
+    clusteringSets: clusteringSetsReducer,
+    storeConfig: configSliceReducer,
   }),
 });
 

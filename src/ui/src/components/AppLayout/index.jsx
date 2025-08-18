@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { breadcrumbMap } from "../../utilis/breadcrumbConfig";
+import { breadcrumbMap } from "../../utils/breadcrumbConfig";
 import Navbar from "../Navbar";
 import Sidebar from "../UIElements/Sidebar";
 import styles from "./AppLayout.module.scss";
@@ -44,7 +44,7 @@ const AppLayout = ({ children }) => {
   });
 
   const pollingLoadingBySessionId = useSelector(
-    (state) => state.config.pollingLoadingBySessionId || {}
+    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {}
   );
   const isLoading = pollingLoadingBySessionId[sessionId];
 

@@ -33,14 +33,10 @@ import DarkModeIcon from "@mui/icons-material/DarkMode";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 
-import {
-  renameConfig,
-  deleteConfig,
-  getValidProteomeIds,
-  getBatchStatus,
-  setSelectedClusterSet,
-} from "../../../app/store/config/actions";
-
+import { renameConfig } from "../../../app/store/config/slices/configSlice";
+import { deleteConfig } from "../../../app/store/config/slices/configSlice";
+import { getValidProteomeIds } from "../../../app/store/config/slices/proteomeIdsSlice";
+import { getBatchStatus } from "../../../app/store/config/slices/batchStatusSlice";
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
   if (!config || typeof config !== "object") {
@@ -119,10 +115,10 @@ const Sidebar = ({ open, setOpen }) => {
     (state) => state?.config?.storeConfig?.data
   );
   const pollingLoadingBySessionId = useSelector(
-    (state) => state.config.pollingLoadingBySessionId || {}
+    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {}
   );
   const selectedClusterSet = useSelector(
-    (state) => state?.config?.selectedClusterSet
+    (state) => state?.config?.uiState?.selectedClusterSet
   );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 

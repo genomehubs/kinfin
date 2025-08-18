@@ -5,7 +5,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterMetrics.module.scss";
 import { getClusterMetrics } from "../../../app/store/analysis/slices/clusterMetricsSlice";
 import { v4 as uuidv4 } from "uuid";
-import { updatePaginationParams } from "@/utilis/urlPagination";
+import { updatePaginationParams } from "@/utils/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -17,7 +17,7 @@ const ClusterMetrics = () => {
     (state) => state?.analysis?.clusterMetrics?.data || null
   );
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset || null
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
 
   const attribute = selectedAttributeTaxonset?.attribute || null;
