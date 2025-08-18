@@ -12,7 +12,6 @@ const uiStateSlice = createSlice({
   initialState,
   reducers: {
     setSelectedAttributeTaxonset: (state, action) => {
-      console.log(action);
       state.selectedAttributeTaxonset = action.payload;
     },
     setSelectedClusterSet: (state, action) => {
