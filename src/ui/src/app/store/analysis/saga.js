@@ -1,7 +1,6 @@
 import { takeEvery, fork, put, all, call, select } from "redux-saga/effects";
-import { setDownloadLoading } from "../config/actions"; // still used
+import { setDownloadLoading } from "../config/actions";
 
-// --- slice actions ---
 import {
   getAvailableAttributesTaxonsets,
   getAvailableAttributesTaxonsetsSuccess,
@@ -46,8 +45,7 @@ import {
 
 import { getPlot, getPlotSuccess, getPlotFailure } from "./slices/plotSlice";
 
-// --- utils/services ---
-import { dispatchErrorToast } from "../../../utilis/tostNotifications";
+import { dispatchErrorToast } from "../../../utils/tostNotifications";
 import {
   getAvailableAttributes,
   getCountsByTaxon as apiGetCountsByTaxon,
@@ -58,9 +56,8 @@ import {
   getPairwiseAnalysis as apiGetPairwiseAnalysis,
   getPlot as apiGetPlot,
 } from "../../services/client";
-import { downloadBlobFile } from "../../../utilis/downloadBlobFile";
+import { downloadBlobFile } from "../../../utils/downloadBlobFile";
 
-// --- selectors ---
 const selectSessionStatusById = (session_id) => (state) =>
   state?.config?.storeConfig?.data?.[session_id]?.status;
 
@@ -68,11 +65,12 @@ const getSessionId = () =>
   localStorage.getItem("currentSessionId") ||
   "6599179a64accf331ffe653db00a0e24";
 
-// --- sagas ---
 function* getAvailableAttributesSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(getAvailableAttributes);
     if (response.status === "success") {
@@ -96,7 +94,9 @@ function* getAvailableAttributesSaga() {
 function* getRunSummarySaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetRunSummary);
     if (response.status === "success") {
@@ -120,7 +120,9 @@ function* getRunSummarySaga() {
 function* getCountsByTaxonSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetCountsByTaxon);
     if (response.status === "success") {
@@ -147,7 +149,9 @@ function* getClusterSummarySaga(action) {
 
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetClusterSummary, data);
 
@@ -190,7 +194,9 @@ function* getAttributeSummarySaga(action) {
 
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetAttributeSummary, data);
 
@@ -233,7 +239,9 @@ function* getClusterMetricsSaga(action) {
 
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetClusterMetrics, data);
 
@@ -275,7 +283,9 @@ function* getPairwiseAnalysisSaga(action) {
 
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const response = yield call(apiGetPairwiseAnalysis, attribute);
     if (response.status === "success") {
@@ -299,7 +309,9 @@ function* getPairwiseAnalysisSaga(action) {
 function* getPlotsSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const [allRarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
       call(apiGetPlot, "all-rarefaction-curve"),
@@ -318,7 +330,6 @@ function* getPlotsSaga() {
   }
 }
 
-// --- watchers (all slice actions now) ---
 export function* watchGetAvailableAttributesSaga() {
   yield takeEvery(getAvailableAttributesTaxonsets, getAvailableAttributesSaga);
 }
@@ -344,7 +355,6 @@ export function* watchGetPlotsSaga() {
   yield takeEvery(getPlot, getPlotsSaga);
 }
 
-// --- root saga ---
 function* analysisSaga() {
   yield all([
     fork(watchGetAvailableAttributesSaga),

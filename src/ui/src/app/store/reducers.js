@@ -1,5 +1,4 @@
 import { combineReducers } from "redux";
-import analysisReducer from "./analysis/reducers";
 import configReducer from "./config/reducers";
 
 // --- slices ---
@@ -13,7 +12,6 @@ import pairwiseAnalysisReducer from "./analysis/slices/pairwiseAnalysisSlice";
 import plotReducer from "./analysis/slices/plotSlice";
 
 const rootReducer = combineReducers({
-  oldAnalysis: analysisReducer,
   config: configReducer,
 
   analysis: combineReducers({

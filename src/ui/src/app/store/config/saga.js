@@ -34,7 +34,7 @@ import {
 import {
   dispatchErrorToast,
   dispatchSuccessToast,
-} from "../../../utilis/tostNotifications";
+} from "../../../utils/tostNotifications";
 
 import {
   initAnalysis,
