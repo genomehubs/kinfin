@@ -130,12 +130,13 @@ function* getCountsByTaxonSaga() {
   }
 }
 function* getClusterSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
+  const { attribute, page, size, asFile = false, CS_code } = action.payload;
   const data = {
     attribute,
     size,
     page,
     asFile,
+    CS_code,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));

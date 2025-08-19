@@ -86,7 +86,12 @@ export const getCountsByTaxon = async () => {
 export const getClusterSummary = async (data) => {
   const response = await apiClient.get(`/cluster-summary/${data.attribute}`, {
     headers: { "x-session-id": getSessionId() },
-    params: { page: data.page, size: data.size, as_file: data.asFile },
+    params: {
+      page: data.page,
+      size: data.size,
+      as_file: data.asFile,
+      CS_code: data.CS_code,
+    },
   });
   return response.data;
 };

@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
@@ -515,6 +516,7 @@ async def get_cluster_summary(
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
     CS_code: Optional[List[str]] = Query(None, alias="CS_code"),
+    CS_code_alt: Optional[List[str]] = Query(None, alias="CS_code[]"),
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -573,25 +575,69 @@ async def get_cluster_summary(
         # --- Flatten rows ---
         flat_result = {k: flatten_dict(v) for k, v in result.items()}
 
-        # --- CS_code filtering ---
+        # --- Load descriptions once ---
         current_dir = os.path.dirname(os.path.abspath(__file__))
         descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
         with open(descriptions_file_path, "r") as f:
             column_descriptions = json.load(f)
 
         code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+        code_to_alias = {item["code"]: item.get("alias", item["name"]) for item in column_descriptions}
 
-        if CS_code:
-            selected_columns = []
-            for code in CS_code:
-                if code in code_to_column:
-                    col_name = code_to_column[code]
-                    flat_name = col_name.replace(".", "_")  # match flattened style
-                    selected_columns.append(flat_name)
+        # Merge both styles of query params
+        all_codes = CS_code or CS_code_alt
 
+        if all_codes:
+            # === OPTIMIZED: build the global key set ONCE (preserving a stable order) ===
+            all_keys_ordered: List[str] = []
+            seen_keys = set()
+            for row in flat_result.values():
+                for k in row.keys():
+                    if k not in seen_keys:
+                        seen_keys.add(k)
+                        all_keys_ordered.append(k)
+
+            # Pre-compile patterns once and expand against global keys (NOT per row)
+            selected_columns: List[str] = []
+            selected_set = set()
+            column_aliases = {}
+
+            # First handle non-dynamic columns (no X)
+            for code in all_codes:
+                name = code_to_column.get(code)
+                if not name:
+                    continue
+                alias_template = code_to_alias.get(code, name)
+                if "X" not in name:
+                    flat_name = name.replace(".", "_")
+                    if flat_name not in selected_set:
+                        selected_columns.append(flat_name)
+                        selected_set.add(flat_name)
+                        column_aliases[flat_name] = alias_template
+
+            # Then handle dynamic columns (with X) against the global key list
+            compiled_patterns = []
+            for code in all_codes:
+                name = code_to_column.get(code)
+                if not name or "X" not in name:
+                    continue
+                # Example: protein_counts_X_count -> ^protein_counts_(.+)_count$
+                pat = re.compile("^" + name.replace("X", "(.+)") + "$")
+                compiled_patterns.append((pat, code_to_alias.get(code, name)))
+
+            for key in all_keys_ordered:
+                for pat, alias_template in compiled_patterns:
+                    m = pat.match(key)
+                    if m and key not in selected_set:
+                        selected_columns.append(key)
+                        selected_set.add(key)
+                        # Replace X in alias with the captured token
+                        column_aliases[key] = alias_template.replace("X", m.group(1))
+
+            # Keep only selected columns; fill missing with "-"
             flat_result = {
-                k: {col: v.get(col, "-") for col in selected_columns}
-                for k, v in flat_result.items()
+                rid: {col: row.get(col, "-") for col in selected_columns}
+                for rid, row in flat_result.items()
             }
 
         # --- File Download ---
@@ -609,19 +655,15 @@ async def get_cluster_summary(
             try:
                 rows = list(flat_result.values())
                 fieldnames = list(rows[0].keys()) if rows else []
-
                 buffer = io.StringIO()
                 writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
                 writer.writeheader()
                 writer.writerows(rows)
                 buffer.seek(0)
-
                 return StreamingResponse(
                     buffer,
                     media_type="text/tab-separated-values",
-                    headers={
-                        "Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"
-                    },
+                    headers={"Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"},
                 )
             except Exception as e:
                 return JSONResponse(
@@ -636,11 +678,7 @@ async def get_cluster_summary(
 
         # --- Sort & paginate flattened result ---
         paginated_result, total_pages = sort_and_paginate_result(
-            flat_result,
-            sort_by,
-            sort_order,
-            page,
-            size,
+            flat_result, sort_by, sort_order, page, size
         )
 
         response = ResponseSchema(
