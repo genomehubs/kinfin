@@ -21,7 +21,7 @@ const ClusterMetrics = () => {
     (state) => state?.config?.selectedAttributeTaxonset || null
   );
   const columnDescriptions = useSelector(
-    (state) => state?.config?.clusterColumnDescriptions?.data || []
+    (state) => state?.config?.columnDescriptions?.data || []
   );
 
   const attribute = selectedAttributeTaxonset?.attribute || null;
@@ -90,14 +90,17 @@ const ClusterMetrics = () => {
     const processed = Object.values(clusterMetrics.data).map((row) => ({
       id: uuidv4(),
       ...row,
-      cluster_protein_count: row.counts_cluster_protein_count ?? "-",
-      cluster_proteome_count: row.counts_cluster_proteome_count ?? "-",
-      TAXON_protein_count: row.counts_TAXON_protein_count ?? "-",
-      TAXON_mean_count: row.counts_TAXON_mean_count ?? "-",
-      non_taxon_mean_count: row.counts_non_taxon_mean_count ?? "-",
-      taxon_coverage: row.coverage_taxon_coverage ?? "-",
-      TAXON_count: row.coverage_TAXON_count ?? "-",
-      non_TAXON_count: row.coverage_non_TAXON_count ?? "-",
+      counts_cluster_protein_count: row.counts_cluster_protein_count ?? "-",
+      counts_cluster_proteome_count: row.counts_cluster_proteome_count ?? "-",
+      counts_TAXON_protein_count: row.counts_TAXON_protein_count ?? "-",
+      counts_TAXON_mean_count: row.counts_TAXON_mean_count ?? "-",
+      counts_non_taxon_mean_count: row.counts_non_taxon_mean_count ?? "-",
+      coverage_TAXON_coverage: row.coverage_taxon_coverage ?? "-",
+      representation: row.representation ?? "-",
+      "log2_mean(TAXON/others)": row["log2_mean(TAXON/others)"] ?? "-",
+      "pvalue(TAXON vs. others)": row["pvalue(TAXON vs. others)"] ?? "-",
+      coverage_TAXON_count: row.coverage_TAXON_count ?? "-",
+      coverage_non_TAXON_count: row.coverage_non_TAXON_count ?? "-",
       singleton_cluster_count: row.is_singleton ? 1 : 0,
       singleton_protein_count: row.is_singleton
         ? row.counts_cluster_protein_count
@@ -143,38 +146,61 @@ const ClusterMetrics = () => {
         valueFormatter: ({ value }) => (value ? "Yes" : "No"),
       },
       {
-        field: "cluster_protein_count",
+        field: "counts_cluster_protein_count",
         headerName: "Cluster Protein Count",
         minWidth: 120,
       },
       {
-        field: "cluster_proteome_count",
+        field: "counts_cluster_proteome_count",
         headerName: "Cluster Proteome Count",
         minWidth: 120,
       },
       {
-        field: "TAXON_protein_count",
+        field: "counts_TAXON_protein_count",
         headerName: "Taxon Protein Count",
         minWidth: 120,
       },
       {
-        field: "TAXON_mean_count",
+        field: "representation",
+        headerName: "Representation",
+        minWidth: 120,
+      },
+      {
+        field: "log2_mean(TAXON/others)",
+        headerName: "log2 mean(TAXON/others)",
+        minWidth: 120,
+      },
+      {
+        field: "pvalue(TAXON vs. others)",
+        headerName: "pvalue(TAXON vs. others)",
+        minWidth: 120,
+      },
+      {
+        field: "counts_TAXON_mean_count",
         headerName: "Taxon Mean Count",
         minWidth: 120,
         valueFormatter: (value) =>
           isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
       {
-        field: "non_taxon_mean_count",
+        field: "counts_non_taxon_mean_count",
         headerName: "Non-Taxon Mean Count",
         minWidth: 120,
         valueFormatter: (value) =>
           isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
-      { field: "taxon_coverage", headerName: "Taxon Coverage", minWidth: 120 },
-      { field: "TAXON_count", headerName: "TAXON Count", minWidth: 120 },
       {
-        field: "non_TAXON_count",
+        field: "coverage_TAXON_coverage",
+        headerName: "Taxon Coverage",
+        minWidth: 120,
+      },
+      {
+        field: "coverage_TAXON_count",
+        headerName: "TAXON Count",
+        minWidth: 120,
+      },
+      {
+        field: "coverage_non_TAXON_count",
         headerName: "Non-TAXON Count",
         minWidth: 120,
       },

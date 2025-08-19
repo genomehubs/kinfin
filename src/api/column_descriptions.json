@@ -198,35 +198,35 @@
   {
     "code": "029",
     "file": "*.cluster_metrics.txt",
-    "name": "cluster_protein_count",
+    "name": "counts_cluster_protein_count",
     "description": "Count of proteins",
     "alias": "cluster_protein_count"
   },
   {
     "code": "030",
     "file": "*.cluster_metrics.txt",
-    "name": "cluster_proteome_count",
+    "name": "counts_cluster_proteome_count",
     "description": "Count of taxa",
     "alias": "cluster_taxa_count"
   },
   {
     "code": "031",
     "file": "*.cluster_metrics.txt",
-    "name": "TAXON_protein_count",
+    "name": "counts_TAXON_protein_count",
     "description": "Count of proteins from Taxset",
     "alias": "taxset_protein_count"
   },
   {
     "code": "032",
     "file": "*.cluster_metrics.txt",
-    "name": "TAXON_mean_count",
+    "name": "counts_TAXON_mean_count",
     "description": "Mean count of proteins per taxon in Taxset",
     "alias": "taxset_mean_protein_count"
   },
   {
     "code": "033",
     "file": "*.cluster_metrics.txt",
-    "name": "non_taxon_mean_count",
+    "name": "counts_non_taxon_mean_count",
     "description": "Mean count of proteins per taxon NOT in Taxset",
     "alias": "background_mean_protein_count"
   },
@@ -254,21 +254,21 @@
   {
     "code": "037",
     "file": "*.cluster_metrics.txt",
-    "name": "TAXON_coverage",
+    "name": "coverage_TAXON_coverage",
     "description": "Proportion of taxa in Taxset present in the cluster",
     "alias": "taxset_taxa_coverage"
   },
   {
     "code": "038",
     "file": "*.cluster_metrics.txt",
-    "name": "TAXON_count",
+    "name": "coverage_TAXON_count",
     "description": "Count of taxa in Taxset present in the cluster",
     "alias": "taxset_taxa_count"
   },
   {
     "code": "039",
     "file": "*.cluster_metrics.txt",
-    "name": "non_TAXON_count",
+    "name": "coverage_non_TAXON_count",
     "description": "Count of background taxa present in the cluster",
     "alias": "background_taxa_count"
   },
