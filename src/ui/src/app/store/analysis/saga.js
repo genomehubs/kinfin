@@ -229,13 +229,21 @@ function* getAttributeSummarySaga(action) {
   }
 }
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page, size, asFile = false } = action.payload;
+  const {
+    attribute,
+    taxonSet,
+    page,
+    size,
+    asFile = false,
+    CM_code,
+  } = action.payload;
   const data = {
     attribute,
     taxonSet,
     page,
     size,
     asFile,
+    CM_code,
   };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));

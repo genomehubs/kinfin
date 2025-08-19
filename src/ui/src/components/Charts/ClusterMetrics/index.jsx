@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterMetrics.module.scss";
-import { getClusterMetrics } from "../../../app/store/analysis/actions";
 import { v4 as uuidv4 } from "uuid";
+import { getClusterMetrics } from "../../../app/store/analysis/actions";
 import { updatePaginationParams } from "@/utilis/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
@@ -12,12 +12,16 @@ const pageSizeOptions = [10, 25, 50];
 const ClusterMetrics = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+  const defaultsAppliedRef = useRef(false);
 
   const clusterMetrics = useSelector(
     (state) => state?.analysis?.clusterMetrics?.data || null
   );
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.selectedAttributeTaxonset || null
+  );
+  const columnDescriptions = useSelector(
+    (state) => state?.config?.clusterColumnDescriptions?.data || []
   );
 
   const attribute = selectedAttributeTaxonset?.attribute || null;
@@ -32,8 +36,11 @@ const ClusterMetrics = () => {
     1
   );
 
-  // Set default URL params if missing
+  // Apply default pagination params if missing
   useEffect(() => {
+    if (defaultsAppliedRef.current) return;
+    defaultsAppliedRef.current = true;
+
     const hasPage = searchParams.has("CM_page");
     const hasPageSize = searchParams.has("CM_pageSize");
 
@@ -50,6 +57,8 @@ const ClusterMetrics = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  // Dynamic column filtering
+  const cmCodes = useMemo(() => searchParams.getAll("CM_code"), [searchParams]);
   // Fetch cluster metrics
   useEffect(() => {
     if (!attribute || !taxonSet) return;
@@ -60,51 +69,47 @@ const ClusterMetrics = () => {
         taxonSet,
         page: page + 1,
         size: pageSize,
+        CM_code: cmCodes,
       })
     );
-  }, [dispatch, attribute, taxonSet, page, pageSize]);
+  }, [dispatch, attribute, taxonSet, page, pageSize, cmCodes]);
 
-  const { rows, rowCount } = useMemo(() => {
-    const rawData = clusterMetrics?.data ?? [];
-    const processed = Object.values(rawData).map((row) => {
-      const counts = row?.counts || {};
-      const coverage = row?.coverage || {};
+  const rowsData = useMemo(() => {
+    if (!clusterMetrics?.data) return { rows: [], rowCount: 0 };
 
-      return {
-        id: uuidv4(),
-        ...row,
-        cluster_protein_count: counts.cluster_protein_count ?? "-",
-        cluster_proteome_count: counts.cluster_proteome_count ?? "-",
-        TAXON_protein_count: counts.TAXON_protein_count ?? "-",
-        TAXON_mean_count: counts.TAXON_mean_count ?? "-",
-        non_taxon_mean_count: counts.non_taxon_mean_count ?? "-",
-        taxon_coverage: coverage.taxon_coverage ?? "-",
-        TAXON_count: coverage.TAXON_count ?? "-",
-        non_TAXON_count: coverage.non_TAXON_count ?? "-",
-        singleton_cluster_count: row?.singleton?.cluster_count ?? "-",
-        singleton_protein_count: row?.singleton?.protein_count ?? "-",
-        specific_cluster_count: row?.specific?.cluster_count ?? "-",
-        shared_cluster_count: row?.shared?.cluster_count ?? "-",
-        absent_cluster_total_count: row?.absent?.cluster_total_count ?? "-",
-        TAXON_taxa: Array.isArray(row?.TAXON_taxa)
-          ? row.TAXON_taxa.join(", ")
-          : "-",
-      };
-    });
+    const processed = Object.values(clusterMetrics.data).map((row) => ({
+      id: uuidv4(),
+      ...row,
+      cluster_protein_count: row.counts_cluster_protein_count ?? "-",
+      cluster_proteome_count: row.counts_cluster_proteome_count ?? "-",
+      TAXON_protein_count: row.counts_TAXON_protein_count ?? "-",
+      TAXON_mean_count: row.counts_TAXON_mean_count ?? "-",
+      non_taxon_mean_count: row.counts_non_taxon_mean_count ?? "-",
+      taxon_coverage: row.coverage_taxon_coverage ?? "-",
+      TAXON_count: row.coverage_TAXON_count ?? "-",
+      non_TAXON_count: row.coverage_non_TAXON_count ?? "-",
+      singleton_cluster_count: row.is_singleton ? 1 : 0,
+      singleton_protein_count: row.is_singleton
+        ? row.counts_cluster_protein_count
+        : 0,
+      specific_cluster_count: row.is_specific ? 1 : 0,
+      shared_cluster_count: row.cluster_type === "shared" ? 1 : 0,
+      absent_cluster_total_count: row.cluster_status === "absent" ? 1 : 0,
+      TAXON_taxa: row.TAXON_taxa ? row.TAXON_taxa.split(",") : [],
+      non_TAXON_taxa: row.non_TAXON_taxa ? row.non_TAXON_taxa.split(",") : [],
+    }));
 
     const totalRows =
-      clusterMetrics?.total_entries ??
-      (clusterMetrics?.total_pages && clusterMetrics?.entries_per_page
+      clusterMetrics.total_entries ??
+      (clusterMetrics.total_pages && clusterMetrics.entries_per_page
         ? clusterMetrics.total_pages * clusterMetrics.entries_per_page
         : processed.length);
 
-    return {
-      rows: processed,
-      rowCount: totalRows,
-    };
+    return { rows: processed, rowCount: totalRows };
   }, [clusterMetrics]);
 
-  const columns = useMemo(
+  // Default columns
+  const defaultColumns = useMemo(
     () => [
       { field: "cluster_id", headerName: "Cluster ID", minWidth: 120 },
       { field: "cluster_status", headerName: "Cluster Status", minWidth: 120 },
@@ -156,21 +161,6 @@ const ClusterMetrics = () => {
         valueFormatter: (value) =>
           isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
       },
-      { field: "representation", headerName: "Representation", minWidth: 120 },
-      {
-        field: "log2_mean(TAXON/others)",
-        headerName: "Log2 Mean",
-        minWidth: 120,
-        valueFormatter: (value) =>
-          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
-      },
-      {
-        field: "pvalue(TAXON vs. others)",
-        headerName: "P-value",
-        minWidth: 120,
-        valueFormatter: (value) =>
-          isNaN(Number(value)) ? "-" : Number(value).toFixed(2),
-      },
       { field: "taxon_coverage", headerName: "Taxon Coverage", minWidth: 120 },
       { field: "TAXON_count", headerName: "TAXON Count", minWidth: 120 },
       {
@@ -196,17 +186,33 @@ const ClusterMetrics = () => {
     []
   );
 
+  const codeToFieldMap = useMemo(() => {
+    return columnDescriptions.reduce((acc, col) => {
+      acc[col.code] = col.name;
+      return acc;
+    }, {});
+  }, [columnDescriptions]);
+
+  const filteredColumns = useMemo(() => {
+    if (!cmCodes || cmCodes.length === 0) return defaultColumns;
+    const allowedFields = cmCodes
+      .map((code) => codeToFieldMap[code])
+      .filter(Boolean);
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+  }, [cmCodes, codeToFieldMap, defaultColumns]);
+
+  // Handle pagination
   const handlePaginationModelChange = useCallback(
     (newModel) => {
       updatePaginationParams(
         searchParams,
         setSearchParams,
         "CM",
-        newModel.page,
-        newModel.pageSize
+        (newModel.page ?? 0) + 1,
+        newModel.pageSize ?? pageSize
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, pageSize]
   );
 
   return (
@@ -219,12 +225,12 @@ const ClusterMetrics = () => {
       }}
     >
       <DataGrid
-        rows={rows}
-        columns={columns}
+        rows={rowsData.rows}
+        columns={filteredColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
-        rowCount={rowCount}
+        rowCount={rowsData.rowCount}
         pageSizeOptions={pageSizeOptions}
         disableSelectionOnClick
         checkboxSelection={false}

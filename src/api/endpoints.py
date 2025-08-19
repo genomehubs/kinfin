@@ -193,6 +193,7 @@ def get_nested_value(data, path):
             return None
     return data if data != {} else None
 
+
 @router.post("/kinfin/init", response_model=ResponseSchema)
 @limiter.limit(LIMIT_INIT)
 async def initialize(input_data: InputSchema, request: Request):
@@ -1115,6 +1116,7 @@ async def get_attribute_summary(
             status_code=500,
         )
 
+
 @router.get(
     "/kinfin/cluster-metrics/{attribute}/{taxon_set}",
     response_model=ResponseSchema,
@@ -1133,8 +1135,10 @@ async def get_cluster_metrics(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    CM_code: Optional[List[str]] = Query(None, alias="CM_code"),
 ):
     try:
+        # ---- Validate Kinfin session ----
         result_dir = query_manager.get_session_dir(session_id)
         config_f = os.path.join(result_dir, "config.json")
         if not os.path.exists(config_f):
@@ -1148,6 +1152,7 @@ async def get_cluster_metrics(
                 status_code=428,
             )
 
+        # ---- Validate attribute & taxon_set ----
         valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
@@ -1162,7 +1167,6 @@ async def get_cluster_metrics(
             )
 
         valid_taxon_sets = valid_endpoints["taxon_set"][attribute]
-
         if taxon_set and taxon_set not in valid_taxon_sets:
             return JSONResponse(
                 content=ResponseSchema(
@@ -1173,9 +1177,16 @@ async def get_cluster_metrics(
                 status_code=400,
             )
 
+        # ---- Load column descriptions (for CM_code) ----
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+
+        # ---- Parse cluster metrics file ----
         filename = f"{attribute}/{attribute}.{taxon_set}.{CLUSTER_METRICS_FILENAME}"
         filepath = os.path.join(result_dir, filename)
-
         if not os.path.exists(filepath):
             return JSONResponse(
                 content=ResponseSchema(
@@ -1189,8 +1200,27 @@ async def get_cluster_metrics(
 
         result = parse_cluster_metrics_file(filepath, cluster_status, cluster_type)
 
+        # ---- Flatten nested dicts ----
+        rows = list(result.values())
+        flattened_rows = [flatten_dict(row) for row in rows]
+
+        # ---- Apply CM_code filter ----
+        if CM_code:
+            selected_columns = []
+            for code in CM_code:
+                if code in code_to_column:
+                    col_name = code_to_column[code]
+                    flat_name = col_name.replace(".", "_")
+                    selected_columns.append(flat_name)
+
+            flattened_rows = [
+                {col: row.get(col, "-") for col in selected_columns}
+                for row in flattened_rows
+            ]
+
+        # ---- File download mode ----
         if as_file:
-            if not result:
+            if not flattened_rows:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
@@ -1201,54 +1231,42 @@ async def get_cluster_metrics(
                     status_code=404,
                 )
 
-            try:
-                rows = list(result.values())
-                flattened_rows = [flatten_dict(row) for row in rows]
-                first_row = flattened_rows[0] if flattened_rows else {}
+            buffer = io.StringIO()
+            writer = csv.DictWriter(buffer, fieldnames=flattened_rows[0].keys(), delimiter="\t")
+            writer.writeheader()
+            writer.writerows(flattened_rows)
+            buffer.seek(0)
 
-                buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
-                writer.writeheader()
-                writer.writerows(flattened_rows)
-                buffer.seek(0)
+            return StreamingResponse(
+                buffer,
+                media_type="text/tab-separated-values",
+                headers={
+                    "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
+                },
+            )
 
-                return StreamingResponse(
-                    buffer,
-                    media_type="text/tab-separated-values",
-                    headers={
-                        "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
-                    },
-                )
-
-            except Exception as e:
-                return JSONResponse(
-                    content=ResponseSchema(
-                        status="error",
-                        message="Failed to generate TSV file",
-                        error=str(e),
-                        query=str(request.url),
-                    ).model_dump(),
-                    status_code=500,
-                )
-
+        # ---- Paginate ----
+        flat_dict = {rows[i]["cluster_id"]: flattened_rows[i] for i in range(len(rows))}
         paginated_result, total_pages = sort_and_paginate_result(
-            result,
+            flat_dict,
             sort_by,
             sort_order,
             page,
             size,
         )
-        response = ResponseSchema(
-            status="success",
-            message="Cluster metrics retrieved successfully",
-            data=paginated_result,
-            query=str(request.url),
-            current_page=page,
-            entries_per_page=size,
-            total_pages=total_pages,
+
+        return JSONResponse(
+            ResponseSchema(
+                status="success",
+                message="Cluster metrics retrieved successfully",
+                data=paginated_result,
+                query=str(request.url),
+                current_page=page,
+                entries_per_page=size,
+                total_pages=total_pages,
+            ).model_dump()
         )
 
-        return JSONResponse(response.model_dump())
     except Exception as e:
         return JSONResponse(
             content=ResponseSchema(
