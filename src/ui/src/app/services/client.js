@@ -92,6 +92,7 @@ export const getClusterSummary = async (data) => {
       as_file: data.asFile,
       CS_code: data.CS_code,
     },
+    paramsSerializer: { indexes: null },
   });
   return response.data;
 };

@@ -516,8 +516,7 @@ async def get_cluster_summary(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
-    CS_code: Optional[List[str]] = Query(None, alias="CS_code"),
-    CS_code_alt: Optional[List[str]] = Query(None, alias="CS_code[]"),
+    CS_code: Optional[List[str]] = Query(None, alias="CS_code"),   # ✅ only one param
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -584,12 +583,8 @@ async def get_cluster_summary(
 
         code_to_column = {item["code"]: item["name"] for item in column_descriptions}
         code_to_alias = {item["code"]: item.get("alias", item["name"]) for item in column_descriptions}
-
-        # Merge both styles of query params
-        all_codes = CS_code or CS_code_alt
-
-        if all_codes:
-            # === OPTIMIZED: build the global key set ONCE (preserving a stable order) ===
+        if CS_code:
+            # === OPTIMIZED: build the global key set ONCE ===
             all_keys_ordered: List[str] = []
             seen_keys = set()
             for row in flat_result.values():
@@ -598,13 +593,12 @@ async def get_cluster_summary(
                         seen_keys.add(k)
                         all_keys_ordered.append(k)
 
-            # Pre-compile patterns once and expand against global keys (NOT per row)
             selected_columns: List[str] = []
             selected_set = set()
             column_aliases = {}
 
             # First handle non-dynamic columns (no X)
-            for code in all_codes:
+            for code in CS_code:
                 name = code_to_column.get(code)
                 if not name:
                     continue
@@ -616,13 +610,12 @@ async def get_cluster_summary(
                         selected_set.add(flat_name)
                         column_aliases[flat_name] = alias_template
 
-            # Then handle dynamic columns (with X) against the global key list
+            # Then handle dynamic columns (with X)
             compiled_patterns = []
-            for code in all_codes:
+            for code in CS_code:
                 name = code_to_column.get(code)
                 if not name or "X" not in name:
                     continue
-                # Example: protein_counts_X_count -> ^protein_counts_(.+)_count$
                 pat = re.compile("^" + name.replace("X", "(.+)") + "$")
                 compiled_patterns.append((pat, code_to_alias.get(code, name)))
 
@@ -632,7 +625,6 @@ async def get_cluster_summary(
                     if m and key not in selected_set:
                         selected_columns.append(key)
                         selected_set.add(key)
-                        # Replace X in alias with the captured token
                         column_aliases[key] = alias_template.replace("X", m.group(1))
 
             # Keep only selected columns; fill missing with "-"
@@ -1274,143 +1266,6 @@ async def get_cluster_metrics(
                 message="Internal Server Error",
                 query=str(request.url),
                 error=str(e),
-            ).model_dump(),
-            status_code=500,
-        )
-
-
-@router.get("/kinfin/combined-summary/{attribute}", response_model=ResponseSchema)
-@limiter.limit(LIMIT_STANDARD)
-@check_kinfin_session
-async def get_combined_summary(
-    request: Request,
-    attribute: str,
-    codes: List[str] = Query(..., description="List of column codes to retrieve"),
-    session_id: str = Depends(header_scheme),
-    taxon_set: Optional[str] = Query(None),
-    page: Optional[int] = Query(1),
-    size: Optional[int] = Query(10),
-    sort_by: Optional[str] = Query(None),
-    sort_order: Optional[str] = Query("asc"),
-):
-    try:
-        result_dir = query_manager.get_session_dir(session_id)
-
-        # Validate session
-        config_f = os.path.join(result_dir, "config.json")
-        if not os.path.exists(config_f):
-            return ResponseSchema(
-                status="error",
-                message="Kinfin analysis not initialized",
-                error="session_not_initialized",
-                query=str(request.url),
-            ).to_json_response(status_code=428)
-
-        # Validate attribute
-        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
-        if attribute not in valid_endpoints["attributes"]:
-            return ResponseSchema(
-                status="error",
-                message=f"Invalid attribute: {attribute}",
-                error="invalid_attribute",
-                query=str(request.url),
-            ).to_json_response(status_code=400)
-
-        # Get relevant file types and column names for the requested codes
-        file_map = {}
-        for code in codes:
-            if code not in CODE_TO_COLUMN_NAME:
-                return ResponseSchema(
-                    status="error",
-                    message=f"Invalid code: {code}",
-                    error="invalid_code",
-                    query=str(request.url),
-                ).to_json_response(status_code=400)
-            filetype = CODE_TO_FILETYPE[code]
-            file_map.setdefault(filetype, []).append(CODE_TO_COLUMN_NAME[code])
-
-        print(f"{file_map}")
-        combined_data = {}
-
-        # Handle .cluster_summary.txt
-        if "*.cluster_summary.txt" in file_map:
-            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.cluster_summary.txt")
-            if os.path.exists(filepath):
-                cluster_data = parse_cluster_summary_file(filepath=filepath)
-                for cluster_id, row in cluster_data.items():
-                    if cluster_id not in combined_data:
-                        combined_data[cluster_id] = {}
-                    for col in file_map["*.cluster_summary.txt"]:
-                        combined_data[cluster_id][col] = row.get(col)
-
-        # Handle .attribute_metrics.txt
-        if "*.attribute_metrics.txt" in file_map:
-            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.attribute_metrics.txt")
-            if os.path.exists(filepath):
-                attr_data = parse_attribute_summary_file(filepath=filepath)
-                for attr_id, row in attr_data.items():
-                    flat_row = flatten_dict(row)  # <== flattening here only
-                    if attr_id not in combined_data:
-                        combined_data[attr_id] = {}
-                    for col in file_map["*.attribute_metrics.txt"]:
-                        combined_data[attr_id][col] = flat_row.get(col)
-
-        # Handle .cluster_metrics.txt (needs taxon_set)
-        if "*.cluster_metrics.txt" in file_map:
-            if not taxon_set:
-                return ResponseSchema(
-                    status="error",
-                    message="Missing taxon_set for cluster_metrics",
-                    error="missing_taxon_set",
-                    query=str(request.url),
-                ).to_json_response(status_code=400)
-
-            valid_taxon_sets = valid_endpoints["taxon_set"].get(attribute, [])
-            if taxon_set not in valid_taxon_sets:
-                return ResponseSchema(
-                    status="error",
-                    message=f"Invalid taxon_set: {taxon_set}",
-                    error="invalid_taxon_set",
-                    query=str(request.url),
-                ).to_json_response(status_code=400)
-
-            filepath = os.path.join(result_dir, f"{attribute}/{attribute}.{taxon_set}.cluster_metrics.txt")
-            if os.path.exists(filepath):
-                cluster_metric_data = parse_cluster_metrics_file(filepath)
-                for cluster_id, row in cluster_metric_data.items():
-                    if cluster_id not in combined_data:
-                        combined_data[cluster_id] = {}
-                    for col in file_map["*.cluster_metrics.txt"]:
-                        combined_data[cluster_id][col] = row.get(col)
-
-        # Pagination and sorting
-        paginated_result, total_pages = sort_and_paginate_result(
-            combined_data,
-            sort_by,
-            sort_order,
-            page,
-            size,
-        )
-
-        return JSONResponse(
-            ResponseSchema(
-                status="success",
-                message="Combined summary retrieved",
-                data=paginated_result,
-                total_pages=total_pages,
-                entries_per_page=size,
-                current_page=page,
-                query=str(request.url),
-            ).model_dump()
-        )
-
-    except Exception as e:
-        return JSONResponse(
-            ResponseSchema(
-                status="error",
-                message="Internal Server Error",
-                error=str(e),
-                query=str(request.url),
             ).model_dump(),
             status_code=500,
         )

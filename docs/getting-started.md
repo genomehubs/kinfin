@@ -76,7 +76,7 @@ curl -X POST "$KINFIN_HOST/kinfin/init" \
 
 ```
 
-The remaining API endpoints require a `session_id` parameter so they can be associated with the results of an analysis. This parameter is set based on the input data to avoid unecessary duplication if multiple users request the same data, which is particularly liekly in the context of user-facing example analyses. As such the parameter value is deterministic based on the input and should match the `SESSION_ID` variable set earlier. To confirm this, check `data.session_id` in the output of the above command.
+The remaining API endpoints require a `session_id` parameter so they can be associated with the results of an analysis. This parameter is set based on the input data to avoid unnecessary duplication if multiple users request the same data, which is particularly likely in the context of user-facing example analyses. As such the parameter value is deterministic based on the input and should match the `SESSION_ID` variable set earlier. To confirm this, check `data.session_id` in the output of the above command.
 
 ### 2. Get Run Status
 
