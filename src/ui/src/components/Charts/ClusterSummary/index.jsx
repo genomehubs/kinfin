@@ -74,11 +74,11 @@ const ClusterSummary = () => {
         searchParams,
         setSearchParams,
         "CS",
-        (newModel.page ?? 0) + 1,
-        newModel.pageSize ?? pageSize
+        newModel.page,
+        newModel.pageSize
       );
     },
-    [searchParams, setSearchParams, pageSize]
+    [searchParams, setSearchParams]
   );
 
   // 🔹 Flatten rows
@@ -196,7 +196,9 @@ const ClusterSummary = () => {
 
   // 🔹 Filter columns by CS_code (with regex support for X)
   const filteredColumns = useMemo(() => {
-    if (!csCodes || csCodes.length === 0) return allColumns;
+    if (!csCodes || csCodes.length === 0) {
+      return allColumns;
+    }
 
     const patterns = csCodes
       .map((code) => codeToFieldMap[code])

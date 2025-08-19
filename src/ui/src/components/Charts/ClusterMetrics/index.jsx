@@ -38,7 +38,9 @@ const ClusterMetrics = () => {
 
   // Apply default pagination params if missing
   useEffect(() => {
-    if (defaultsAppliedRef.current) return;
+    if (defaultsAppliedRef.current) {
+      return;
+    }
     defaultsAppliedRef.current = true;
 
     const hasPage = searchParams.has("CM_page");
@@ -48,8 +50,12 @@ const ClusterMetrics = () => {
       setSearchParams(
         (prev) => {
           const newParams = new URLSearchParams(prev);
-          if (!hasPage) newParams.set("CM_page", "1");
-          if (!hasPageSize) newParams.set("CM_pageSize", "10");
+          if (!hasPage) {
+            newParams.set("CM_page", "1");
+          }
+          if (!hasPageSize) {
+            newParams.set("CM_pageSize", "10");
+          }
           return newParams;
         },
         { replace: true }
@@ -61,7 +67,9 @@ const ClusterMetrics = () => {
   const cmCodes = useMemo(() => searchParams.getAll("CM_code"), [searchParams]);
   // Fetch cluster metrics
   useEffect(() => {
-    if (!attribute || !taxonSet) return;
+    if (!attribute || !taxonSet) {
+      return;
+    }
 
     dispatch(
       getClusterMetrics({
@@ -75,7 +83,9 @@ const ClusterMetrics = () => {
   }, [dispatch, attribute, taxonSet, page, pageSize, cmCodes]);
 
   const rowsData = useMemo(() => {
-    if (!clusterMetrics?.data) return { rows: [], rowCount: 0 };
+    if (!clusterMetrics?.data) {
+      return { rows: [], rowCount: 0 };
+    }
 
     const processed = Object.values(clusterMetrics.data).map((row) => ({
       id: uuidv4(),
@@ -194,7 +204,9 @@ const ClusterMetrics = () => {
   }, [columnDescriptions]);
 
   const filteredColumns = useMemo(() => {
-    if (!cmCodes || cmCodes.length === 0) return defaultColumns;
+    if (!cmCodes || cmCodes.length === 0) {
+      return defaultColumns;
+    }
     const allowedFields = cmCodes
       .map((code) => codeToFieldMap[code])
       .filter(Boolean);
@@ -208,11 +220,11 @@ const ClusterMetrics = () => {
         searchParams,
         setSearchParams,
         "CM",
-        (newModel.page ?? 0) + 1,
-        newModel.pageSize ?? pageSize
+        newModel.page,
+        newModel.pageSize
       );
     },
-    [searchParams, setSearchParams, pageSize]
+    [searchParams, setSearchParams]
   );
 
   return (

@@ -222,11 +222,11 @@ const AttributeSummary = () => {
         searchParams,
         setSearchParams,
         "AS",
-        (newModel.page ?? 0) + 1,
-        newModel.pageSize ?? pageSize
+        newModel.page,
+        newModel.pageSize
       );
     },
-    [searchParams, setSearchParams, pageSize]
+    [searchParams, setSearchParams]
   );
 
   return (
