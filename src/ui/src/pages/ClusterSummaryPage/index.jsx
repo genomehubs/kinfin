@@ -5,9 +5,9 @@ import ClusterSummary from "../../components/Charts/ClusterSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getClusterSummary } from "../../app/store/analysis/actions";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
-import { setDownloadLoading } from "../../app/store/config/actions";
+import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 import { useSearchParams } from "react-router-dom";
 import { getColumnDescriptions } from "../../app/store/config/actions";
 
@@ -26,10 +26,10 @@ const ClusterSummaryPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
   const clusterSummaryDownloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading?.clusterSummary
+    (state) => state?.config?.uiState?.downloadLoading?.clusterSummary
   );
   const columnDescriptions = useSelector(
     (state) => state?.config?.columnDescriptions?.data || []

@@ -13,7 +13,7 @@ import {
   ClusterSummaryPage,
 } from "./pages";
 import { ThemeProvider } from "@mui/material/styles";
-import { lightTheme, darkTheme } from "./utilis/theme";
+import { lightTheme, darkTheme } from "./utils/theme";
 import { useTheme } from "./hooks/useTheme";
 import CustomTable from "./pages/custom-table";
 import { PersistGate } from "redux-persist/integration/react";

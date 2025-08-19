@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
-import { setSelectedAttributeTaxonset } from "../../app/store/config/actions";
+import { setSelectedAttributeTaxonset } from "../../app/store/config/slices/uiStateSlice";
 import styles from "./AttributeSelector.module.scss";
 
 import {

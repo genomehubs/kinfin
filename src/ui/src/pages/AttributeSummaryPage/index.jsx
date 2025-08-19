@@ -5,9 +5,9 @@ import AttributeSummary from "../../components/Charts/AttributeSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getAttributeSummary } from "../../app/store/analysis/actions";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
-import { setDownloadLoading } from "../../app/store/config/actions";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -25,10 +25,10 @@ const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
   const downloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading
   );
   const { sessionId } = useParams();
 

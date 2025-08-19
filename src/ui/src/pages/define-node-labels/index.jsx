@@ -3,11 +3,10 @@ import AppLayout from "../../components/AppLayout";
 import FileUpload from "../../components/FileUpload";
 import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  initAnalysis,
-  getClusteringSets,
-  setSelectedClusterSet,
-} from "../../app/store/config/actions";
+
+import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
+import { getClusteringSets } from "../../app/store/config/slices/clusteringSetsSlice";
+import { setSelectedClusterSet } from "../../app/store/config/slices/uiStateSlice";
 import { useNavigate } from "react-router-dom";
 import styles from "./DefineNodeLabels.module.scss";
 import RenameDialog from "../../components/UIElements/Sidebar/RenameDialog";
@@ -27,7 +26,7 @@ const DefineNodeLabels = () => {
   const navigate = useNavigate();
 
   const selectedClusterSet = useSelector(
-    (state) => state?.config?.selectedClusterSet
+    (state) => state?.config?.uiState?.selectedClusterSet
   );
   const clusteringSets =
     useSelector((state) => state?.config?.clusteringSets.data) || [];

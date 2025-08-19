@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
+import { getAttributeSummary } from "../../../app/store/analysis/slices/attributeSummarySlice";
 import { v4 as uuidv4 } from "uuid";
-import { getAttributeSummary } from "../../../app/store/analysis/actions";
-import { updatePaginationParams } from "@/utilis/urlPagination";
+import { updatePaginationParams } from "@/utils/urlPagination";
 
 const pageSizeOptions = [10, 25, 50];
 

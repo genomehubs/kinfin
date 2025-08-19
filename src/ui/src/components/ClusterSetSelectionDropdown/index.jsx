@@ -9,7 +9,7 @@ export default function ClusterSetSelectionDropdown({ onChange }) {
   const clusteringSets =
     useSelector((state) => state?.config?.clusteringSets.data) || [];
   const selectedClusterSet = useSelector(
-    (state) => state?.config?.selectedClusterSet
+    (state) => state?.config?.uiState?.selectedClusterSet
   );
 
   const selected = clusteringSets.find(

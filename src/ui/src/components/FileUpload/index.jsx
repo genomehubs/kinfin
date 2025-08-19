@@ -5,7 +5,7 @@ import Papa from "papaparse";
 import { useSelector } from "react-redux";
 import FileDropZone from "./FileDropzone";
 import ValidationErrors from "./ValidationErrors";
-import { validateDataset } from "../../utilis/validateDataset";
+import { validateDataset } from "../../utils/validateDataset";
 import DataTable from "./DataTable";
 import JsonEditor from "./JsonEditor";
 
@@ -31,7 +31,7 @@ const FileUpload = ({
   const fileInputRef = useRef(null);
 
   const validProteomeIds = useSelector(
-    (state) => state.config.validProteomeIds.data
+    (state) => state?.config?.validProteomeIds?.data
   );
 
   const resetViewState = useCallback(() => {

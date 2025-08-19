@@ -7,58 +7,69 @@ import {
   delay,
   select,
 } from "redux-saga/effects";
-import {
-  INIT_ANALYSIS,
-  GET_RUN_STATUS,
-  GET_BATCH_STATUS,
-  GET_VALID_PROTEOME_IDS,
-  GET_CLUSTERING_SETS,
-  GET_COLUMN_DESCRIPTIONS,
-} from "./actionTypes";
 
+// --- slice actions ---
 import {
+  initAnalysis,
   initAnalysisSuccess,
   initAnalysisFailure,
+} from "./slices/analysisSlice";
+
+import {
+  getRunStatus,
   getRunStatusSuccess,
   getRunStatusFailure,
-  storeConfig,
+} from "./slices/runStatusSlice";
+
+import { storeConfig, updateSessionMeta } from "./slices/configSlice";
+
+import {
+  getValidProteomeIds,
   getValidProteomeIdsSuccess,
   getValidProteomeIdsFailure,
-  setPollingLoading,
+} from "./slices/proteomeIdsSlice";
+
+import {
+  getBatchStatus,
   getBatchStatusSuccess,
   getBatchStatusFailure,
-  updateSessionMeta,
-  getClusteringSetsFailure,
+} from "./slices/batchStatusSlice";
+
+import {
+  getClusteringSets,
   getClusteringSetsSuccess,
-  getColumnDescriptionsSuccess,
-  getColumnDescriptionsFailure,
-} from "./actions";
+  getClusteringSetsFailure,
+} from "./slices/clusteringSetsSlice";
+
+import { setPollingLoading } from "./slices/uiStateSlice";
 
 import {
   dispatchErrorToast,
   dispatchSuccessToast,
-} from "../../../utilis/tostNotifications";
+} from "../../../utils/toastNotifications";
 
 import {
-  initAnalysis,
-  getStatus,
-  getBatchStatus,
-  getValidProteomeIds,
-  getClusteringSets,
-  getColumnDescriptions,
+  initAnalysis as initAnalysisApi,
+  getStatus as getStatusApi,
+  getBatchStatus as getBatchStatusApi,
+  getValidProteomeIds as getValidProteomeIdsApi,
+  getClusteringSets as getClusteringSetsApi,
 } from "../../services/client";
 
+// --- constants ---
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_ATTEMPTS = 120; // 10 minutes
 
+// --- selectors ---
 const selectSessionStatusById = (session_id) => (state) => {
-  return state?.config?.storeConfig?.data?.[session_id]?.status;
+  return state?.config?.configMain?.data?.[session_id]?.status;
 };
 
 const getSessionId = () =>
   localStorage.getItem("currentSessionId") ||
   "6599179a64accf331ffe653db00a0e24";
 
+// --- sagas ---
 function* pollRunStatusSaga(sessionId) {
   yield put(setPollingLoading({ sessionId, loading: true }));
   try {
@@ -66,7 +77,7 @@ function* pollRunStatusSaga(sessionId) {
     let attempts = 0;
 
     while (!isComplete && attempts < MAX_POLLING_ATTEMPTS) {
-      const response = yield call(getStatus, sessionId);
+      const response = yield call(getStatusApi, sessionId);
 
       if (response.status === "success") {
         const statusData = response.data;
@@ -109,24 +120,22 @@ function* pollRunStatusSaga(sessionId) {
 
 function* initAnalysisSaga(action) {
   const { name, config, navigate, clusterId, clusterName } = action.payload;
-  const data = {
-    config: config,
-    clusterId: clusterId,
-  };
+  const data = { config, clusterId };
+
   try {
-    const response = yield call(initAnalysis, data);
+    const response = yield call(initAnalysisApi, data);
     if (response.status === "success") {
       yield put(initAnalysisSuccess(response.data));
       const payloadForIndexDBStorage = {
         name,
         config,
         sessionId: response.data.session_id,
-        clusterId: clusterId,
-        clusterName: clusterName,
+        clusterId,
+        clusterName,
       };
       yield put(storeConfig(payloadForIndexDBStorage));
       yield call(navigate, `/${response.data.session_id}`);
-      yield fork(pollRunStatusSaga, response.data.session_id); // start polling
+      yield fork(pollRunStatusSaga, response.data.session_id);
     } else {
       yield put(initAnalysisFailure(response));
       yield call(
@@ -147,11 +156,11 @@ function* initAnalysisSaga(action) {
 function* getRunStatusSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getStatus);
+
+    const response = yield call(getStatusApi);
     if (response.status === "success") {
       yield put(getRunStatusSuccess(response.data));
     } else {
@@ -169,15 +178,12 @@ function* getRunStatusSaga() {
     );
   }
 }
+
 function* getValidProteomeIdsSaga(action) {
   const { clusterId } = action.payload;
   try {
-    const data = {
-      page: 1,
-      size: 100,
-      clusterId: clusterId,
-    };
-    const response = yield call(getValidProteomeIds, data);
+    const data = { page: 1, size: 100, clusterId };
+    const response = yield call(getValidProteomeIdsApi, data);
 
     if (response.status === "success") {
       yield put(getValidProteomeIdsSuccess(response.data));
@@ -199,7 +205,7 @@ function* getValidProteomeIdsSaga(action) {
 export function* getBatchStatusSaga(action) {
   const { sessionIds } = action.payload;
   try {
-    const response = yield call(getBatchStatus, sessionIds);
+    const response = yield call(getBatchStatusApi, sessionIds);
     if (response.status === "success") {
       yield put(getBatchStatusSuccess(response.data));
 
@@ -208,9 +214,12 @@ export function* getBatchStatusSaga(action) {
           session.status === "completed" ? "active" : "inactive";
 
         yield put(
-          updateSessionMeta(session.session_id, {
-            status: sessionStatus,
-            expiryDate: session.expiryDate,
+          updateSessionMeta({
+            sessionId: session.session_id,
+            meta: {
+              status: sessionStatus,
+              expiryDate: session.expiryDate,
+            },
           })
         );
       }
@@ -232,11 +241,8 @@ export function* getBatchStatusSaga(action) {
 
 function* getClusteringSetsSaga() {
   try {
-    const data = {
-      page: 1,
-      size: 100,
-    };
-    const response = yield call(getClusteringSets, data);
+    const data = { page: 1, size: 100 };
+    const response = yield call(getClusteringSetsApi, data);
 
     if (response.status === "success") {
       yield put(getClusteringSetsSuccess(response.data));
@@ -249,7 +255,7 @@ function* getClusteringSetsSaga() {
       );
     }
   } catch (err) {
-    yield put(getValidProteomeIdsFailure(err));
+    yield put(getClusteringSetsFailure(err));
     yield call(
       dispatchErrorToast,
       err?.response?.data?.error || "Failed to fetch clustering sets"
@@ -257,66 +263,31 @@ function* getClusteringSetsSaga() {
   }
 }
 
-function* getColumnDescriptionsSaga(action) {
-  const data = {
-    page: 1,
-    size: 100,
-    file: action?.payload?.file || "",
-  };
-  try {
-    const response = yield call(getColumnDescriptions, data);
-
-    if (response.status === "success") {
-      yield put(getColumnDescriptionsSuccess(response.data));
-      // yield call(
-      //   dispatchSuccessToast,
-      //   "Column descriptions fetched successfully!"
-      // );
-    } else {
-      yield put(getColumnDescriptionsFailure(response));
-      yield call(
-        dispatchErrorToast,
-        response?.error || "Failed to fetch column descriptions"
-      );
-    }
-  } catch (err) {
-    yield put(getColumnDescriptionsFailure(err));
-    yield call(
-      dispatchErrorToast,
-      err?.response?.data?.error || "Failed to fetch column descriptions"
-    );
-  }
-}
-
+// --- watchers ---
 export function* watchInitAnalysisSaga() {
-  yield takeEvery(INIT_ANALYSIS, initAnalysisSaga);
+  yield takeEvery(initAnalysis, initAnalysisSaga);
 }
 
-export function* watchGetColumnDescriptionsSaga() {
-  yield takeEvery(GET_COLUMN_DESCRIPTIONS, getColumnDescriptionsSaga);
-}
 export function* watchGetRunStatusSaga() {
-  yield takeEvery(GET_RUN_STATUS, getRunStatusSaga);
+  yield takeEvery(getRunStatus, getRunStatusSaga);
 }
 export function* watchGetValidProteomeIdsSaga() {
-  yield takeEvery(GET_VALID_PROTEOME_IDS, getValidProteomeIdsSaga);
+  yield takeEvery(getValidProteomeIds, getValidProteomeIdsSaga);
 }
 export function* watchGetBatchStatusSaga() {
-  yield takeEvery(GET_BATCH_STATUS, getBatchStatusSaga);
+  yield takeEvery(getBatchStatus, getBatchStatusSaga);
+}
+export function* watchGetClusteringSetsSaga() {
+  yield takeEvery(getClusteringSets, getClusteringSetsSaga);
 }
 
-export function* watchGetClusteringSets() {
-  yield takeEvery(GET_CLUSTERING_SETS, getClusteringSetsSaga);
-}
-
+// --- root saga ---
 export default function* configSaga() {
   yield all([
     fork(watchInitAnalysisSaga),
-
     fork(watchGetRunStatusSaga),
     fork(watchGetValidProteomeIdsSaga),
     fork(watchGetBatchStatusSaga),
-    fork(watchGetClusteringSets),
-    fork(watchGetColumnDescriptionsSaga),
+    fork(watchGetClusteringSetsSaga),
   ]);
 }

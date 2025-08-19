@@ -3,9 +3,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
-import { getClusterSummary } from "../../../app/store/analysis/actions";
+import { getClusterSummary } from "../../../app/store/analysis/slices/clusterSummarySlice";
 import { v4 as uuidv4 } from "uuid";
-import { updatePaginationParams } from "@/utilis/urlPagination";
+import { updatePaginationParams } from "@/utils/urlPagination";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -20,7 +20,7 @@ const ClusterSummary = () => {
     (state) => state?.config?.columnDescriptions?.data || []
   );
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset || null
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
 
   // Parse URL params
