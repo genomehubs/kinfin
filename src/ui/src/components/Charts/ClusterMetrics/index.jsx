@@ -12,7 +12,6 @@ const pageSizeOptions = [10, 25, 50];
 const ClusterMetrics = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const defaultsAppliedRef = useRef(false);
 
   const clusterMetrics = useSelector(
     (state) => state?.analysis?.clusterMetrics?.data || null
@@ -38,28 +37,18 @@ const ClusterMetrics = () => {
 
   // Apply default pagination params if missing
   useEffect(() => {
-    if (defaultsAppliedRef.current) {
-      return;
-    }
-    defaultsAppliedRef.current = true;
-
     const hasPage = searchParams.has("CM_page");
     const hasPageSize = searchParams.has("CM_pageSize");
 
     if (!hasPage || !hasPageSize) {
-      setSearchParams(
-        (prev) => {
-          const newParams = new URLSearchParams(prev);
-          if (!hasPage) {
-            newParams.set("CM_page", "1");
-          }
-          if (!hasPageSize) {
-            newParams.set("CM_pageSize", "10");
-          }
-          return newParams;
-        },
-        { replace: true }
-      );
+      const newParams = new URLSearchParams(searchParams);
+      if (!hasPage) {
+        newParams.set("CM_page", "1");
+      }
+      if (!hasPageSize) {
+        newParams.set("CM_pageSize", "10");
+      }
+      setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 

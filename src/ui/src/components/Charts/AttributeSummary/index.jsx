@@ -33,31 +33,19 @@ const AttributeSummary = () => {
     1
   );
 
-  const defaultsAppliedRef = useRef(false);
-
   useEffect(() => {
-    if (defaultsAppliedRef.current) {
-      return;
-    }
-    defaultsAppliedRef.current = true;
-
     const hasPage = searchParams.has("AS_page");
     const hasPageSize = searchParams.has("AS_pageSize");
 
     if (!hasPage || !hasPageSize) {
-      setSearchParams(
-        (prev) => {
-          const newParams = new URLSearchParams(prev);
-          if (!hasPage) {
-            newParams.set("AS_page", "1");
-          }
-          if (!hasPageSize) {
-            newParams.set("AS_pageSize", "10");
-          }
-          return newParams;
-        },
-        { replace: true }
-      );
+      const newParams = new URLSearchParams(searchParams);
+      if (!hasPage) {
+        newParams.set("AS_page", "1");
+      }
+      if (!hasPageSize) {
+        newParams.set("AS_pageSize", "10");
+      }
+      setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
