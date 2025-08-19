@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { getColumnDescriptions } from "../../app/store/config/actions";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import ChipComboBox from "../../components/UIElements/ChipComboBox";
 import styles from "./CustomTable.module.scss";

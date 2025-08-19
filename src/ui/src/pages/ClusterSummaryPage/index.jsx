@@ -9,7 +9,7 @@ import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummar
 import { dispatchSuccessToast } from "../../utils/toastNotifications";
 import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 import { useSearchParams } from "react-router-dom";
-import { getColumnDescriptions } from "../../app/store/config/actions";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 
 import {
   Dialog,

@@ -19,7 +19,7 @@ import {
   Checkbox,
   Button,
 } from "@mui/material";
-import { getColumnDescriptions } from "../../app/store/config/actions";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
