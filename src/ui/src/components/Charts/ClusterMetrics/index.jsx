@@ -38,12 +38,15 @@ const ClusterMetrics = () => {
     const hasPageSize = searchParams.has("CM_pageSize");
 
     if (!hasPage || !hasPageSize) {
-      setSearchParams((prev) => {
-        const newParams = new URLSearchParams(prev);
-        if (!hasPage) newParams.set("CM_page", "1");
-        if (!hasPageSize) newParams.set("CM_pageSize", "10");
-        return newParams;
-      });
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          if (!hasPage) newParams.set("CM_page", "1");
+          if (!hasPageSize) newParams.set("CM_pageSize", "10");
+          return newParams;
+        },
+        { replace: true }
+      );
     }
   }, [searchParams, setSearchParams]);
 

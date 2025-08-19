@@ -36,12 +36,15 @@ const ClusterSummary = () => {
     const hasPageSize = searchParams.has("CS_pageSize");
 
     if (!hasPage || !hasPageSize) {
-      setSearchParams((prev) => {
-        const newParams = new URLSearchParams(prev);
-        if (!hasPage) newParams.set("CS_page", "1");
-        if (!hasPageSize) newParams.set("CS_pageSize", "5");
-        return newParams;
-      });
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          if (!hasPage) newParams.set("CS_page", "1");
+          if (!hasPageSize) newParams.set("CS_pageSize", "5");
+          return newParams;
+        },
+        { replace: true }
+      );
     }
   }, [searchParams, setSearchParams]);
 

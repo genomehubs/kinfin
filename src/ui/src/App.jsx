@@ -2,8 +2,8 @@ import React, { useEffect } from "react";
 import "./App.module.scss";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
-import { ToastContainer } from "react-toastify";
-import { store, persistor } from "./app/store/index";
+import { store } from "./app/store/index";
+import { SnackbarProvider } from "notistack";
 import {
   Dashboard,
   Home,
@@ -27,17 +27,21 @@ function App() {
 
   return (
     <React.StrictMode>
-      <Provider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
-          <ThemeProvider theme={theme === "light" ? lightTheme : darkTheme}>
+      <ThemeProvider theme={theme === "light" ? lightTheme : darkTheme}>
+        <SnackbarProvider
+          maxSnack={3}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "left",
+          }}
+          dense
+          preventDuplicate
+        >
+          <Provider store={store}>
             <title>KinFin</title>
             <Router>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route
-                  path="/:sessionId/custom-table"
-                  element={<CustomTable />}
-                />
                 <Route path="/:sessionId/" element={<Dashboard />} />
                 <Route
                   path="/:sessionId/attribute-summary"
@@ -57,10 +61,9 @@ function App() {
                 />
               </Routes>
             </Router>
-            <ToastContainer />
-          </ThemeProvider>
-        </PersistGate>
-      </Provider>
+          </Provider>
+        </SnackbarProvider>
+      </ThemeProvider>
     </React.StrictMode>
   );
 }

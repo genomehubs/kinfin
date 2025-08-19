@@ -78,6 +78,7 @@ const Dashboard = () => {
     const payload = {
       name: sessionDetails.name,
       config: sessionDetails.config,
+      clusterId: sessionDetails.clusterId,
       navigate,
     };
     dispatch(initAnalysis(payload));
@@ -197,7 +198,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      {sessionDetails?.status ? (
+      {sessionDetails?.status === "active" ? (
         <>
           <Modal open={!!enlargedChart} onClose={closeModal}>
             <Box

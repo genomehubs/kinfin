@@ -1,30 +1,31 @@
-// toastNotifications.js
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Import styles
+import { enqueueSnackbar } from "notistack";
 
-// // Configure Toastify
-// toast.configure();
-
-const dispatchSuccessToast = (toastMessage) => {
-  toast.success(toastMessage, {
-    position: "top-center",
-    autoClose: 5000,
-    hideProgressBar: true,
+const dispatchSuccessToast = (message) => {
+  enqueueSnackbar(message, {
+    variant: "success",
+    anchorOrigin: {
+      vertical: "bottom",
+      horizontal: "left",
+    },
+    autoHideDuration: 5000,
     style: {
-      background: "#2ecc71",
-      color: "#1c1c1c",
+      backgroundColor: "#2ecc71",
+      color: "#ffffff",
       fontSize: "1rem",
     },
   });
 };
 
-const dispatchErrorToast = (toastMessage) => {
-  toast.error(toastMessage, {
-    position: "top-center",
-    autoClose: 5000,
-    hideProgressBar: true,
+const dispatchErrorToast = (message) => {
+  enqueueSnackbar(message, {
+    variant: "error",
+    anchorOrigin: {
+      vertical: "bottom",
+      horizontal: "left",
+    },
+    autoHideDuration: 5000,
     style: {
-      background: "#f7cdd2",
+      backgroundColor: "#f7cdd2",
       color: "#1c1c1c",
       fontSize: "1rem",
     },

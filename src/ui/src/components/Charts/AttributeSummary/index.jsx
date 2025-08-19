@@ -46,14 +46,15 @@ const AttributeSummary = () => {
     const hasPageSize = searchParams.has("AS_pageSize");
 
     if (!hasPage || !hasPageSize) {
-      const newParams = new URLSearchParams(searchParams);
-      if (!hasPage) {
-        newParams.set("AS_page", "1");
-      }
-      if (!hasPageSize) {
-        newParams.set("AS_pageSize", "10");
-      }
-      setSearchParams(newParams, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          if (!hasPage) newParams.set("AS_page", "1");
+          if (!hasPageSize) newParams.set("AS_pageSize", "10");
+          return newParams;
+        },
+        { replace: true }
+      );
     }
   }, [searchParams, setSearchParams]);
 

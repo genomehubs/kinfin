@@ -204,11 +204,12 @@ export function* getBatchStatusSaga(action) {
       yield put(getBatchStatusSuccess(response.data));
 
       for (const session of response.data.sessions) {
-        const isActive = session.status === "completed";
+        const sessionStatus =
+          session.status === "completed" ? "active" : "inactive";
 
         yield put(
           updateSessionMeta(session.session_id, {
-            status: isActive,
+            status: sessionStatus,
             expiryDate: session.expiryDate,
           })
         );
