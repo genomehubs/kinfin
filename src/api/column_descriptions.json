@@ -308,51 +308,51 @@
     "alias": "cluster_taxa_count"
   },
   {
-    "code": "044",
+    "code": "045",
     "file": "*.cluster_summary.txt",
     "name": "attribute",
     "description": "Attribute",
     "alias": "attribute"
   },
   {
-    "code": "045",
+    "code": "046",
     "file": "*.cluster_summary.txt",
     "name": "attribute_cluster_type",
     "description": "Attribute cluster type",
     "alias": "attribute_cluster_type"
   },
   {
-    "code": "046",
+    "code": "047",
     "file": "*.cluster_summary.txt",
     "name": "protein_span_mean",
     "description": "Mean protein span",
     "alias": "protein_span_mean"
   },
   {
-    "code": "047",
+    "code": "048",
     "file": "*.cluster_summary.txt",
     "name": "protein_span_sd",
     "description": "Standard deviation protein span",
     "alias": "protein_span_sd"
   },
   {
-    "code": "048",
+    "code": "049",
     "file": "*.cluster_summary.txt",
-    "name": "X_count",
+    "name": "protein_counts_X_count",
     "description": "Count of proteins of taxset X",
     "alias": "X_protein_count"
   },
   {
-    "code": "049",
+    "code": "050",
     "file": "*.cluster_summary.txt",
-    "name": "X_median",
+    "name": "protein_counts_X_median",
     "description": "Median count of proteins of taxset X",
     "alias": "X_protein_median"
   },
   {
-    "code": "050",
+    "code": "051",
     "file": "*.cluster_summary.txt",
-    "name": "X_cov",
+    "name": "protein_counts_X_cov",
     "description": "Proportion of taxa present in taxset X",
     "alias": "X_cov"
   }

@@ -514,6 +514,7 @@ async def get_cluster_summary(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    CS_code: Optional[List[str]] = Query(None, alias="CS_code"),
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -556,6 +557,7 @@ async def get_cluster_summary(
                 status_code=404,
             )
 
+        # --- Parse file ---
         result = parse_cluster_summary_file(
             filepath=filepath,
             include_clusters=include_clusters,
@@ -567,8 +569,34 @@ async def get_cluster_summary(
             min_protein_median_count=min_protein_median_count,
             max_protein_median_count=max_protein_median_count,
         )
+
+        # --- Flatten rows ---
+        flat_result = {k: flatten_dict(v) for k, v in result.items()}
+
+        # --- CS_code filtering ---
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+
+        if CS_code:
+            selected_columns = []
+            for code in CS_code:
+                if code in code_to_column:
+                    col_name = code_to_column[code]
+                    flat_name = col_name.replace(".", "_")  # match flattened style
+                    selected_columns.append(flat_name)
+
+            flat_result = {
+                k: {col: v.get(col, "-") for col in selected_columns}
+                for k, v in flat_result.items()
+            }
+
+        # --- File Download ---
         if as_file:
-            if not result:
+            if not flat_result:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
@@ -578,26 +606,14 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=404,
                 )
-
             try:
-                flattened_rows = [flatten_dict(row) for row in result.values()]
+                rows = list(flat_result.values())
+                fieldnames = list(rows[0].keys()) if rows else []
 
-                if not flattened_rows:
-                    return JSONResponse(
-                        content=ResponseSchema(
-                            status="error",
-                            message="No valid rows in data.",
-                            error="empty_result",
-                            query=str(request.url),
-                        ).model_dump(),
-                        status_code=400,
-                    )
-
-                first_row = flattened_rows[0]
                 buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
                 writer.writeheader()
-                writer.writerows(flattened_rows)
+                writer.writerows(rows)
                 buffer.seek(0)
 
                 return StreamingResponse(
@@ -607,7 +623,6 @@ async def get_cluster_summary(
                         "Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"
                     },
                 )
-
             except Exception as e:
                 return JSONResponse(
                     content=ResponseSchema(
@@ -618,8 +633,10 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=500,
                 )
+
+        # --- Sort & paginate flattened result ---
         paginated_result, total_pages = sort_and_paginate_result(
-            result,
+            flat_result,
             sort_by,
             sort_order,
             page,
@@ -636,6 +653,7 @@ async def get_cluster_summary(
             total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
+
     except Exception as e:
         print(e)
         return JSONResponse(

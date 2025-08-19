@@ -16,11 +16,14 @@ const ClusterSummary = () => {
   const clusterSummaryData = useSelector(
     (state) => state?.analysis?.clusterSummary?.data
   );
+  const columnDescriptions = useSelector(
+    (state) => state?.config?.columnDescriptions?.data || []
+  );
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.selectedAttributeTaxonset || null
   );
 
-  // Parse pagination params from URL or fallback
+  // Parse URL params
   const page = Math.max(
     parseInt(searchParams.get("CS_page") || "1", 10) - 1,
     0
@@ -29,18 +32,22 @@ const ClusterSummary = () => {
     parseInt(searchParams.get("CS_pageSize") || "5", 10),
     1
   );
+  const csCodes = useMemo(() => searchParams.getAll("CS_code"), [searchParams]);
 
-  // Set defaults only if not already present in the URL
+  // Ensure defaults in URL
   useEffect(() => {
     const hasPage = searchParams.has("CS_page");
     const hasPageSize = searchParams.has("CS_pageSize");
-
     if (!hasPage || !hasPageSize) {
       setSearchParams(
         (prev) => {
           const newParams = new URLSearchParams(prev);
-          if (!hasPage) newParams.set("CS_page", "1");
-          if (!hasPageSize) newParams.set("CS_pageSize", "5");
+          if (!hasPage) {
+            newParams.set("CS_page", "1");
+          }
+          if (!hasPageSize) {
+            newParams.set("CS_pageSize", "5");
+          }
           return newParams;
         },
         { replace: true }
@@ -48,18 +55,18 @@ const ClusterSummary = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch cluster summary data
+  // Fetch data
   useEffect(() => {
     const payload = {
-      page: page + 1, // Backend is 1-based
+      page: page + 1, // backend is 1-based
       size: pageSize,
       attribute: selectedAttributeTaxonset?.attribute,
+      CS_code: csCodes.length > 0 ? csCodes : undefined,
     };
-
     if (payload.attribute) {
       dispatch(getClusterSummary(payload));
     }
-  }, [page, pageSize, dispatch, selectedAttributeTaxonset]);
+  }, [page, pageSize, csCodes, dispatch, selectedAttributeTaxonset]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -67,49 +74,58 @@ const ClusterSummary = () => {
         searchParams,
         setSearchParams,
         "CS",
-        newModel.page,
-        newModel.pageSize
+        (newModel.page ?? 0) + 1,
+        newModel.pageSize ?? pageSize
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, pageSize]
   );
 
+  // 🔹 Flatten rows
   const processedRows = useMemo(() => {
     const rawData = clusterSummaryData?.data ?? {};
-
     return Object.values(rawData).map((row) => {
-      const flatCounts =
-        row.protein_counts &&
-        Object.entries(row.protein_counts).reduce((acc, [key, value]) => {
-          acc[key] = value;
-          return acc;
-        }, {});
+      const flat = { ...row };
+
+      if (row.protein_counts && typeof row.protein_counts === "object") {
+        Object.entries(row.protein_counts).forEach(([k, v]) => {
+          flat[`protein_counts_${k}`] = v;
+        });
+        delete flat.protein_counts;
+      }
 
       return {
-        id: uuidv4(),
-        ...row,
-        ...flatCounts,
+        id: row.id || row.cluster_id || uuidv4(),
+        ...flat,
       };
     });
   }, [clusterSummaryData]);
 
+  // Row count
   const rowCount = useMemo(() => {
     if (clusterSummaryData?.total_entries != null) {
       return clusterSummaryData.total_entries;
     }
-
     if (
-      clusterSummaryData?.total_pages != null &&
-      clusterSummaryData?.entries_per_page != null
+      clusterSummaryData?.total_pages &&
+      clusterSummaryData?.entries_per_page
     ) {
       return (
         clusterSummaryData.total_pages * clusterSummaryData.entries_per_page
       );
     }
-
     return processedRows.length;
   }, [clusterSummaryData, processedRows]);
 
+  // Map codes to field names
+  const codeToFieldMap = useMemo(() => {
+    return columnDescriptions.reduce((acc, col) => {
+      acc[col.code] = col.name;
+      return acc;
+    }, {});
+  }, [columnDescriptions]);
+
+  // Base columns
   const baseColumns = [
     { field: "cluster_id", headerName: "Cluster ID", minWidth: 140 },
     {
@@ -120,51 +136,82 @@ const ClusterSummary = () => {
     {
       field: "protein_median_count",
       headerName: "Median Count",
-      minWidth: 80,
+      minWidth: 100,
     },
-    {
-      field: "TAXON_count",
-      headerName: "TAXON Count",
-      minWidth: 80,
-    },
-    { field: "attribute", headerName: "Attribute", minWidth: 80 },
+    { field: "TAXON_count", headerName: "TAXON Count", minWidth: 100 },
+    { field: "attribute", headerName: "Attribute", minWidth: 120 },
     {
       field: "attribute_cluster_type",
       headerName: "Cluster Type",
-      minWidth: 80,
+      minWidth: 120,
     },
   ];
 
+  // 🔹 Dynamically detect protein_counts_* fields
   const dynamicColumns = useMemo(() => {
-    const firstRow = processedRows[0] || {};
-    const dynamicKeys = Object.keys(firstRow).filter(
-      (key) =>
-        (key.endsWith("_count") ||
-          key.endsWith("_median") ||
-          key.endsWith("_cov")) &&
-        ![
-          "cluster_protein_count",
-          "TAXON_count",
-          "protein_median_count",
-        ].includes(key)
-    );
+    if (!processedRows.length) {
+      return [];
+    }
 
-    return dynamicKeys.map((key) => ({
-      field: key,
-      headerName: key
-        .replace(/_/g, " ")
-        .replace("count", "Count")
-        .replace("median", "Median")
-        .replace("cov", "Cov")
-        .replace(/\b\w/g, (l) => l.toUpperCase()),
-      minWidth: 100,
-    }));
-  }, [processedRows]);
+    const sampleRow = processedRows[0];
 
-  const columns = useMemo(
+    return Object.keys(sampleRow)
+      .filter((k) => k.startsWith("protein_counts_"))
+      .map((field) => {
+        const desc = columnDescriptions.find((c) => {
+          if (!c.name.includes("X")) {
+            return c.name === field;
+          }
+          const regex = new RegExp("^" + c.name.replace("X", "(.+)") + "$");
+          return regex.test(field);
+        });
+
+        let headerName = field.replace("protein_counts_", "");
+
+        if (desc && desc.name.includes("X")) {
+          const regex = new RegExp("^" + desc.name.replace("X", "(.+)") + "$");
+          const match = field.match(regex);
+
+          if (match && match[1]) {
+            headerName = desc.alias.replace("X", match[1]);
+          }
+        } else if (desc) {
+          headerName = desc.alias || headerName;
+        }
+        headerName = headerName.replace(/_/g, " ");
+
+        return {
+          field,
+          headerName,
+          minWidth: 100,
+        };
+      });
+  }, [processedRows, columnDescriptions]);
+
+  // Merge base + dynamic columns
+  const allColumns = useMemo(
     () => [...baseColumns, ...dynamicColumns],
-    [dynamicColumns]
+    [baseColumns, dynamicColumns]
   );
+
+  // 🔹 Filter columns by CS_code (with regex support for X)
+  const filteredColumns = useMemo(() => {
+    if (!csCodes || csCodes.length === 0) return allColumns;
+
+    const patterns = csCodes
+      .map((code) => codeToFieldMap[code])
+      .filter(Boolean)
+      .map((name) => {
+        if (name.includes("X")) {
+          return new RegExp("^" + name.replace("X", ".+") + "$");
+        }
+        return new RegExp("^" + name + "$");
+      });
+
+    return allColumns.filter((col) =>
+      patterns.some((regex) => regex.test(col.field))
+    );
+  }, [csCodes, codeToFieldMap, allColumns]);
 
   return (
     <div
@@ -177,7 +224,7 @@ const ClusterSummary = () => {
     >
       <DataGrid
         rows={processedRows}
-        columns={columns}
+        columns={filteredColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
@@ -192,8 +239,7 @@ const ClusterSummary = () => {
             wordBreak: "break-word",
             lineHeight: "1.4rem",
             alignItems: "start",
-            paddingTop: "8px",
-            paddingBottom: "8px",
+            p: "8px",
           },
           "& .MuiDataGrid-columnHeader": {
             whiteSpace: "normal",
@@ -207,12 +253,10 @@ const ClusterSummary = () => {
           },
           "& .MuiDataGrid-columnHeaders": {
             backgroundColor: "#f5f5f5",
-            borderBottom: "1px solid  #cccccc",
-            borderTop: "1px solid  #cccccc",
+            borderBottom: "1px solid #cccccc",
+            borderTop: "1px solid #cccccc",
           },
-          "& .MuiDataGrid-row:nth-of-type(odd)": {
-            backgroundColor: "#ffffff",
-          },
+          "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: "#ffffff" },
           "& .MuiDataGrid-row:nth-of-type(even)": {
             backgroundColor: "#fafafa",
           },
