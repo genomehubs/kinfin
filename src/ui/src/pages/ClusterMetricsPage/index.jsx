@@ -5,17 +5,17 @@ import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getClusterMetrics } from "../../app/store/analysis/actions";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
-import { setDownloadLoading } from "../../app/store/config/actions";
+import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 
 const ClusterMetricsPage = () => {
   const dispatch = useDispatch();
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
   const clusterMetricsDownloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading?.clusterMetrics
+    (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics
   );
 
   const handleDownload = () => {

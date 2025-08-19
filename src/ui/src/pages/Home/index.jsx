@@ -3,7 +3,7 @@ import styles from "./Home.module.scss";
 import { Button, Dialog, DialogContent, IconButton, Box } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
-import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "../../utilis/constants";
+import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "../../utils/constants";
 import Navbar from "../../components/Navbar";
 
 const Home = () => {

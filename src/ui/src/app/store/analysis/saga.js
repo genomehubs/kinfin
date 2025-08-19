@@ -1,50 +1,65 @@
 import { takeEvery, fork, put, all, call, select } from "redux-saga/effects";
+import { setDownloadLoading } from "../config/slices/uiStateSlice";
 
 import {
-  GET_AVAILABLE_ATTRIBUTES_TAXONSETS,
-  GET_COUNTS_BY_TAXON,
-  GET_CLUSTER_SUMMARY,
-  GET_ATTRIBUTE_SUMMARY,
-  GET_CLUSTER_METRICS,
-  GET_PAIRWISE_ANALYSIS,
-  GET_PLOT,
-  GET_RUN_SUMMARY,
-} from "./actionTypes";
-import { setDownloadLoading } from "../config/actions";
-import {
-  getPlotSuccess,
-  getPlotFailure,
-  getPairwiseAnalysisSuccess,
-  getPairwiseAnalysisFailure,
-  getClusterMetricsSuccess,
-  getClusterMetricsFailure,
-  getAttributeSummarySuccess,
-  getAttributeSummaryFailure,
-  getClusterSummarySuccess,
-  getClusterSummaryFailure,
-  getCountsByTaxonSuccess,
-  getCountsByTaxonFailure,
+  getAvailableAttributesTaxonsets,
   getAvailableAttributesTaxonsetsSuccess,
   getAvailableAttributesTaxonsetsFailure,
-  getRunSummaryFailure,
+} from "./slices/availableAttributesTaxonsetsSlice";
+
+import {
+  getRunSummary,
   getRunSummarySuccess,
-} from "./actions";
-import { dispatchErrorToast } from "../../../utilis/tostNotifications";
+  getRunSummaryFailure,
+} from "./slices/runSummarySlice";
+
+import {
+  getCountsByTaxon,
+  getCountsByTaxonSuccess,
+  getCountsByTaxonFailure,
+} from "./slices/countsByTaxonSlice";
+
+import {
+  getClusterSummary,
+  getClusterSummarySuccess,
+  getClusterSummaryFailure,
+} from "./slices/clusterSummarySlice";
+
+import {
+  getAttributeSummary,
+  getAttributeSummarySuccess,
+  getAttributeSummaryFailure,
+} from "./slices/attributeSummarySlice";
+
+import {
+  getClusterMetrics,
+  getClusterMetricsSuccess,
+  getClusterMetricsFailure,
+} from "./slices/clusterMetricsSlice";
+
+import {
+  getPairwiseAnalysis,
+  getPairwiseAnalysisSuccess,
+  getPairwiseAnalysisFailure,
+} from "./slices/pairwiseAnalysisSlice";
+
+import { getPlot, getPlotSuccess, getPlotFailure } from "./slices/plotSlice";
+
+import { dispatchErrorToast } from "../../../utils/toastNotifications";
 import {
   getAvailableAttributes,
-  getCountsByTaxon,
-  getRunSummary,
-  getClusterSummary,
-  getAttributeSummary,
-  getClusterMetrics,
-  getPairwiseAnalysis,
-  getPlot,
+  getCountsByTaxon as apiGetCountsByTaxon,
+  getRunSummary as apiGetRunSummary,
+  getClusterSummary as apiGetClusterSummary,
+  getAttributeSummary as apiGetAttributeSummary,
+  getClusterMetrics as apiGetClusterMetrics,
+  getPairwiseAnalysis as apiGetPairwiseAnalysis,
+  getPlot as apiGetPlot,
 } from "../../services/client";
+import { downloadBlobFile } from "../../../utils/downloadBlobFile";
 
-import { downloadBlobFile } from "../../../utilis/downloadBlobFile";
-const selectSessionStatusById = (session_id) => (state) => {
-  return state?.config?.storeConfig?.data?.[session_id]?.status;
-};
+const selectSessionStatusById = (session_id) => (state) =>
+  state?.config?.storeConfig?.data?.[session_id]?.status;
 
 const getSessionId = () =>
   localStorage.getItem("currentSessionId") ||
@@ -53,13 +68,11 @@ const getSessionId = () =>
 function* getAvailableAttributesSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
 
     const response = yield call(getAvailableAttributes);
-
     if (response.status === "success") {
       yield put(getAvailableAttributesTaxonsetsSuccess(response.data));
     } else {
@@ -77,15 +90,15 @@ function* getAvailableAttributesSaga() {
     );
   }
 }
+
 function* getRunSummarySaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getRunSummary);
 
+    const response = yield call(apiGetRunSummary);
     if (response.status === "success") {
       yield put(getRunSummarySuccess(response.data));
     } else {
@@ -103,15 +116,15 @@ function* getRunSummarySaga() {
     );
   }
 }
+
 function* getCountsByTaxonSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getCountsByTaxon);
 
+    const response = yield call(apiGetCountsByTaxon);
     if (response.status === "success") {
       yield put(getCountsByTaxonSuccess(response.data));
     } else {
@@ -129,21 +142,18 @@ function* getCountsByTaxonSaga() {
     );
   }
 }
+
 function* getClusterSummarySaga(action) {
   const { attribute, page, size, asFile = false } = action.payload;
-  const data = {
-    attribute,
-    size,
-    page,
-    asFile,
-  };
+  const data = { attribute, size, page, asFile };
+
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getClusterSummary, data);
+
+    const response = yield call(apiGetClusterSummary, data);
 
     if (asFile) {
       yield call(
@@ -157,7 +167,6 @@ function* getClusterSummarySaga(action) {
           setDownloadLoading({ type: "clusterSummary", loading: false })
         );
       }
-
       return;
     }
 
@@ -178,21 +187,18 @@ function* getClusterSummarySaga(action) {
     );
   }
 }
+
 function* getAttributeSummarySaga(action) {
   const { attribute, page, size, asFile = false } = action.payload;
-  const data = {
-    attribute,
-    page,
-    size,
-    asFile,
-  };
+  const data = { attribute, page, size, asFile };
+
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getAttributeSummary, data);
+
+    const response = yield call(apiGetAttributeSummary, data);
 
     if (asFile) {
       yield call(
@@ -226,22 +232,18 @@ function* getAttributeSummarySaga(action) {
     );
   }
 }
+
 function* getClusterMetricsSaga(action) {
   const { attribute, taxonSet, page, size, asFile = false } = action.payload;
-  const data = {
-    attribute,
-    taxonSet,
-    page,
-    size,
-    asFile,
-  };
+  const data = { attribute, taxonSet, page, size, asFile };
+
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getClusterMetrics, data);
+
+    const response = yield call(apiGetClusterMetrics, data);
 
     if (asFile) {
       yield call(
@@ -275,16 +277,17 @@ function* getClusterMetricsSaga(action) {
     );
   }
 }
+
 function* getPairwiseAnalysisSaga(action) {
   const { attribute } = action.payload;
+
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
-    const response = yield call(getPairwiseAnalysis, attribute);
 
+    const response = yield call(apiGetPairwiseAnalysis, attribute);
     if (response.status === "success") {
       yield put(getPairwiseAnalysisSuccess(response.data));
     } else {
@@ -306,13 +309,13 @@ function* getPairwiseAnalysisSaga(action) {
 function* getPlotsSaga() {
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
-
     if (!status) {
       return;
     }
+
     const [allRarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
-      call(getPlot, "all-rarefaction-curve"),
-      call(getPlot, "cluster-size-distribution"),
+      call(apiGetPlot, "all-rarefaction-curve"),
+      call(apiGetPlot, "cluster-size-distribution"),
     ]);
 
     yield put(
@@ -327,32 +330,29 @@ function* getPlotsSaga() {
   }
 }
 
-export function* watchGetPlotsSaga() {
-  yield takeEvery(GET_PLOT, getPlotsSaga);
-}
-export function* watchGetPairwiseAnalysisSaga() {
-  yield takeEvery(GET_PAIRWISE_ANALYSIS, getPairwiseAnalysisSaga);
-}
-export function* watchGetClusterMetricsSaga() {
-  yield takeEvery(GET_CLUSTER_METRICS, getClusterMetricsSaga);
-}
-export function* watchGetCountsByTaxonSaga() {
-  yield takeEvery(GET_COUNTS_BY_TAXON, getCountsByTaxonSaga);
-}
-export function* watchGetAttributeSummarySaga() {
-  yield takeEvery(GET_ATTRIBUTE_SUMMARY, getAttributeSummarySaga);
-}
-export function* watchGetClusterSummarySaga() {
-  yield takeEvery(GET_CLUSTER_SUMMARY, getClusterSummarySaga);
+export function* watchGetAvailableAttributesSaga() {
+  yield takeEvery(getAvailableAttributesTaxonsets, getAvailableAttributesSaga);
 }
 export function* watchGetRunSummarySaga() {
-  yield takeEvery(GET_RUN_SUMMARY, getRunSummarySaga);
+  yield takeEvery(getRunSummary, getRunSummarySaga);
 }
-export function* watchGetAvailableAttributesSaga() {
-  yield takeEvery(
-    GET_AVAILABLE_ATTRIBUTES_TAXONSETS,
-    getAvailableAttributesSaga
-  );
+export function* watchGetCountsByTaxonSaga() {
+  yield takeEvery(getCountsByTaxon, getCountsByTaxonSaga);
+}
+export function* watchGetClusterSummarySaga() {
+  yield takeEvery(getClusterSummary, getClusterSummarySaga);
+}
+export function* watchGetAttributeSummarySaga() {
+  yield takeEvery(getAttributeSummary, getAttributeSummarySaga);
+}
+export function* watchGetClusterMetricsSaga() {
+  yield takeEvery(getClusterMetrics, getClusterMetricsSaga);
+}
+export function* watchGetPairwiseAnalysisSaga() {
+  yield takeEvery(getPairwiseAnalysis, getPairwiseAnalysisSaga);
+}
+export function* watchGetPlotsSaga() {
+  yield takeEvery(getPlot, getPlotsSaga);
 }
 
 function* analysisSaga() {

@@ -8,7 +8,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Button from "@mui/material/Button";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setSelectedClusterSet } from "../../app/store/config/actions";
+import { setSelectedClusterSet } from "../../app/store/config/slices/uiStateSlice";
 import BreadcrumbsNav from "../BreadcrumbsNav";
 
 const Navbar = ({

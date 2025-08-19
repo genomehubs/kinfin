@@ -16,8 +16,12 @@ export const validateDataset = (data, validProteomeMap) => {
   const taxonToCanonical = {};
 
   for (const [canonical, info] of Object.entries(validProteomeMap)) {
-    if (info?.taxon_id) taxonToCanonical[info.taxon_id] = canonical;
-    if (info?.species) taxonToCanonical[info.species.toLowerCase()] = canonical;
+    if (info?.taxon_id) {
+      taxonToCanonical[info.taxon_id] = canonical;
+    }
+    if (info?.species) {
+      taxonToCanonical[info.species.toLowerCase()] = canonical;
+    }
   }
 
   const headersRaw = Object.keys(data[0]);

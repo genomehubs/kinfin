@@ -5,21 +5,18 @@ import AttributeSummary from "../../components/Charts/AttributeSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getAttributeSummary } from "../../app/store/analysis/actions";
-import { dispatchSuccessToast } from "../../utilis/tostNotifications";
-import { setDownloadLoading } from "../../app/store/config/actions";
-
-import { useParams } from "react-router-dom";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.selectedAttributeTaxonset
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
   const downloadLoading = useSelector(
-    (state) => state?.config?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading
   );
-  const { sessionId } = useParams();
 
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
@@ -39,10 +36,6 @@ const AttributeSummaryPage = () => {
       30000
     );
   };
-  const breadcrumbItems = [
-    { label: "Dashboard", href: `/${sessionId}` },
-    { label: "Attribute Summary", href: `/${sessionId}/attribute-summary` },
-  ];
 
   return (
     <AppLayout>
