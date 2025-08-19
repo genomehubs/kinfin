@@ -5,7 +5,6 @@ import { DataGrid } from "@mui/x-data-grid";
 import { v4 as uuidv4 } from "uuid";
 import { getAttributeSummary } from "../../../app/store/analysis/actions";
 import { updatePaginationParams } from "@/utilis/urlPagination";
-import { getColumnDescriptions } from "../../../app/store/config/actions";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -49,8 +48,12 @@ const AttributeSummary = () => {
       setSearchParams(
         (prev) => {
           const newParams = new URLSearchParams(prev);
-          if (!hasPage) newParams.set("AS_page", "1");
-          if (!hasPageSize) newParams.set("AS_pageSize", "10");
+          if (!hasPage) {
+            newParams.set("AS_page", "1");
+          }
+          if (!hasPageSize) {
+            newParams.set("AS_pageSize", "10");
+          }
           return newParams;
         },
         { replace: true }
@@ -59,7 +62,6 @@ const AttributeSummary = () => {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    dispatch(getColumnDescriptions());
     if (!attribute) {
       return;
     }

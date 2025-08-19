@@ -19,6 +19,7 @@ import {
   Checkbox,
   Button,
 } from "@mui/material";
+import { getColumnDescriptions } from "../../app/store/config/actions";
 
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
@@ -38,6 +39,9 @@ const AttributeSummaryPage = () => {
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState([]);
 
+  useEffect(() => {
+    dispatch(getColumnDescriptions({ file: "*.attribute_metrics.txt" }));
+  }, []);
   useEffect(() => {
     const paramsCodes = searchParams.getAll("AS_code");
     setSelectedCodes(paramsCodes);

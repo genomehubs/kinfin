@@ -57,7 +57,7 @@ export const getClusteringSets = async (data) => {
 export const getColumnDescriptions = async (data) => {
   const response = await apiClient.get("/column-descriptions", {
     headers: { "x-session-id": getSessionId() },
-    params: { page: data.page, size: data.size },
+    params: { page: data.page, size: data.size, file: data.file },
   });
   return response.data;
 };

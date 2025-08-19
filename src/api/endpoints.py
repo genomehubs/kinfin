@@ -84,7 +84,6 @@ header_scheme = APIKeyHeader(name="x-session-id")
 router = APIRouter()
 
 
-
 def check_kinfin_session(func):
     @wraps(func)
     async def wrapper(request: Request, session_id: str, *args, **kwargs):
@@ -848,6 +847,7 @@ async def get_column_descriptions_api(
     size: int = Query(40, ge=1, le=100),
     sort_by: str = Query(None, description="Comma-separated fields to sort by"),
     sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: asc or desc"),
+    file: str = Query(None, description="Filter by file name"),
 ):
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -887,6 +887,8 @@ async def get_column_descriptions_api(
             status_code=500,
         )
 
+    if file:
+        column_data = [row for row in column_data if row.get("file") == file]
     data_dict = {str(i): row for i, row in enumerate(column_data)}
 
     paginated_data_dict, total_pages = sort_and_paginate_result(

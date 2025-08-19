@@ -261,6 +261,7 @@ function* getColumnDescriptionsSaga(action) {
   const data = {
     page: 1,
     size: 100,
+    file: action?.payload?.file || "",
   };
   try {
     const response = yield call(getColumnDescriptions, data);

@@ -18,6 +18,7 @@ import {
   Checkbox,
   Button,
 } from "@mui/material";
+import { getColumnDescriptions } from "../../app/store/config/actions";
 
 const ClusterMetricsPage = () => {
   const dispatch = useDispatch();
@@ -42,6 +43,9 @@ const ClusterMetricsPage = () => {
     setSelectedCodes(paramsCodes);
   }, [searchParams]);
 
+  useEffect(() => {
+    dispatch(getColumnDescriptions({ file: "*.cluster_metrics.txt" }));
+  }, []);
   // Download handler
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "clusterMetrics", loading: true }));

@@ -9,6 +9,7 @@ import { getClusterSummary } from "../../app/store/analysis/actions";
 import { dispatchSuccessToast } from "../../utilis/tostNotifications";
 import { setDownloadLoading } from "../../app/store/config/actions";
 import { useSearchParams } from "react-router-dom";
+import { getColumnDescriptions } from "../../app/store/config/actions";
 
 import {
   Dialog,
@@ -42,7 +43,9 @@ const ClusterSummaryPage = () => {
     const paramsCodes = searchParams.getAll("CS_code");
     setSelectedCodes(paramsCodes);
   }, [searchParams]);
-
+  useEffect(() => {
+    dispatch(getColumnDescriptions({ file: "*.cluster_summary.txt" }));
+  }, []);
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "clusterSummary", loading: true }));
     const payload = {
