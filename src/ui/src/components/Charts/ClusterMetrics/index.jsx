@@ -20,8 +20,10 @@ const ClusterMetrics = () => {
     (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
 
-  const columnDescriptions = useSelector(
-    (state) => state?.config?.columnDescriptions?.data || []
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.cluster_metrics.txt"
+    )
   );
 
   const attribute = selectedAttributeTaxonset?.attribute || null;

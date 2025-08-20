@@ -40,7 +40,7 @@ const AttributeSummaryPage = () => {
   const [selectedCodes, setSelectedCodes] = useState([]);
 
   useEffect(() => {
-    dispatch(getColumnDescriptions({ file: "*.attribute_metrics.txt" }));
+    dispatch(getColumnDescriptions());
   }, []);
   useEffect(() => {
     const paramsCodes = searchParams.getAll("AS_code");

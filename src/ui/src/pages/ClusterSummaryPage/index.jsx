@@ -44,7 +44,7 @@ const ClusterSummaryPage = () => {
     setSelectedCodes(paramsCodes);
   }, [searchParams]);
   useEffect(() => {
-    dispatch(getColumnDescriptions({ file: "*.cluster_summary.txt" }));
+    dispatch(getColumnDescriptions());
   }, []);
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "clusterSummary", loading: true }));

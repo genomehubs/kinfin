@@ -19,8 +19,10 @@ const ClusterSummary = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
-  const columnDescriptions = useSelector(
-    (state) => state?.config?.columnDescriptions?.data || []
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.cluster_summary.txt"
+    )
   );
 
   const attribute = selectedAttributeTaxonset?.attribute || null;

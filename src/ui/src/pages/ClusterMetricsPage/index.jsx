@@ -31,8 +31,10 @@ const ClusterMetricsPage = () => {
     (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics
   );
 
-  const columnDescriptions = useSelector(
-    (state) => state?.config?.columnDescriptions?.data || []
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.cluster_metrics.txt"
+    )
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -44,7 +46,7 @@ const ClusterMetricsPage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    dispatch(getColumnDescriptions({ file: "*.cluster_metrics.txt" }));
+    dispatch(getColumnDescriptions());
   }, []);
   // Download handler
   const handleDownload = () => {

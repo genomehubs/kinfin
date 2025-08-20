@@ -16,8 +16,10 @@ const AttributeSummary = () => {
     (state) => state?.analysis?.attributeSummary?.data || null
   );
 
-  const columnDescriptions = useSelector(
-    (state) => state?.config?.columnDescriptions?.data || []
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.attribute_metrics.txt"
+    )
   );
 
   const attribute = searchParams.get("attribute");
