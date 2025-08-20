@@ -224,7 +224,6 @@ async def initialize(input_data: InputSchema, request: Request):
         # taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
 
         try:
-            pass
             # TODO
             check_file(cluster_f, install_kinfin=True)
             # ! NOT NEEDED 

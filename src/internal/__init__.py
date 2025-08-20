@@ -1,6 +1,4 @@
 import os
-import shutil
-from typing import List
 
 import polars as pl
 
@@ -50,11 +48,9 @@ def classify_clusters(
 
         classification_exprs.append(expr)
 
-    final_df = result_df.with_columns(classification_exprs).drop(
+    return result_df.with_columns(classification_exprs).drop(
         [f"{attr}_n_unique" for attr in attributes]
     )
-
-    return final_df
 
 
 def analyse(args, nodesdb_f, ndb_f):

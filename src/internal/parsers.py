@@ -123,9 +123,7 @@ def clusterfile(
         .group_by("cluster_id")
         .agg(pl.median("len").alias("protein_median_count"))
     )
-    df = agg_df.join(median_counts, on="cluster_id", how="left")
-
-    return df
+    return agg_df.join(median_counts, on="cluster_id", how="left")
 
 
 def add_taxid_attributes(

@@ -15,7 +15,7 @@ def precompute_cluster_info(
         pl.col(attribute).alias("taxon_set"),
     )
 
-    cluster_info = (
+    return (
         cluster_df.select(["cluster_id", "taxons", "protein_cluster"])
         .lazy()
         .explode("taxons")
@@ -25,7 +25,10 @@ def precompute_cluster_info(
         .agg(
             pl.col("taxon_set").drop_nulls().unique().alias("taxon_sets"),
             pl.col("protein_cluster").first().alias("protein_cluster"),
-            pl.col("protein_cluster").first().list.len().alias("protein_cluster_len"),
+            pl.col("protein_cluster")
+            .first()
+            .list.len()
+            .alias("protein_cluster_len"),
         )
         .with_columns(
             pl.when(pl.col("protein_cluster_len") == 1)
@@ -37,7 +40,6 @@ def precompute_cluster_info(
         )
         .collect()
     )
-    return cluster_info
 
 
 def add_cluster_and_protein_counts(
@@ -314,12 +316,16 @@ def add_absent_cluster_counts(
                 pl.lit(0, dtype=pl.UInt32).alias(col_type)
             )
 
-    result_df = (
+    return (
         attribute_df.join(present_counts_df, on="taxon_set", how="left")
         .fill_null(0)
         .with_columns(
-            absent_cluster_singleton_count=(total_singleton - pl.col("singleton")),
-            absent_cluster_specific_count=(total_specific - pl.col("specific")),
+            absent_cluster_singleton_count=(
+                total_singleton - pl.col("singleton")
+            ),
+            absent_cluster_specific_count=(
+                total_specific - pl.col("specific")
+            ),
             absent_cluster_shared_count=(total_shared - pl.col("shared")),
         )
         .with_columns(
@@ -329,7 +335,6 @@ def add_absent_cluster_counts(
         )
         .drop(["singleton", "specific", "shared"])
     )
-    return result_df
 
 
 def get_attribute_metrics(
