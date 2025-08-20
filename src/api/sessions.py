@@ -104,8 +104,8 @@ class QueryManager:
 
     def __exit__(self, _, __) -> None:
         """Cleanup all sessions when exiting due to signal"""
-        shutil.rmtree(self.results_base_dir)
-        exit(0)
+        # shutil.rmtree(self.results_base_dir)
+        # exit(0)
 
 
 query_manager = QueryManager()

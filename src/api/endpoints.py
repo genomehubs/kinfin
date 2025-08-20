@@ -1176,7 +1176,7 @@ async def get_cluster_metrics(
             column_descriptions = json.load(f)
         code_to_column = {item["code"]: item["name"] for item in column_descriptions}
 
-        # ---- Parse cluster metrics file ----
+        # ---- Parse cluster metrics file (already formatted & flat) ----
         filename = f"{attribute}/{attribute}.{taxon_set}.{CLUSTER_METRICS_FILENAME}"
         filepath = os.path.join(result_dir, filename)
         if not os.path.exists(filepath):
@@ -1191,28 +1191,24 @@ async def get_cluster_metrics(
             )
 
         result = parse_cluster_metrics_file(filepath, cluster_status, cluster_type)
-
-        # ---- Flatten nested dicts ----
         rows = list(result.values())
-        flattened_rows = [flatten_dict(row) for row in rows]
 
         # ---- Apply CM_code filter ----
         if CM_code:
-            selected_columns = []
-            for code in CM_code:
-                if code in code_to_column:
-                    col_name = code_to_column[code]
-                    flat_name = col_name.replace(".", "_")
-                    selected_columns.append(flat_name)
+            selected_columns = [code_to_column[code] for code in CM_code if code in code_to_column]
 
-            flattened_rows = [
+            # Ensure cluster_id is always included
+            if "cluster_id" not in selected_columns:
+                selected_columns.insert(0, "cluster_id")
+
+            rows = [
                 {col: row.get(col, "-") for col in selected_columns}
-                for row in flattened_rows
+                for row in rows
             ]
 
         # ---- File download mode ----
         if as_file:
-            if not flattened_rows:
+            if not rows:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
@@ -1224,9 +1220,9 @@ async def get_cluster_metrics(
                 )
 
             buffer = io.StringIO()
-            writer = csv.DictWriter(buffer, fieldnames=flattened_rows[0].keys(), delimiter="\t")
+            writer = csv.DictWriter(buffer, fieldnames=rows[0].keys(), delimiter="\t")
             writer.writeheader()
-            writer.writerows(flattened_rows)
+            writer.writerows(rows)
             buffer.seek(0)
 
             return StreamingResponse(
@@ -1238,7 +1234,7 @@ async def get_cluster_metrics(
             )
 
         # ---- Paginate ----
-        flat_dict = {rows[i]["cluster_id"]: flattened_rows[i] for i in range(len(rows))}
+        flat_dict = {rows[i]["cluster_id"]: rows[i] for i in range(len(rows))}
         paginated_result, total_pages = sort_and_paginate_result(
             flat_dict,
             sort_by,
