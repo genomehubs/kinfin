@@ -6,6 +6,7 @@ import rootReducer from "./reducers";
 import rootSaga from "./sagas";
 
 const storage = createIndexedDBStorage("myReduxDB");
+const { VITE_NODE_ENV } = import.meta.env;
 
 const persistConfig = {
   key: "root",
@@ -22,9 +23,9 @@ const store = configureStore({
     getDefaultMiddleware({
       thunk: false,
       serializableCheck: false,
-      immutableCheck: false,
+      immutableCheck: VITE_NODE_ENV !== "PRODUCTION",
     }).concat(sagaMiddleware),
-  devTools: process.env.NODE_ENV !== "production",
+  devTools: VITE_NODE_ENV !== "PRODUCTION",
 });
 
 const persistor = persistStore(store);
