@@ -108,6 +108,10 @@ const AttributeSummaryPage = () => {
         onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Attribute Summary"
+        onSelectAll={() =>
+          setSelectedCodes(columnDescriptions.map((c) => c.code))
+        }
+        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

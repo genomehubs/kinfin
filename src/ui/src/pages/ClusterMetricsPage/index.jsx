@@ -111,6 +111,10 @@ const ClusterMetricsPage = () => {
         onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Cluster Metrics"
+        onSelectAll={() =>
+          setSelectedCodes(columnDescriptions.map((c) => c.code))
+        }
+        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

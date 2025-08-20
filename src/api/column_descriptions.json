@@ -4,357 +4,408 @@
     "file": "cluster_counts_by_taxon.txt",
     "name": "cluster_id",
     "description": "Unique identifier for cluster",
-    "alias": ""
+    "alias": "",
+    "isDefault": false
   },
   {
     "code": "002",
     "file": "cluster_counts_by_taxon.txt",
     "name": "X_protein_count",
     "description": "Count of proteins of taxon X",
-    "alias": ""
+    "alias": "",
+    "isDefault": false
   },
   {
     "code": "003",
     "file": "*.attribute_metrics.txt",
     "name": "attribute",
     "description": "Name of attribute",
-    "alias": ""
+    "alias": "",
+    "isDefault": false
   },
   {
     "code": "004",
     "file": "*.attribute_metrics.txt",
     "name": "taxon_set",
     "description": "Name of Taxset",
-    "alias": "taxset"
+    "alias": "taxset",
+    "isDefault": true
   },
   {
     "code": "005",
     "file": "*.attribute_metrics.txt",
     "name": "cluster_total_count",
     "description": "Count of clusters with Taxset as member",
-    "alias": "taxset_cluster_count"
+    "alias": "taxset_cluster_count",
+    "isDefault": true
   },
   {
     "code": "006",
     "file": "*.attribute_metrics.txt",
     "name": "protein_total_count",
     "description": "Count of proteins from Taxset",
-    "alias": "taxset_protein_count"
+    "alias": "taxset_protein_count",
+    "isDefault": true
   },
   {
     "code": "007",
     "file": "*.attribute_metrics.txt",
     "name": "protein_total_span",
     "description": "Count of amino acids in proteins from Taxset",
-    "alias": "taxset_protein_span"
+    "alias": "taxset_protein_span",
+    "isDefault": false
   },
   {
     "code": "008",
     "file": "*.attribute_metrics.txt",
     "name": "singleton_cluster_count",
     "description": "Count of singleton clusters (contain only one protein)",
-    "alias": "taxset_singleton_cluster_count"
+    "alias": "taxset_singleton_cluster_count",
+    "isDefault": false
   },
   {
     "code": "009",
     "file": "*.attribute_metrics.txt",
     "name": "singleton_protein_count",
     "description": "Number of proteins in singleton clusters (NOT NEEDED)",
-    "alias": ""
+    "alias": "",
+    "isDefault": false
   },
   {
     "code": "010",
     "file": "*.attribute_metrics.txt",
     "name": "singleton_protein_span",
     "description": "Count of amino acids in singleton clusters",
-    "alias": "taxset_singleton_protein_span"
+    "alias": "taxset_singleton_protein_span",
+    "isDefault": false
   },
   {
     "code": "011",
     "file": "*.attribute_metrics.txt",
     "name": "specific_cluster_count",
     "description": "Count of specific, non-singleton clusters",
-    "alias": "taxset_specific_cluster_count"
+    "alias": "taxset_specific_cluster_count",
+    "isDefault": false
   },
   {
     "code": "012",
     "file": "*.attribute_metrics.txt",
     "name": "specific_protein_count",
     "description": "Count of proteins in specific, non-singleton clusters",
-    "alias": "taxset_specific_protein_count"
+    "alias": "taxset_specific_protein_count",
+    "isDefault": false
   },
   {
     "code": "013",
     "file": "*.attribute_metrics.txt",
     "name": "specific_protein_span",
     "description": "Count of amino acids in specific, non-singleton clusters",
-    "alias": "taxset_specific_protein_span"
+    "alias": "taxset_specific_protein_span",
+    "isDefault": false
   },
   {
     "code": "014",
     "file": "*.attribute_metrics.txt",
     "name": "shared_cluster_count",
     "description": "Count of shared clusters",
-    "alias": "taxset_shared_cluster_count"
+    "alias": "taxset_shared_cluster_count",
+    "isDefault": false
   },
   {
     "code": "015",
     "file": "*.attribute_metrics.txt",
     "name": "shared_protein_count",
     "description": "Count of proteins in shared clusters",
-    "alias": "taxset_shared_protein_count"
+    "alias": "taxset_shared_protein_count",
+    "isDefault": false
   },
   {
     "code": "016",
     "file": "*.attribute_metrics.txt",
     "name": "shared_protein_span",
     "description": "Count of amino acids in shared clusters",
-    "alias": "taxset_shared_protein_span"
+    "alias": "taxset_shared_protein_span",
+    "isDefault": false
   },
   {
     "code": "017",
     "file": "*.attribute_metrics.txt",
     "name": "specific_cluster_true_1to1_count",
     "description": "Count of specific, 1:1-orthologue-clusters",
-    "alias": "taxset_specific_cluster_true_1to1_count"
+    "alias": "taxset_specific_cluster_true_1to1_count",
+    "isDefault": false
   },
   {
     "code": "018",
     "file": "*.attribute_metrics.txt",
     "name": "specific_cluster_fuzzy_count",
     "description": "Count of specific, fuzzy-orthologue-clusters",
-    "alias": "taxset_specific_cluster_fuzzy_count"
+    "alias": "taxset_specific_cluster_fuzzy_count",
+    "isDefault": false
   },
   {
     "code": "019",
     "file": "*.attribute_metrics.txt",
     "name": "shared_cluster_true_1to1_count",
     "description": "Count of shared, 1:1-orthologue-clusters",
-    "alias": "taxset_shared_cluster_true_1to1_count"
+    "alias": "taxset_shared_cluster_true_1to1_count",
+    "isDefault": false
   },
   {
     "code": "020",
     "file": "*.attribute_metrics.txt",
     "name": "shared_cluster_fuzzy_count",
     "description": "Count of shared, fuzzy-orthologue clusters",
-    "alias": "taxset_shared_cluster_fuzzy_count"
+    "alias": "taxset_shared_cluster_fuzzy_count",
+    "isDefault": false
   },
   {
     "code": "021",
     "file": "*.attribute_metrics.txt",
     "name": "absent_cluster_total_count",
     "description": "Count of clusters from which members of Taxset are absent",
-    "alias": "taxset_cluster_absent_count"
+    "alias": "taxset_cluster_absent_count",
+    "isDefault": false
   },
   {
     "code": "022",
     "file": "*.attribute_metrics.txt",
     "name": "absent_cluster_singleton_count",
     "description": "Count of singleton clusters from which members of Taxset are absent",
-    "alias": "taxset_singleton_cluster_absent_count"
+    "alias": "taxset_singleton_cluster_absent_count",
+    "isDefault": false
   },
   {
     "code": "023",
     "file": "*.attribute_metrics.txt",
     "name": "absent_cluster_specific_count",
     "description": "Count of specific clusters from which members of Taxset are absent",
-    "alias": "taxset_specific_cluster_absent_count"
+    "alias": "taxset_specific_cluster_absent_count",
+    "isDefault": false
   },
   {
     "code": "024",
     "file": "*.attribute_metrics.txt",
     "name": "absent_cluster_shared_count",
     "description": "Count of shared clusters from which members of Taxset are absent",
-    "alias": "taxset_shared_cluster_absent_count"
+    "alias": "taxset_shared_cluster_absent_count",
+    "isDefault": false
   },
   {
     "code": "025",
     "file": "*.attribute_metrics.txt",
     "name": "TAXON_count",
     "description": "Count of members in Taxset",
-    "alias": "taxset_taxa_count"
+    "alias": "taxset_taxa_count",
+    "isDefault": false
   },
   {
     "code": "026",
     "file": "*.attribute_metrics.txt",
     "name": "TAXON_taxa",
     "description": "Names of members in Taxset",
-    "alias": "taxset_names"
+    "alias": "taxset_names",
+    "isDefault": false
   },
   {
     "code": "027",
     "file": "*.cluster_metrics.txt",
     "name": "cluster_status",
     "description": "Presence of members in Taxset",
-    "alias": "taxset presence"
+    "alias": "taxset presence",
+    "isDefault": false
   },
   {
     "code": "028",
     "file": "*.cluster_metrics.txt",
     "name": "cluster_type",
     "description": "Cluster type regarding Taxset",
-    "alias": "taxset cluster type"
+    "alias": "taxset cluster type",
+    "isDefault": false
   },
   {
     "code": "029",
     "file": "*.cluster_metrics.txt",
     "name": "counts_cluster_protein_count",
     "description": "Count of proteins",
-    "alias": "cluster protein count"
+    "alias": "cluster protein count",
+    "isDefault": false
   },
   {
     "code": "030",
     "file": "*.cluster_metrics.txt",
     "name": "counts_cluster_proteome_count",
     "description": "Count of taxa",
-    "alias": "cluster taxa count"
+    "alias": "cluster taxa count",
+    "isDefault": false
   },
   {
     "code": "031",
     "file": "*.cluster_metrics.txt",
     "name": "counts_TAXON_protein_count",
     "description": "Count of proteins from Taxset",
-    "alias": "taxset protein count"
+    "alias": "taxset protein count",
+    "isDefault": false
   },
   {
     "code": "032",
     "file": "*.cluster_metrics.txt",
     "name": "counts_TAXON_mean_count",
     "description": "Mean count of proteins per taxon in Taxset",
-    "alias": "taxset mean protein_count"
+    "alias": "taxset mean protein_count",
+    "isDefault": false
   },
   {
     "code": "033",
     "file": "*.cluster_metrics.txt",
     "name": "counts_non_taxon_mean_count",
     "description": "Mean count of proteins per taxon NOT in Taxset",
-    "alias": "background mean protein count"
+    "alias": "background mean protein count",
+    "isDefault": false
   },
   {
     "code": "034",
     "file": "*.cluster_metrics.txt",
     "name": "representation",
     "description": "Enrichment or depletion in mean proteins count of Taxset vs background",
-    "alias": "representation test result"
+    "alias": "representation test result",
+    "isDefault": false
   },
   {
     "code": "035",
     "file": "*.cluster_metrics.txt",
     "name": "log2_mean(TAXON/others)",
     "description": "Protein count representation test based on 'taxset_mean_protein_count' and 'background_mean_protein_count'",
-    "alias": "representation test numeric"
+    "alias": "representation test numeric",
+    "isDefault": false
   },
   {
     "code": "036",
     "file": "*.cluster_metrics.txt",
     "name": "pvalue(TAXON vs. others)",
     "description": "p-value of the protein count representation test",
-    "alias": "representation test pvalue"
+    "alias": "representation test pvalue",
+    "isDefault": false
   },
   {
     "code": "037",
     "file": "*.cluster_metrics.txt",
     "name": "coverage_TAXON_coverage",
     "description": "Proportion of taxa in Taxset present in the cluster",
-    "alias": "taxset taxa coverage"
+    "alias": "taxset taxa coverage",
+    "isDefault": false
   },
   {
     "code": "038",
     "file": "*.cluster_metrics.txt",
     "name": "coverage_TAXON_count",
     "description": "Count of taxa in Taxset present in the cluster",
-    "alias": "taxset taxa count"
+    "alias": "taxset taxa count",
+    "isDefault": false
   },
   {
     "code": "039",
     "file": "*.cluster_metrics.txt",
     "name": "coverage_non_TAXON_count",
     "description": "Count of background taxa present in the cluster",
-    "alias": "background taxa count"
+    "alias": "background taxa count",
+    "isDefault": false
   },
   {
     "code": "040",
     "file": "*.cluster_metrics.txt",
     "name": "TAXON_taxa",
     "description": "Names of taxa in Taxset present in the cluster",
-    "alias": "taxset taxa names"
+    "alias": "taxset taxa names",
+    "isDefault": false
   },
   {
     "code": "041",
     "file": "*.cluster_metrics.txt",
     "name": "non_TAXON_taxa",
     "description": "Names of background taxa present in the cluster",
-    "alias": "background taxa names"
+    "alias": "background taxa names",
+    "isDefault": false
   },
   {
     "code": "042",
     "file": "*.cluster_summary.txt",
     "name": "cluster_protein_count",
     "description": "Count of proteins",
-    "alias": "cluster_protein_count"
+    "alias": "cluster_protein_count",
+    "isDefault": false
   },
   {
     "code": "043",
     "file": "*.cluster_summary.txt",
     "name": "protein_median_count",
     "description": "Median count of proteins",
-    "alias": "protein_median_count"
+    "alias": "protein_median_count",
+    "isDefault": false
   },
   {
     "code": "044",
     "file": "*.cluster_summary.txt",
     "name": "TAXON_count",
     "description": "Count of taxa",
-    "alias": "cluster_taxa_count"
+    "alias": "cluster_taxa_count",
+    "isDefault": false
   },
   {
     "code": "045",
     "file": "*.cluster_summary.txt",
     "name": "attribute",
     "description": "Attribute",
-    "alias": "attribute"
+    "alias": "attribute",
+    "isDefault": false
   },
   {
     "code": "046",
     "file": "*.cluster_summary.txt",
     "name": "attribute_cluster_type",
     "description": "Attribute cluster type",
-    "alias": "attribute_cluster_type"
+    "alias": "attribute_cluster_type",
+    "isDefault": false
   },
   {
     "code": "047",
     "file": "*.cluster_summary.txt",
     "name": "protein_span_mean",
     "description": "Mean protein span",
-    "alias": "protein_span_mean"
+    "alias": "protein_span_mean",
+    "isDefault": false
   },
   {
     "code": "048",
     "file": "*.cluster_summary.txt",
     "name": "protein_span_sd",
     "description": "Standard deviation protein span",
-    "alias": "protein_span_sd"
+    "alias": "protein_span_sd",
+    "isDefault": false
   },
   {
     "code": "049",
     "file": "*.cluster_summary.txt",
     "name": "protein_counts_X_count",
     "description": "Count of proteins of taxset X",
-    "alias": "X_protein_count"
+    "alias": "X_protein_count",
+    "isDefault": false
   },
   {
     "code": "050",
     "file": "*.cluster_summary.txt",
     "name": "protein_counts_X_median",
     "description": "Median count of proteins of taxset X",
-    "alias": "X_protein_median"
+    "alias": "X_protein_median",
+    "isDefault": false
   },
   {
     "code": "051",
     "file": "*.cluster_summary.txt",
     "name": "protein_counts_X_cov",
     "description": "Proportion of taxa present in taxset X",
-    "alias": "X_cov"
+    "alias": "X_cov",
+    "isDefault": false
   },
   {
     "code": "052",

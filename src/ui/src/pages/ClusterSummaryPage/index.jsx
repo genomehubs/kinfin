@@ -102,6 +102,10 @@ const ClusterSummaryPage = () => {
         onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Cluster Summary"
+        onSelectAll={() =>
+          setSelectedCodes(columnDescriptions.map((c) => c.code))
+        }
+        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

@@ -17,11 +17,24 @@ const CustomisationDialog = ({
   onCheckboxChange,
   columnDescriptions = [],
   title = "Customisation",
+  onSelectAll, // new prop
+  onDeselectAll, // new prop
 }) => {
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
+        {/* Select / Deselect All Actions */}
+        <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
+          <Button variant="outlined" size="small" onClick={onSelectAll}>
+            Select All
+          </Button>
+          <Button variant="outlined" size="small" onClick={onDeselectAll}>
+            Deselect All
+          </Button>
+        </div>
+
+        {/* Checkboxes Grid */}
         <div
           style={{
             display: "grid",
