@@ -32,7 +32,7 @@ from api.utils import (
     run_cli_command,
     sort_and_paginate_result,
 )
-from core.utils import check_file
+from internal.utils import check_file
 
 from .config.limits import LIMIT_INIT, LIMIT_STANDARD
 from .core.limiter import limiter
@@ -219,13 +219,17 @@ async def initialize(input_data: InputSchema, request: Request):
         cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
 
         cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
-        sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
-        taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+        # ! NOT NEEDED 
+        # sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
+        # taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
 
         try:
+            pass
+            # TODO
             check_file(cluster_f, install_kinfin=True)
-            check_file(sequence_ids_f, install_kinfin=True)
-            check_file(taxon_idx_mapping_file, install_kinfin=True)
+            # ! NOT NEEDED 
+            # check_file(sequence_ids_f, install_kinfin=True)
+            # check_file(taxon_idx_mapping_file, install_kinfin=True)
         except FileNotFoundError as e:
             return JSONResponse(
                 content=ResponseSchema(
@@ -238,9 +242,7 @@ async def initialize(input_data: InputSchema, request: Request):
             )
 
         session_id, result_dir = query_manager.get_or_create_session(input_data.config)
-        config_f = os.path.join(result_dir, "config.json")
-        with open(config_f, "w") as file:
-            json.dump(input_data.config, file)
+        config_f = os.path.join(result_dir, "config.txt")
 
         command = [
             "python",
@@ -250,14 +252,8 @@ async def initialize(input_data: InputSchema, request: Request):
             cluster_f,
             "-c",
             config_f,
-            "-s",
-            sequence_ids_f,
-            "-m",
-            taxon_idx_mapping_file,
             "-o",
             result_dir,
-            "--plot_format",
-            "png",
         ]
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
@@ -487,7 +483,7 @@ async def get_cluster_summary(
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
-        config_f = os.path.join(result_dir, "config.json")
+        config_f = os.path.join(result_dir, "config.txt")
         if not os.path.exists(config_f):
             return JSONResponse(
                 content=ResponseSchema(
@@ -676,7 +672,9 @@ async def get_valid_taxons_api(
         cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
         taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
         try:
-            check_file(taxon_idx_mapping_file, install_kinfin=True)
+            pass
+            # TODO
+            # check_file(taxon_idx_mapping_file, install_kinfin=True)
         except FileNotFoundError as e:
             return JSONResponse(
                 content=ResponseSchema(
@@ -895,7 +893,7 @@ async def get_attribute_summary(
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
-        config_f = os.path.join(result_dir, "config.json")
+        config_f = os.path.join(result_dir, "config.txt")
         if not os.path.exists(config_f):
             return JSONResponse(
                 content=ResponseSchema(
@@ -1015,7 +1013,7 @@ async def get_cluster_metrics(
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
-        config_f = os.path.join(result_dir, "config.json")
+        config_f = os.path.join(result_dir, "config.txt")
         if not os.path.exists(config_f):
             return JSONResponse(
                 content=ResponseSchema(
@@ -1159,7 +1157,7 @@ async def get_pairwise_analysis(
 ):
     try:
         result_dir = query_manager.get_session_dir(session_id)
-        config_f = os.path.join(result_dir, "config.json")
+        config_f = os.path.join(result_dir, "config.txt")
         if not os.path.exists(config_f):
             return JSONResponse(
                 content=ResponseSchema(
