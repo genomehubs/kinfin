@@ -9,16 +9,8 @@ import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSu
 import { dispatchSuccessToast } from "../../utils/toastNotifications";
 import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 import { useParams, useSearchParams } from "react-router-dom";
+import CustomisationDialog from "../../components/CustomisationDialog";
 
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
-  Checkbox,
-  Button,
-} from "@mui/material";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 
 const AttributeSummaryPage = () => {
@@ -32,8 +24,10 @@ const AttributeSummaryPage = () => {
   );
   const { sessionId } = useParams();
 
-  const columnDescriptions = useSelector(
-    (state) => state?.config?.columnDescriptions?.data || []
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.attribute_metrics.txt"
+    )
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -106,51 +100,15 @@ const AttributeSummaryPage = () => {
         </div>
       </div>
 
-      {/* Customisation Modal */}
-      <Dialog
+      <CustomisationDialog
         open={customiseOpen}
         onClose={handleCancel}
-        fullWidth
-        maxWidth="lg"
-      >
-        <DialogTitle>Customise Attribute Summary</DialogTitle>
-        <DialogContent>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
-            }}
-          >
-            {columnDescriptions.map((item) => (
-              <FormControlLabel
-                key={item.code}
-                control={
-                  <Checkbox
-                    checked={selectedCodes.includes(item.code)}
-                    onChange={() => handleCheckboxChange(item.code)}
-                  />
-                }
-                label={
-                  <div>
-                    <strong>{item.name}</strong>
-                    <div style={{ fontSize: "0.8rem", color: "#666" }}>
-                      {item.description}
-                    </div>
-                  </div>
-                }
-              />
-            ))}
-          </div>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCancel}>Cancel</Button>
-          <Button onClick={handleApply} variant="contained" color="primary">
-            Apply
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onApply={handleApply}
+        selectedCodes={selectedCodes}
+        onCheckboxChange={handleCheckboxChange}
+        columnDescriptions={columnDescriptions}
+        title="Customise Attribute Summary"
+      />
     </AppLayout>
   );
 };
