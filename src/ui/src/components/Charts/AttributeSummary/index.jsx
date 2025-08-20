@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
@@ -22,6 +22,7 @@ const AttributeSummary = () => {
 
   const attribute = searchParams.get("attribute");
 
+  // URL codes filter
   const asCodes = useMemo(() => searchParams.getAll("AS_code"), [searchParams]);
 
   const page = Math.max(
@@ -49,26 +50,33 @@ const AttributeSummary = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  // Fetch attribute summary
   useEffect(() => {
     if (!attribute) {
       return;
     }
-    const payload = {
-      attribute,
-      page: page + 1,
-      size: pageSize,
-      AS_code: asCodes.length > 0 ? asCodes : undefined,
-    };
-    dispatch(getAttributeSummary(payload));
+
+    dispatch(
+      getAttributeSummary({
+        attribute,
+        page: page + 1,
+        size: pageSize,
+        AS_code: asCodes.length > 0 ? asCodes : undefined,
+      })
+    );
   }, [attribute, page, pageSize, asCodes, dispatch]);
 
-  const codeToFieldMap = useMemo(() => {
-    return columnDescriptions.reduce((acc, col) => {
-      acc[col.code] = col.name;
-      return acc;
-    }, {});
-  }, [columnDescriptions]);
+  // Map codes to field names
+  const codeToFieldMap = useMemo(
+    () =>
+      columnDescriptions.reduce((acc, col) => {
+        acc[col.code] = col.name;
+        return acc;
+      }, {}),
+    [columnDescriptions]
+  );
 
+  // Prepare rows
   const { rows, rowCount } = useMemo(() => {
     const rawData = attributeData?.data ?? {};
     const processedRows = Object.values(rawData).map((row) => ({
@@ -85,125 +93,28 @@ const AttributeSummary = () => {
     return { rows: processedRows, rowCount: totalRows };
   }, [attributeData]);
 
-  const allColumns = useMemo(
-    () => [
-      { field: "taxon_set", headerName: "Taxon Set", minWidth: 150 },
-      {
-        field: "cluster_total_count",
-        headerName: "Total Clusters",
-        minWidth: 100,
-      },
-      {
-        field: "protein_total_count",
-        headerName: "Total Proteins",
-        minWidth: 100,
-      },
-      {
-        field: "protein_total_span",
-        headerName: "Protein Span",
-        minWidth: 100,
-      },
-      {
-        field: "singleton_cluster_count",
-        headerName: "Singleton Clusters",
-        minWidth: 100,
-      },
-      {
-        field: "singleton_protein_count",
-        headerName: "Singleton Proteins",
-        minWidth: 100,
-      },
-      {
-        field: "singleton_protein_span",
-        headerName: "Singleton Protein Span",
-        minWidth: 120,
-      },
-      {
-        field: "specific_cluster_count",
-        headerName: "Specific Clusters",
-        minWidth: 100,
-      },
-      {
-        field: "specific_protein_count",
-        headerName: "Specific Proteins",
-        minWidth: 100,
-      },
-      {
-        field: "specific_protein_span",
-        headerName: "Specific Protein Span",
-        minWidth: 120,
-      },
-      {
-        field: "specific_cluster_true_1to1_count",
-        headerName: "True 1-to-1 Count",
-        minWidth: 130,
-      },
-      {
-        field: "specific_cluster_fuzzy_count",
-        headerName: "Fuzzy Count",
-        minWidth: 100,
-      },
-      {
-        field: "shared_cluster_count",
-        headerName: "Shared Clusters",
-        minWidth: 100,
-      },
-      {
-        field: "shared_protein_count",
-        headerName: "Shared Proteins",
-        minWidth: 100,
-      },
-      {
-        field: "shared_protein_span",
-        headerName: "Shared Protein Span",
-        minWidth: 120,
-      },
-      {
-        field: "shared_cluster_true_1to1_count",
-        headerName: "Shared True 1-to-1 Count",
-        minWidth: 160,
-      },
-      {
-        field: "shared_cluster_fuzzy_count",
-        headerName: "Shared Fuzzy Count",
-        minWidth: 120,
-      },
-      {
-        field: "absent_cluster_total_count",
-        headerName: "Absent Clusters",
-        minWidth: 100,
-      },
-      {
-        field: "absent_cluster_singleton_count",
-        headerName: "Absent Singleton Clusters",
-        minWidth: 160,
-      },
-      {
-        field: "absent_cluster_specific_count",
-        headerName: "Absent Specific Clusters",
-        minWidth: 160,
-      },
-      {
-        field: "absent_cluster_shared_count",
-        headerName: "Absent Shared Clusters",
-        minWidth: 160,
-      },
-      { field: "TAXON_count", headerName: "Taxon Count", minWidth: 100 },
-      { field: "TAXON_taxa", headerName: "Taxa", minWidth: 150 },
-    ],
-    []
-  );
+  // Columns loaded dynamically
+  const defaultColumns = useMemo(() => {
+    return columnDescriptions.map((col) => ({
+      field: col.name,
+      headerName: col.alias || col.name,
+      minWidth: 120,
+    }));
+  }, [columnDescriptions]);
 
   const filteredColumns = useMemo(() => {
     if (!asCodes || asCodes.length === 0) {
-      return allColumns;
+      return defaultColumns;
     }
+
     const allowedFields = asCodes
       .map((code) => codeToFieldMap[code])
       .filter(Boolean);
-    return allColumns.filter((col) => allowedFields.includes(col.field));
-  }, [asCodes, codeToFieldMap, allColumns]);
 
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+  }, [asCodes, codeToFieldMap, defaultColumns]);
+
+  // Pagination handler
   const handlePaginationModelChange = useCallback(
     (newModel) => {
       updatePaginationParams(
@@ -260,9 +171,7 @@ const AttributeSummary = () => {
             borderBottom: "1px solid  #cccccc",
             borderTop: "1px solid  #cccccc",
           },
-          "& .MuiDataGrid-row:nth-of-type(odd)": {
-            backgroundColor: "#ffffff",
-          },
+          "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: "#ffffff" },
           "& .MuiDataGrid-row:nth-of-type(even)": {
             backgroundColor: "#fafafa",
           },

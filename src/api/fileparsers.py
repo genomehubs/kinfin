@@ -147,34 +147,32 @@ def parse_attribute_summary_file(filepath: str):
             "cluster_total_count": row["cluster_total_count"],
             "protein_total_count": row["protein_total_count"],
             "protein_total_span": row["protein_total_span"],
-            "singleton": {
-                "cluster_count": row["singleton_cluster_count"],
-                "protein_count": row["singleton_protein_count"],
-                "protein_span": row["singleton_protein_span"],
-            },
-            "specific": {
-                "cluster_count": row["specific_cluster_count"],
-                "protein_count": row["specific_protein_count"],
-                "protein_span": row["specific_protein_span"],
-                "cluster_true_1to1_count": row["specific_cluster_true_1to1_count"],
-                "cluster_fuzzy_count": row["specific_cluster_fuzzy_count"],
-            },
-            "shared": {
-                "cluster_count": row["shared_cluster_count"],
-                "protein_count": row["shared_protein_count"],
-                "protein_span": row["shared_protein_span"],
-                "cluster_true_1to1_count": row["shared_cluster_true_1to1_count"],
-                "cluster_fuzzy_count": row["shared_cluster_fuzzy_count"],
-            },
-            "absent": {
-                "cluster_total_count": row["absent_cluster_total_count"],
-                "cluster_singleton_count": row["absent_cluster_singleton_count"],
-                "cluster_specific_count": row["absent_cluster_specific_count"],
-                "cluster_shared_count": row["absent_cluster_shared_count"],
-            },
+            # Singleton
+            "singleton_cluster_count": row["singleton_cluster_count"],
+            "singleton_protein_count": row["singleton_protein_count"],
+            "singleton_protein_span": row["singleton_protein_span"],
+            # Specific
+            "specific_cluster_count": row["specific_cluster_count"],
+            "specific_protein_count": row["specific_protein_count"],
+            "specific_protein_span": row["specific_protein_span"],
+            "specific_cluster_true_1to1_count": row["specific_cluster_true_1to1_count"],
+            "specific_cluster_fuzzy_count": row["specific_cluster_fuzzy_count"],
+            # Shared
+            "shared_cluster_count": row["shared_cluster_count"],
+            "shared_protein_count": row["shared_protein_count"],
+            "shared_protein_span": row["shared_protein_span"],
+            "shared_cluster_true_1to1_count": row["shared_cluster_true_1to1_count"],
+            "shared_cluster_fuzzy_count": row["shared_cluster_fuzzy_count"],
+            # Absent
+            "absent_cluster_total_count": row["absent_cluster_total_count"],
+            "absent_cluster_singleton_count": row["absent_cluster_singleton_count"],
+            "absent_cluster_specific_count": row["absent_cluster_specific_count"],
+            "absent_cluster_shared_count": row["absent_cluster_shared_count"],
+            # Taxon
             "TAXON_count": row["TAXON_count"],
-            "TAXON_taxa": row["TAXON_taxa"].split(", "),
+            "TAXON_taxa": row["TAXON_taxa"],
         }
+
     return result
 
 

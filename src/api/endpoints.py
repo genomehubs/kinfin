@@ -1025,10 +1025,8 @@ async def get_attribute_summary(
                 status_code=404,
             )
 
+        # ---- Parse flattened attribute summary directly ----
         result = parse_attribute_summary_file(filepath=filepath)
-
-        # ---- Flatten rows ----
-        flat_result = {k: flatten_dict(v) for k, v in result.items()}
 
         # ---- Apply AS_code filter ----
         if AS_code:
@@ -1039,14 +1037,14 @@ async def get_attribute_summary(
                     flat_name = col_name.replace(".", "_")
                     selected_columns.append(flat_name)
 
-            flat_result = {
+            result = {
                 k: {col: v.get(col, "-") for col in selected_columns}
-                for k, v in flat_result.items()
+                for k, v in result.items()
             }
 
         # ---- File download mode ----
         if as_file:
-            if not flat_result:
+            if not result:
                 return ResponseSchema(
                     status="error",
                     message="No data available for download.",
@@ -1054,12 +1052,8 @@ async def get_attribute_summary(
                     query=str(request.url),
                 ).to_json_response(status_code=404)
 
-            rows = list(flat_result.values())
-            fieldnames = (
-                list(flat_result[next(iter(flat_result))].keys())
-                if rows
-                else []
-            )
+            rows = list(result.values())
+            fieldnames = list(result[next(iter(result))].keys()) if rows else []
 
             buffer = io.StringIO()
             writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
@@ -1077,7 +1071,7 @@ async def get_attribute_summary(
 
         # ---- Paginate ----
         paginated_result, total_pages = sort_and_paginate_result(
-            flat_result,
+            result,
             sort_by,
             sort_order,
             page,
