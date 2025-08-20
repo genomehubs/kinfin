@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
+
 import polars as pl
 
 logger = logging.getLogger("kinfin_logger")
