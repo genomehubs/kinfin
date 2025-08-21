@@ -1,19 +1,42 @@
 import argparse
 import collections
+import os
 import random
 import sys
 import time
 import traceback
 
 import numpy as np
-import os
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="simfin.py",
-        description="Simulate KinFin input",
+        description="""Simulate KinFin input datasets for benchmarking.
+
+Arguments:
+  -n : Number of clusters to simulate (e.g., 25000)
+  -m : Number of unique taxa (e.g., 20)
+  -lc: Array of integers defining attribute labels:
+       * Length = number of attributes
+       * Each value = number of unique labels for that attribute
+       Example: -lc 2 4 6 creates 3 attributes with 2, 4, and 6 unique labels
+       
+Example commands:
+  # Generate 25k clusters for 20 taxa with taxid and outgroup info
+  python scripts/simfin.py -n 25000 -m 20 --with_taxid --with_outgroup -g /path/to/Orthogroups.txt -o ./test_data
+
+  # Generate 50k clusters for 30 taxa with 3 attributes
+  python scripts/simfin.py -n 50000 -m 30 -lc 2 4 6 --with_taxid --with_outgroup -g /path/to/Orthogroups.txt -o ./test_data
+
+Notes:
+  - Change -n for cluster count
+  - Change -m for taxon count
+  - Adjust -lc to set attributes and label counts
+  - Use --with_taxid and --with_outgroup to include TAXID and OUT columns
+  - The output directory is specified with -o""",
         epilog="Author: DRL (2025)",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "-n",
@@ -21,6 +44,7 @@ def parse_args():
         required=False,
         default=1_000_000,
         type=int,
+        help="Number of clusters to simulate",
     )
     parser.add_argument(
         "-m",
@@ -28,6 +52,7 @@ def parse_args():
         required=False,
         default=20,
         type=int,
+        help="Number of unique taxa to simulate",
     )
     parser.add_argument(
         "-r",
@@ -35,6 +60,7 @@ def parse_args():
         required=False,
         default=19,
         type=int,
+        help="Random seed for reproducibility",
     )
     parser.add_argument(
         "-f",
@@ -42,11 +68,10 @@ def parse_args():
         action="store_true",
         required=False,
         default=False,
+        help="Also simulate protein sequences in FASTA format",
     )
     parser.add_argument(
-        "-g",
-        "--groups_raw",
-        required=True,
+        "-g", "--groups_raw", required=True, help="Path to input orthogroups file"
     )
 
     parser.add_argument(
@@ -54,12 +79,14 @@ def parse_args():
         "--with_taxid",
         action="store_true",
         required=False,
+        help="Include TAXID column in config",
     )
     parser.add_argument(
         "-wo",
         "--with_outgroup",
         action="store_true",
         required=False,
+        help="Include OUT column in config",
     )
     parser.add_argument(
         "-lc",
@@ -67,6 +94,7 @@ def parse_args():
         type=int,
         nargs="+",
         required=False,
+        help="Number of unique labels per attribute (length = num attributes)",
     )
     parser.add_argument(
         "-o",
