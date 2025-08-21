@@ -10,6 +10,8 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+import polars as pl
+
 logger = logging.getLogger("kinfin_logger")
 
 
@@ -63,8 +65,14 @@ class QueryManager:
         session_id = self.get_session_id(query)
         session_dir = os.path.join(self.results_base_dir, session_id)
 
+        config_file_path = os.path.join(session_dir, "config.txt")
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
+
+            df = pl.DataFrame(query)
+            if "taxon" in df.columns:
+                df = df.rename({"taxon": "TAXON"})
+            df.write_csv(config_file_path)
         else:
             os.utime(session_dir, None)
 

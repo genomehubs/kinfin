@@ -15,7 +15,8 @@ result
 .DS_Store
 .env
 data
-
+nematodes
+output
 # Logs
 logs
 *.log
