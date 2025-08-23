@@ -108,13 +108,20 @@ const ClusterMetrics = () => {
 
   const filteredColumns = useMemo(() => {
     if (!cmCodes || cmCodes.length === 0) {
-      return defaultColumns;
+      return defaultColumns.filter((col) => {
+        const originalCol = columnDescriptions.find(
+          (c) => c.name === col.field
+        );
+        return originalCol?.isDefault;
+      });
     }
+
     const allowedFields = cmCodes
       .map((code) => codeToFieldMap[code])
       .filter(Boolean);
+
     return defaultColumns.filter((col) => allowedFields.includes(col.field));
-  }, [cmCodes, codeToFieldMap, defaultColumns]);
+  }, [cmCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {

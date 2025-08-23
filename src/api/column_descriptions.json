@@ -221,7 +221,7 @@
     "name": "cluster_type",
     "description": "Cluster type regarding Taxset",
     "alias": "taxset cluster type",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "029",
@@ -229,7 +229,7 @@
     "name": "counts_cluster_protein_count",
     "description": "Count of proteins",
     "alias": "cluster protein count",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "030",
@@ -245,7 +245,7 @@
     "name": "counts_TAXON_protein_count",
     "description": "Count of proteins from Taxset",
     "alias": "taxset protein count",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "032",
@@ -333,7 +333,7 @@
     "name": "cluster_protein_count",
     "description": "Count of proteins",
     "alias": "cluster_protein_count",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "043",
@@ -341,7 +341,7 @@
     "name": "protein_median_count",
     "description": "Median count of proteins",
     "alias": "protein_median_count",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "044",
@@ -349,7 +349,7 @@
     "name": "TAXON_count",
     "description": "Count of taxa",
     "alias": "cluster_taxa_count",
-    "isDefault": false
+    "isDefault": true
   },
   {
     "code": "045",

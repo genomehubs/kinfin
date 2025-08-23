@@ -125,29 +125,22 @@ const ClusterSummary = () => {
     [columnDescriptions]
   );
 
-  // Filter columns by CS_code
   const filteredColumns = useMemo(() => {
     if (!csCodes || csCodes.length === 0) {
-      return defaultColumns;
+      return defaultColumns.filter((col) => {
+        const originalCol = columnDescriptions.find(
+          (c) => c.name === col.field
+        );
+        return originalCol?.isDefault;
+      });
     }
 
-    // Build allowed regex patterns from CS_codes
-    const patterns = csCodes
+    const allowedFields = csCodes
       .map((code) => codeToFieldMap[code])
-      .filter(Boolean)
-      .map((name) => {
-        if (name.includes("X")) {
-          // Replace X with regex for dynamic matching
-          return new RegExp("^" + name.replace("X", ".+") + "$");
-        }
-        return new RegExp("^" + name + "$");
-      });
+      .filter(Boolean);
 
-    // Filter columns that match any pattern
-    return defaultColumns.filter((col) =>
-      patterns.some((regex) => regex.test(col.field))
-    );
-  }, [csCodes, codeToFieldMap, defaultColumns]);
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+  }, [csCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {

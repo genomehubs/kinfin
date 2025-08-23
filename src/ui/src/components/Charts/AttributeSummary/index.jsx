@@ -106,7 +106,12 @@ const AttributeSummary = () => {
 
   const filteredColumns = useMemo(() => {
     if (!asCodes || asCodes.length === 0) {
-      return defaultColumns;
+      return defaultColumns.filter((col) => {
+        const originalCol = columnDescriptions.find(
+          (c) => c.name === col.field
+        );
+        return originalCol?.isDefault;
+      });
     }
 
     const allowedFields = asCodes
@@ -114,7 +119,7 @@ const AttributeSummary = () => {
       .filter(Boolean);
 
     return defaultColumns.filter((col) => allowedFields.includes(col.field));
-  }, [asCodes, codeToFieldMap, defaultColumns]);
+  }, [asCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
 
   // Pagination handler
   const handlePaginationModelChange = useCallback(
