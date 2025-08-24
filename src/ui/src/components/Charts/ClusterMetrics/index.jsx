@@ -38,17 +38,30 @@ const ClusterMetrics = () => {
     1
   );
 
-  // Apply default pagination params if missing
+  // Apply default pagination params & default CM_codes if missing
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
+
     if (!searchParams.has("CM_page")) {
       newParams.set("CM_page", "1");
     }
     if (!searchParams.has("CM_pageSize")) {
       newParams.set("CM_pageSize", "10");
     }
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+
+    // If no CM_code in URL, set defaults (those with isDefault = true)
+    if (!searchParams.has("CM_code")) {
+      const defaultCodes = columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+
+      defaultCodes.forEach((code) => newParams.append("CM_code", code));
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, columnDescriptions]);
 
   // cmCodes from URL
   const cmCodes = useMemo(() => searchParams.getAll("CM_code"), [searchParams]);

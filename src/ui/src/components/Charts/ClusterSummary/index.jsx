@@ -36,17 +36,30 @@ const ClusterSummary = () => {
     1
   );
 
-  // Apply default pagination params if missing
+  // Apply default pagination & default CS_codes if missing
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
+
     if (!searchParams.has("CS_page")) {
       newParams.set("CS_page", "1");
     }
     if (!searchParams.has("CS_pageSize")) {
       newParams.set("CS_pageSize", "5");
     }
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+
+    // If no CS_code in URL, set defaults (those with isDefault = true)
+    if (!searchParams.has("CS_code")) {
+      const defaultCodes = columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+
+      defaultCodes.forEach((code) => newParams.append("CS_code", code));
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, columnDescriptions]);
 
   const csCodes = useMemo(() => searchParams.getAll("CS_code"), [searchParams]);
 

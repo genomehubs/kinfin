@@ -39,18 +39,30 @@ const AttributeSummary = () => {
   useEffect(() => {
     const hasPage = searchParams.has("AS_page");
     const hasPageSize = searchParams.has("AS_pageSize");
+    const hasCodes = searchParams.has("AS_code");
 
-    if (!hasPage || !hasPageSize) {
-      const newParams = new URLSearchParams(searchParams);
-      if (!hasPage) {
-        newParams.set("AS_page", "1");
-      }
-      if (!hasPageSize) {
-        newParams.set("AS_pageSize", "10");
-      }
+    const newParams = new URLSearchParams(searchParams);
+
+    if (!hasPage) {
+      newParams.set("AS_page", "1");
+    }
+    if (!hasPageSize) {
+      newParams.set("AS_pageSize", "10");
+    }
+
+    // If no AS_code in URL, set defaults (those with isDefault = true)
+    if (!hasCodes) {
+      const defaultCodes = columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+
+      defaultCodes.forEach((code) => newParams.append("AS_code", code));
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
       setSearchParams(newParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, columnDescriptions]);
 
   // Fetch attribute summary
   useEffect(() => {
