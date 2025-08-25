@@ -1,5 +1,6 @@
 import logging
 import warnings
+from functools import lru_cache
 from typing import Dict, List
 
 import polars as pl
@@ -124,8 +125,15 @@ def add_taxon_split_columns(
         )
     )
 
-    # Caching for identical tests
-    mw_cache = {}
+    @lru_cache(maxsize=10000)
+    def cached_mannwhitneyu(inside_tuple, outside_tuple):
+        try:
+            p = stats.mannwhitneyu(
+                list(inside_tuple), list(outside_tuple), alternative="two-sided"
+            ).pvalue
+            return f"{p:.16f}".rstrip("0").rstrip(".")
+        except Exception:
+            return None
 
     def compute_p_value(struct: dict) -> str | None:
         """Prefilter, cache, and group Mann-Whitney U tests."""
@@ -137,17 +145,10 @@ def add_taxon_split_columns(
             return None
         if len(set(inside)) == 1 and len(set(outside)) == 1 and inside[0] == outside[0]:
             return None
-        # Grouping: use tuple of sorted values for cache key
-        key = (tuple(sorted(inside)), tuple(sorted(outside)))
-        if key in mw_cache:
-            return mw_cache[key]
-        try:
-            p = stats.mannwhitneyu(inside, outside, alternative="two-sided").pvalue
-            p_str = f"{p:.16f}".rstrip("0").rstrip(".")
-            mw_cache[key] = p_str
-            return p_str
-        except Exception:
-            return None
+        # Use sorted tuples for cache key
+        inside_tuple = tuple(sorted(inside))
+        outside_tuple = tuple(sorted(outside))
+        return cached_mannwhitneyu(inside_tuple, outside_tuple)
 
     stats_results = stats_results.with_columns(
         p_value=pl.struct(["inside_counts", "outside_counts", "is_valid"]).map_elements(
