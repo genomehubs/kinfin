@@ -9,77 +9,6 @@ It parses the OrthoDB cluster files and
 """
 
 # format of the OrthoDB files is described at https://data.orthodb.org/current/download/README.txt
-#
-# odb12v1_species.tab
-# 1.	NCBI tax id
-# 2.	Ortho DB individual organism id, based on NCBI tax id
-# 3.	scientific name inherited from the most relevant NCBI tax id
-# 4.	genome asssembly id, when available
-# 5.	total count of clustered genes in this species
-# 6.	total count of the OGs it participates
-# 7.	mapping type, clustered(C) or mapped(M)
-
-# odb12v1_levels.tab:
-# 1.	level NCBI tax id
-# 2.	scientific name
-# 3.	total non-redundant count of genes in all underneath clustered species
-# 4.	total count of OGs built on it
-# 5.	total non-redundant count of species underneath
-
-# odb12v1_level2species.tab
-# 1.	top-most level NCBI tax id, one of {2, 2157, 2759, 10239}
-# 2.	Ortho DB organism id
-# 3.	number of hops between the top-most level id and the NCBI tax id assiciated with the organism
-# 4.	ordered list of Ortho DB selected intermediate levels from the top-most level to the bottom one
-
-# odb12v1_genes.tab
-# 1.	Ortho DB unique gene id (not stable between releases)
-# 2.	Ortho DB individual organism id, composed of NCBI tax id and suffix
-# 3.	protein original sequence id, as downloaded along with the sequence
-# 4.	semicolon-separated list of synonyms, evaluated by mapping
-# 5.	Uniprot id, evaluated by mapping
-# 6.	semicolon-separated list of ids from Ensembl, evaluated by mapping
-# 7.	NCBI gid or gene name, evaluated by mapping
-# 8.	description, evaluated by mapping
-# 9.	genomic coordinates relative to genomic DNA, from the source GBFF data
-# 10.	genomic DNA id
-# 11. chromosome
-
-# odb12v1_gene_xrefs.tab
-# 1.	Ortho DB gene id
-# 2.	external gene identifier, either mapped or the original sequence id from Genes table
-# 3.	external DB name, one of {GOterm, InterPro, NCBIproteinGI, UniProt, ENSEMBL, NCBIgid, NCBIgenename}
-
-# odb12v1_OGs.tab
-# 1.	OG unique id (not stable and re-used between releases)
-# 2.	level tax_id on which the group was built
-# 3.	OG name (the most common gene name within the group)
-
-# odb12v1_OG2genes.tab
-# 1.	OG unique id
-# 2.	Ortho DB gene id
-
-# odb12v1_OG_pairs.tab
-# 1. descendant OG id
-# 2. antecedent OG id
-
-# odb12v1_OG_xrefs.tab
-# 1.	OG unique id
-# 2.	external DB or DB section
-# 3.	external identifier
-# 4.	number of genes in the OG associated with the identifier
-
-# Functions in the file parse these tab delimited files to generate KinFin-compatible input files
-# the 3 outputs should lookm like this:
-# - orthogroups.tsv
-#   OG0000000: A.seq1 B.seq1 C.seq1 D.seq1 E.seq1 F.seq8 A.seq2 B.seq2 C.seq2 D.seq2 E.seq2
-#   OG0000001: A.seq3 B.seq3 B.seq4 D.seq3 D.seq4
-#   OG0000002: E.seq3 C.seq4 E.seq4 F.seq8 F.seq9 F.seq10
-# - sequence_ids.tsv
-#   0_0: A.seq1
-#   0_1: A.seq2
-#   0_2: A.seq3
-# - config.json
 
 import argparse
 import json
@@ -273,7 +202,7 @@ def main():
     # gene_xrefs_path = os.path.join(ortho_dir, "odb12v1_gene_xrefs.tab")
     # og_pairs_path = os.path.join(ortho_dir, "odb12v1_OG_pairs.tab")
     # og_xrefs_path = os.path.join(ortho_dir, "odb12v1_OG_xrefs.tab")
-    og2genes_path = os.path.join(ortho_dir, "odb12v1_OG2genes_7088.tab")
+    og2genes_path = os.path.join(ortho_dir, "odb12v1_OG2genes.tab")
     ogs_path = os.path.join(ortho_dir, "odb12v1_OGs.tab")
     genes_path = os.path.join(ortho_dir, "odb12v1_genes.tab")
 
