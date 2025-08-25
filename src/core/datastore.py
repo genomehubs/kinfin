@@ -95,12 +95,17 @@ class DataFactory:
         tree_path = os.path.join(output_path, "tree")
         node_chart_path = os.path.join(tree_path, "charts")
         node_header_path = os.path.join(tree_path, "headers")
+        # self.dirs["tree"] = tree_path
+        # self.dirs["tree_charts"] = node_chart_path
+        # self.dirs["tree_headers"] = node_header_path
 
         if not os.path.exists(tree_path):
+            # self._create_directory(
             self._extracted_from_setup_dirs_30(
                 "[STATUS] - Creating tree directory: ", tree_path, "tree"
             )
         if not os.path.exists(node_chart_path):
+            # self._create_directory(
             self._extracted_from_setup_dirs_30(
                 "[STATUS] - Creating node charts directory: ",
                 node_chart_path,
@@ -713,6 +718,7 @@ class DataFactory:
         elif filetype == "cafe":
             cafe_header = ["#ID"]
             cafe_header.extend(
+                # iter(sorted(self.aloCollection.ALO_by_level_by_attribute["TAXON"]))
                 iter(sorted(self.aloCollection.ALO_by_level_by_attribute["taxon"]))
             )
             return "\t".join(cafe_header)

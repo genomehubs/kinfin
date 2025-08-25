@@ -17,6 +17,7 @@ import configSliceReducer from "./config/slices/configSlice";
 import proteomeIdsReducer from "./config/slices/proteomeIdsSlice";
 import runStatusReducer from "./config/slices/runStatusSlice";
 import uiStateReducer from "./config/slices/uiStateSlice";
+import columnDescriptionsReducer from "./config/slices/columnDescriptionsSlice";
 
 const rootReducer = combineReducers({
   analysis: combineReducers({
@@ -38,6 +39,7 @@ const rootReducer = combineReducers({
     batchStatus: batchStatusReducer,
     clusteringSets: clusteringSetsReducer,
     storeConfig: configSliceReducer,
+    columnDescriptions: columnDescriptionsReducer,
   }),
 });
 

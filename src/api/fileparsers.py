@@ -147,34 +147,32 @@ def parse_attribute_summary_file(filepath: str):
             "cluster_total_count": row["cluster_total_count"],
             "protein_total_count": row["protein_total_count"],
             "protein_total_span": row["protein_total_span"],
-            "singleton": {
-                "cluster_count": row["singleton_cluster_count"],
-                "protein_count": row["singleton_protein_count"],
-                "protein_span": row["singleton_protein_span"],
-            },
-            "specific": {
-                "cluster_count": row["specific_cluster_count"],
-                "protein_count": row["specific_protein_count"],
-                "protein_span": row["specific_protein_span"],
-                "cluster_true_1to1_count": row["specific_cluster_true_1to1_count"],
-                "cluster_fuzzy_count": row["specific_cluster_fuzzy_count"],
-            },
-            "shared": {
-                "cluster_count": row["shared_cluster_count"],
-                "protein_count": row["shared_protein_count"],
-                "protein_span": row["shared_protein_span"],
-                "cluster_true_1to1_count": row["shared_cluster_true_1to1_count"],
-                "cluster_fuzzy_count": row["shared_cluster_fuzzy_count"],
-            },
-            "absent": {
-                "cluster_total_count": row["absent_cluster_total_count"],
-                "cluster_singleton_count": row["absent_cluster_singleton_count"],
-                "cluster_specific_count": row["absent_cluster_specific_count"],
-                "cluster_shared_count": row["absent_cluster_shared_count"],
-            },
+            # Singleton
+            "singleton_cluster_count": row["singleton_cluster_count"],
+            "singleton_protein_count": row["singleton_protein_count"],
+            "singleton_protein_span": row["singleton_protein_span"],
+            # Specific
+            "specific_cluster_count": row["specific_cluster_count"],
+            "specific_protein_count": row["specific_protein_count"],
+            "specific_protein_span": row["specific_protein_span"],
+            "specific_cluster_true_1to1_count": row["specific_cluster_true_1to1_count"],
+            "specific_cluster_fuzzy_count": row["specific_cluster_fuzzy_count"],
+            # Shared
+            "shared_cluster_count": row["shared_cluster_count"],
+            "shared_protein_count": row["shared_protein_count"],
+            "shared_protein_span": row["shared_protein_span"],
+            "shared_cluster_true_1to1_count": row["shared_cluster_true_1to1_count"],
+            "shared_cluster_fuzzy_count": row["shared_cluster_fuzzy_count"],
+            # Absent
+            "absent_cluster_total_count": row["absent_cluster_total_count"],
+            "absent_cluster_singleton_count": row["absent_cluster_singleton_count"],
+            "absent_cluster_specific_count": row["absent_cluster_specific_count"],
+            "absent_cluster_shared_count": row["absent_cluster_shared_count"],
+            # Taxon
             "TAXON_count": row["TAXON_count"],
-            "TAXON_taxa": row["TAXON_taxa"].split(", "),
+            "TAXON_taxa": row["TAXON_taxa"],
         }
+
     return result
 
 
@@ -188,14 +186,26 @@ def parse_cluster_metrics_file(
     valid_types = split_to_set(cluster_type)
     rows = read_tsv_file(filepath)
 
+    def safe_int(val):
+        return int(val) if val.isdigit() else "-"
+
+    def safe_float(val):
+        try:
+            return f"{float(val):.2f}"
+        except (ValueError, TypeError):
+            return "-"
+
+    def yes_no(cond: bool) -> str:
+        return "Yes" if cond else "No"
+
     for row in rows:
         cluster_id = row["#cluster_id"]
+
+        # ---- filtering ----
         if valid_types and row["cluster_type"] not in valid_types:
             continue
-
         if not filter_include_exclude(row["cluster_status"], valid_status):
             continue
-
         if not filter_include_exclude(row["cluster_type"], valid_types):
             continue
 
@@ -203,31 +213,32 @@ def parse_cluster_metrics_file(
             "cluster_id": cluster_id,
             "cluster_status": row["cluster_status"],
             "cluster_type": row["cluster_type"],
-            "present_in_cluster": row["cluster_status"] == "present",
-            "is_singleton": row["cluster_type"] == "singleton",
-            "is_specific": row["cluster_type"] == "specific",
-            "counts": {
-                "cluster_protein_count": row["cluster_protein_count"],
-                "cluster_proteome_count": row["cluster_proteome_count"],
-                "TAXON_protein_count": row["TAXON_protein_count"],
-                "TAXON_mean_count": row["TAXON_mean_count"],
-                "non_taxon_mean_count": row["non_taxon_mean_count"],
-            },
-            "representation": row["representation"],
-            "log2_mean(TAXON/others)": row["log2_mean(TAXON/others)"],
-            "pvalue(TAXON vs. others)": row["pvalue(TAXON vs. others)"],
-            "coverage": {
-                "taxon_coverage": row["TAXON_coverage"],
-                "TAXON_count": row["TAXON_count"],
-                "non_TAXON_count": row["non_TAXON_count"],
-            },
+            "present_in_cluster": yes_no(row["cluster_status"] == "present"),
+            "is_singleton": yes_no(row["cluster_type"] == "singleton"),
+            "is_specific": yes_no(row["cluster_type"] == "specific"),
+            # counts
+            "counts_cluster_protein_count": safe_int(row["cluster_protein_count"]),
+            "counts_cluster_proteome_count": safe_int(row["cluster_proteome_count"]),
+            "counts_TAXON_protein_count": safe_int(row["TAXON_protein_count"]),
+            "counts_TAXON_mean_count": safe_float(row["TAXON_mean_count"]),
+            "counts_non_taxon_mean_count": safe_float(row["non_taxon_mean_count"]),
+            # representation
+            "representation": safe_float(row["representation"]),
+            # stats
+            "log2_mean(TAXON/others)": safe_float(row["log2_mean(TAXON/others)"]),
+            "pvalue(TAXON vs. others)": safe_float(row["pvalue(TAXON vs. others)"]),
+            # coverage
+            "coverage_TAXON_coverage": safe_float(row["TAXON_coverage"]),
+            "coverage_TAXON_count": safe_int(row["TAXON_count"]),
+            "coverage_non_TAXON_count": safe_int(row["non_TAXON_count"]),
+            # taxa lists
             "TAXON_taxa": (
-                row["TAXON_taxa"].split(",") if row["TAXON_taxa"] != "N/A" else "N/A"
+                row["TAXON_taxa"].split(",") if row["TAXON_taxa"] != "N/A" else ["-"]
             ),
             "non_TAXON_taxa": (
                 row["non_TAXON_taxa"].split(",")
                 if row["non_TAXON_taxa"] != "N/A"
-                else "N/A"
+                else ["-"]
             ),
         }
 

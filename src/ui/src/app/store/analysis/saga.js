@@ -144,9 +144,14 @@ function* getCountsByTaxonSaga() {
 }
 
 function* getClusterSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
-  const data = { attribute, size, page, asFile };
-
+  const { attribute, page, size, asFile = false, CS_code } = action.payload;
+  const data = {
+    attribute,
+    size,
+    page,
+    asFile,
+    CS_code,
+  };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
     if (!status) {
@@ -189,9 +194,14 @@ function* getClusterSummarySaga(action) {
 }
 
 function* getAttributeSummarySaga(action) {
-  const { attribute, page, size, asFile = false } = action.payload;
-  const data = { attribute, page, size, asFile };
-
+  const { attribute, page, size, asFile = false, AS_code } = action.payload;
+  const data = {
+    attribute,
+    page,
+    size,
+    asFile,
+    AS_code,
+  };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
     if (!status) {
@@ -234,9 +244,22 @@ function* getAttributeSummarySaga(action) {
 }
 
 function* getClusterMetricsSaga(action) {
-  const { attribute, taxonSet, page, size, asFile = false } = action.payload;
-  const data = { attribute, taxonSet, page, size, asFile };
-
+  const {
+    attribute,
+    taxonSet,
+    page,
+    size,
+    asFile = false,
+    CM_code,
+  } = action.payload;
+  const data = {
+    attribute,
+    taxonSet,
+    page,
+    size,
+    asFile,
+    CM_code,
+  };
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
     if (!status) {
