@@ -124,23 +124,38 @@ def add_taxon_split_columns(
         )
     )
 
+    # Caching for identical tests
+    mw_cache = {}
+
     def compute_p_value(struct: dict) -> str | None:
-        """A small, focused function just for the p-value."""
+        """Prefilter, cache, and group Mann-Whitney U tests."""
         inside = struct.get("inside_counts")
         outside = struct.get("outside_counts")
+        is_valid = struct.get("is_valid")
+        # Prefilter: skip if not valid, too small, or no variance
+        if not is_valid or len(inside) < 3 or len(outside) < 3:
+            return None
+        if len(set(inside)) == 1 and len(set(outside)) == 1 and inside[0] == outside[0]:
+            return None
+        # Grouping: use tuple of sorted values for cache key
+        key = (tuple(sorted(inside)), tuple(sorted(outside)))
+        if key in mw_cache:
+            return mw_cache[key]
         try:
-            if not struct.get("is_valid"):
-                return None
             p = stats.mannwhitneyu(inside, outside, alternative="two-sided").pvalue
-            return f"{p:.16f}".rstrip("0").rstrip(".")
+            p_str = f"{p:.16f}".rstrip("0").rstrip(".")
+            mw_cache[key] = p_str
+            return p_str
         except Exception:
             return None
 
-    final_stats = stats_results.with_columns(
+    stats_results = stats_results.with_columns(
         p_value=pl.struct(["inside_counts", "outside_counts", "is_valid"]).map_elements(
             compute_p_value, return_dtype=pl.Utf8
         )
-    ).select(
+    )
+
+    final_stats = stats_results.select(
         pl.col("cluster_id"),
         pl.when(pl.col("is_valid"))
         .then(pl.col("mean_inside"))
@@ -168,29 +183,35 @@ def add_all_taxon_info_columns(
     df: pl.DataFrame,
     label_to_taxons: Dict[str, Dict[str, set]],
 ) -> pl.DataFrame:
+    # Precompute unique taxons column once
+    df = df.with_columns(taxons_unique=pl.col("taxons").list.unique())
     expressions = []
 
     for attribute, label_dict in label_to_taxons.items():
         for label_group, valid_taxa in label_dict.items():
             prefix = f"{attribute}_{label_group}"
-            taxons_sorted_unique = pl.col("taxons").list.unique().list.sort()
 
-            taxon_mask = taxons_sorted_unique.list.eval(pl.element().is_in(valid_taxa))
-            non_taxon_mask = taxons_sorted_unique.list.eval(
-                ~pl.element().is_in(valid_taxa)
+            # Use set operations for masks and lists
+            taxon_count = (
+                pl.col("taxons_unique")
+                .list.set_intersection(valid_taxa)
+                .list.len()
+                .alias(f"{prefix}_TAXON_count")
+            )
+            non_taxon_count = (
+                pl.col("taxons_unique")
+                .list.set_difference(valid_taxa)
+                .list.len()
+                .alias(f"{prefix}_non_TAXON_count")
             )
 
-            taxon_list_str = taxons_sorted_unique.list.eval(
-                pl.element().filter(pl.element().is_in(valid_taxa))
-            )
-            non_taxon_list_str = taxons_sorted_unique.list.eval(
-                pl.element().filter(~pl.element().is_in(valid_taxa))
-            )
+            taxon_list_str = pl.col("taxons_unique").list.set_intersection(valid_taxa)
+            non_taxon_list_str = pl.col("taxons_unique").list.set_difference(valid_taxa)
 
             expressions.extend(
                 [
-                    taxon_mask.list.sum().alias(f"{prefix}_TAXON_count"),
-                    non_taxon_mask.list.sum().alias(f"{prefix}_non_TAXON_count"),
+                    taxon_count,
+                    non_taxon_count,
                     pl.when(taxon_list_str.list.len() == 0)
                     .then(pl.lit("N/A"))
                     .otherwise(taxon_list_str.list.join(","))

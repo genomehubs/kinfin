@@ -15,6 +15,8 @@ def nodesdb(filepath: str, outpath: str) -> pl.DataFrame:
     db = pl.read_csv(
         filepath,
         has_header=False,
+        ignore_errors=True,
+        infer_schema_length=10000,
         separator="\t",
         comment_prefix="#",
         new_columns=["node", "rank", "name", "parent"],
