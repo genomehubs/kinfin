@@ -6,9 +6,16 @@ import os
 import sys
 import time
 
-from api import run_server
 from internal import analyse
 from internal.utils import check_file
+
+if "SCALENE_ALLOCATION_SAMPLING_WINDOW" in os.environ:
+
+    def run_server(**kwargs):
+        sys.exit("Server commented out for profiling.")
+
+else:
+    from api import run_server
 
 logger = logging.getLogger("kinfin_logger")
 
