@@ -5,7 +5,15 @@
     "name": "cluster_id",
     "description": "Unique identifier for cluster",
     "alias": "",
-    "isDefault": false
+    "isDefault": true
+  },
+  {
+    "code": "052",
+    "file": "*.cluster_summary.txt",
+    "name": "cluster_id",
+    "description": "Unique identifier for cluster",
+    "alias": "",
+    "isDefault": true
   },
   {
     "code": "002",
@@ -208,6 +216,14 @@
     "isDefault": false
   },
   {
+    "code": "052",
+    "file": "*.cluster_metrics.txt",
+    "name": "cluster_id",
+    "description": "Cluster Id",
+    "alias": "cluster Id",
+    "isDefault": true
+  },
+  {
     "code": "027",
     "file": "*.cluster_metrics.txt",
     "name": "cluster_status",
@@ -406,12 +422,5 @@
     "description": "Proportion of taxa present in taxset X",
     "alias": "X_cov",
     "isDefault": false
-  },
-  {
-    "code": "052",
-    "file": "*.cluster_metrics.txt",
-    "name": "cluster_id",
-    "description": "Cluster Id",
-    "alias": "cluster Id"
   }
 ]

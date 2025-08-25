@@ -148,12 +148,32 @@ const ClusterSummary = () => {
       });
     }
 
-    const allowedFields = csCodes
-      .map((code) => codeToFieldMap[code])
-      .filter(Boolean);
+    const allowedFields = csCodes.flatMap((code) => {
+      const template = codeToFieldMap[code];
+      if (!template) {
+        return [];
+      }
+
+      // If no "X" in the template, direct match
+      if (!template.includes("X")) {
+        return [template];
+      }
+
+      // Expand "X" using actual row keys
+      const regex = new RegExp("^" + template.replace("X", "(.+)") + "$");
+      return rowsData.rows.length > 0
+        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k))
+        : [];
+    });
 
     return defaultColumns.filter((col) => allowedFields.includes(col.field));
-  }, [csCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
+  }, [
+    csCodes,
+    codeToFieldMap,
+    defaultColumns,
+    columnDescriptions,
+    rowsData.rows,
+  ]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
