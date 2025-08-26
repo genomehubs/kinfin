@@ -50,20 +50,20 @@ def add_coverage_column(
     if expected_taxons_len == 0:
         return df.with_columns(pl.lit("N/A").alias("TAXON_coverage"))
 
+    # Precompute unique taxons column if not present
+    if "taxons_unique" not in df.columns:
+        df = df.with_columns(taxons_unique=pl.col("taxons").list.unique())
+
     numerator = (
-        pl.col("taxons").list.unique().list.set_intersection(expected_taxons).list.len()
+        pl.col("taxons_unique").list.set_intersection(expected_taxons).list.len()
     )
 
     coverage_numeric = numerator / expected_taxons_len
 
-    coverage_str_padded = (
-        (coverage_numeric * 100).round(0).cast(pl.Int64).cast(pl.Utf8).str.zfill(3)
-    )
-
     coverage_expr = (
-        coverage_str_padded.str.slice(0, length=coverage_str_padded.str.len_chars() - 2)
-        + "."
-        + coverage_str_padded.str.slice(-2)
+        coverage_numeric.mul(100)
+        .round(2)
+        .map_elements(lambda x: f"{x:06.2f}", return_dtype=pl.Utf8)
     )
 
     return df.with_columns(coverage_expr.alias("TAXON_coverage"))
