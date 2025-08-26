@@ -190,6 +190,47 @@ def write_config(species_metadata, output_path):
     print(f"Wrote config to {output_path}")
 
 
+def parse_gene_xrefs_file(filepath, geneid_to_seqid):
+    # 100_0:000000    GO:0016020      GOterm
+    # 100_0:000000    GO:0005886      GOterm
+    # 100_0:000000    GO:0000166      GOterm
+    # 100_0:000000    GO:0016887      GOterm
+    # 100_0:000000    GO:0005524      GOterm
+    # 100_0:000000    IPR017871       InterPro
+    # 100_0:000000    IPR003439       InterPro
+    # 100_0:000000    IPR003593       InterPro
+    # 100_0:000000    IPR027417       InterPro
+    result = defaultdict(lambda: defaultdict(list))
+    with open(filepath, "r") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) >= 3 and parts[0] in geneid_to_seqid:
+                seq_id = geneid_to_seqid[parts[0]]
+                db = parts[2]
+                if db == "GOterm":
+                    accession = parts[1]
+                elif db == "InterPro":
+                    accession = f"{parts[1]}:1"
+                if accession:
+                    result[seq_id][db].append(accession)
+    return result
+
+
+def write_gene_xrefs(gene_xrefs, output_path):
+    dbs = {"GOterm": "GO", "InterPro": "IPR", "Pfam": "Pfam", "SignalP": "SignalP_EUK"}
+    with open(output_path, "w") as f:
+        f.write(f"seq_id\t{'\t'.join(dbs.values())}\n")
+        for seq_id, xrefs in gene_xrefs.items():
+            accessions = []
+            for db in dbs.keys():
+                if db in xrefs:
+                    accessions.append(";".join(xrefs[db]))
+                else:
+                    accessions.append("None")
+            f.write(f"{seq_id}\t{"\t".join(accessions)}\n")
+    print(f"Wrote gene cross-references to {output_path}")
+
+
 def main():
     args = parse_args()
     taxid = args.taxid
@@ -199,7 +240,7 @@ def main():
     levels_path = os.path.join(ortho_dir, "odb12v1_levels.tab")
     level2species_path = os.path.join(ortho_dir, "odb12v1_level2species.tab")
     species_path = os.path.join(ortho_dir, "odb12v1_species.tab")
-    # gene_xrefs_path = os.path.join(ortho_dir, "odb12v1_gene_xrefs.tab")
+    gene_xrefs_path = os.path.join(ortho_dir, "odb12v1_gene_xrefs.tab")
     # og_pairs_path = os.path.join(ortho_dir, "odb12v1_OG_pairs.tab")
     # og_xrefs_path = os.path.join(ortho_dir, "odb12v1_OG_xrefs.tab")
     og2genes_path = os.path.join(ortho_dir, "odb12v1_OG2genes.tab")
@@ -241,6 +282,10 @@ def main():
     )
 
     write_config(species_metadata, os.path.join(out_dir, "config.json"))
+
+    gene_xrefs = parse_gene_xrefs_file(gene_xrefs_path, geneid_to_seqid)
+
+    write_gene_xrefs(gene_xrefs, os.path.join(out_dir, "functional_annotation.tsv"))
 
 
 if __name__ == "__main__":
