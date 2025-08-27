@@ -116,17 +116,19 @@ def parse_attributes_from_config_data(
         proteomes: Set[str] = set()
         proteome_id_by_species_id: Dict[str, str] = {}
 
+        taxon_idx = None
         for line in yield_config_lines(config_f, taxon_idx_mapping_file):
             if line.startswith("#"):
                 if not attributes:
                     attributes = [x.strip() for x in line.lstrip("#").split(",")]
                     if (
                         attributes[0].upper() != "IDX"
-                        or attributes[1].upper() != "TAXON"
+                        or "TAXON" not in [a.upper() for a in attributes]
                     ):
-                        error_msg = f"[ERROR] - First/second element have to be IDX/TAXON.\n\t{attributes}"
+                        error_msg = f"[ERROR] - Header must contain IDX and TAXON.\n\t{attributes}"
                         logger.info(error_msg)
                         raise ValueError(error_msg)
+                    taxon_idx = [a.upper() for a in attributes].index("TAXON")
             elif line.strip():
                 temp = line.split(",")
 
@@ -135,13 +137,14 @@ def parse_attributes_from_config_data(
                     logger.info(error_msg)
                     raise ValueError(error_msg)
 
-                if temp[1] in proteomes:
-                    error_msg = f"[ERROR] - 'TAXON' should be unique. {temp[0]} was encountered multiple times"  # fmt:skip
+                proteome_id = temp[taxon_idx]
+                species_id = temp[0]
+
+                if proteome_id in proteomes:
+                    error_msg = f"[ERROR] - 'TAXON' should be unique. {species_id} was encountered multiple times"
                     logger.info(error_msg)
                     raise ValueError(error_msg)
 
-                species_id = temp[0]
-                proteome_id = temp[1]
                 proteomes.add(proteome_id)
                 proteome_id_by_species_id[species_id] = proteome_id
 
