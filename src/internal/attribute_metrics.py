@@ -10,35 +10,40 @@ logger = logging.getLogger("kinfin_logger")
 def precompute_cluster_info(
     cluster_df: pl.DataFrame, config_df: pl.DataFrame, attribute: str
 ) -> pl.DataFrame:
-    taxon_to_label_df = config_df.select(
-        pl.col("TAXON").alias("taxon"),
-        pl.col(attribute).alias("taxon_set"),
+    taxon_to_label_df = config_df.lazy().select(
+        [
+            pl.col("TAXON").alias("taxon"),
+            pl.col(attribute).alias("taxon_set"),
+        ]
     )
 
     return (
-        cluster_df.select(["cluster_id", "taxons", "protein_cluster"])
-        .lazy()
+        cluster_df.lazy()
+        .select(["cluster_id", "taxons", "protein_cluster"])
         .explode("taxons")
         .rename({"taxons": "taxon"})
-        .join(taxon_to_label_df.lazy(), on="taxon", how="left")
+        .join(taxon_to_label_df, on="taxon", how="left")
         .group_by("cluster_id")
         .agg(
-            pl.col("taxon_set").drop_nulls().unique().alias("taxon_sets"),
-            pl.col("protein_cluster").first().alias("protein_cluster"),
-            pl.col("protein_cluster")
-            .first()
-            .list.len()
-            .alias("protein_cluster_len"),
+            [
+                pl.col("taxon_set").drop_nulls().unique().alias("taxon_sets"),
+                pl.col("protein_cluster").first().alias("protein_cluster"),
+                pl.col("protein_cluster")
+                .first()
+                .list.len()
+                .alias("protein_cluster_len"),
+            ]
         )
         .with_columns(
-            pl.when(pl.col("protein_cluster_len") == 1)
-            .then(pl.lit("singleton"))
-            .when(pl.col("taxon_sets").list.len() == 1)
-            .then(pl.lit("specific"))
-            .otherwise(pl.lit("shared"))
-            .alias("cluster_type")
+            [
+                pl.when(pl.col("protein_cluster_len") == 1)
+                .then(pl.lit("singleton"))
+                .when(pl.col("taxon_sets").list.len() == 1)
+                .then(pl.lit("specific"))
+                .otherwise(pl.lit("shared"))
+                .alias("cluster_type")
+            ]
         )
-        .collect()
     )
 
 
@@ -48,87 +53,39 @@ def add_cluster_and_protein_counts(
     config_df: pl.DataFrame,
     attribute: str,
 ) -> pl.DataFrame:
-    cluster_counts = (
-        cluster_info_df.lazy()
-        .explode("taxon_sets")
-        .group_by("taxon_sets", "cluster_type")
-        .agg(pl.count().alias("count"))
-        .collect()
-        .pivot(
-            index="taxon_sets",
-            columns="cluster_type",
-            values="count",
-            aggregate_function="sum",
-        )
+    # Use lazy for all operations, collect only at the end
+
+    # Long format: group and aggregate, no pivot
+    cluster_counts_lf = (
+        cluster_info_df.explode("taxon_sets")
+        .group_by(["taxon_sets", "cluster_type"])
+        .agg(pl.count().alias("cluster_count"))
         .rename({"taxon_sets": "taxon_set"})
     )
 
-    for col_name in ["singleton", "specific", "shared"]:
-        if col_name not in cluster_counts.columns:
-            cluster_counts = cluster_counts.with_columns(
-                pl.lit(0, dtype=pl.UInt32).alias(col_name)
-            )
-
-    cluster_counts = cluster_counts.rename(
-        {
-            "singleton": "singleton_cluster_count",
-            "specific": "specific_cluster_count",
-            "shared": "shared_cluster_count",
-        }
-    ).with_columns(
-        cluster_total_count=pl.col("singleton_cluster_count")
-        + pl.col("specific_cluster_count")
-        + pl.col("shared_cluster_count")
+    taxon_to_label_df_lf = (
+        config_df.lazy()
+        .select([pl.col("TAXON").alias("taxon"), pl.col(attribute).alias("taxon_set")])
+        .filter(pl.col("taxon_set").is_not_null())
     )
 
-    taxon_to_label_df = config_df.select(
-        pl.col("TAXON").alias("taxon"),
-        pl.col(attribute).alias("taxon_set"),
-    ).filter(pl.col("taxon_set").is_not_null())
-
-    protein_level_info = (
-        cluster_info_df.lazy()
-        .select(["cluster_id", "cluster_type", "protein_cluster"])
+    protein_counts_lf = (
+        cluster_info_df.select(["cluster_id", "cluster_type", "protein_cluster"])
         .explode("protein_cluster")
         .with_columns(
             pl.col("protein_cluster").str.split(".").list.get(0).alias("taxon")
         )
-        .join(taxon_to_label_df.lazy(), on="taxon", how="left")
-    )
-
-    protein_counts = (
-        protein_level_info.group_by("taxon_set", "cluster_type")
+        .join(taxon_to_label_df_lf, on="taxon", how="left")
+        .group_by(["taxon_set", "cluster_type"])
         .agg(pl.count().alias("protein_count"))
-        .collect()
-        .pivot(
-            index="taxon_set",
-            columns="cluster_type",
-            values="protein_count",
-            aggregate_function="sum",
-        )
-    )
-    for col_name in ["singleton", "specific", "shared"]:
-        if col_name not in protein_counts.columns:
-            protein_counts = protein_counts.with_columns(
-                pl.lit(0, dtype=pl.UInt32).alias(col_name)
-            )
-
-    protein_counts = protein_counts.rename(
-        {
-            "singleton": "singleton_protein_count",
-            "specific": "specific_protein_count",
-            "shared": "shared_protein_count",
-        }
-    ).with_columns(
-        protein_total_count=pl.col("singleton_protein_count")
-        + pl.col("specific_protein_count")
-        + pl.col("shared_protein_count")
     )
 
-    attribute_df = attribute_df.join(cluster_counts, on="taxon_set", how="left")
-    attribute_df = attribute_df.join(protein_counts, on="taxon_set", how="left")
-
-    return attribute_df.fill_null(0)
+    result_lf = attribute_df.lazy().join(cluster_counts_lf, on="taxon_set", how="left")
+    result_lf = result_lf.join(
+        protein_counts_lf, on=["taxon_set", "cluster_type"], how="left"
+    )
+    result_lf = result_lf.fill_null(0)
+    return result_lf
 
 
 def add_protein_spans(
@@ -145,9 +102,10 @@ def add_protein_spans(
     if protein_lengths_df is None or protein_lengths_df.is_empty():
         return attribute_df.with_columns([pl.lit(0).alias(col) for col in span_columns])
 
-    protein_spans = (
-        cluster_info_df.lazy()
-        .select(["cluster_id", "taxon_sets", "protein_cluster", "cluster_type"])
+    protein_spans_lf = (
+        cluster_info_df.select(
+            ["cluster_id", "taxon_sets", "protein_cluster", "cluster_type"]
+        )
         .explode("protein_cluster")
         .join(
             protein_lengths_df.lazy(),
@@ -157,35 +115,15 @@ def add_protein_spans(
         )
         .with_columns(pl.col("length").fill_null(0))
         .explode("taxon_sets")
-        .group_by("taxon_sets", "cluster_type")
-        .agg(pl.col("length").sum().alias("span"))
-        .collect()
-        .pivot(
-            index="taxon_sets",
-            columns="cluster_type",
-            values="span",
-            aggregate_function="sum",
-        )
+        .group_by(["taxon_sets", "cluster_type"])
+        .agg(pl.col("length").sum().alias("protein_span"))
         .rename({"taxon_sets": "taxon_set"})
     )
-
-    for col_name in ["singleton", "specific", "shared"]:
-        if col_name not in protein_spans.columns:
-            protein_spans = protein_spans.with_columns(pl.lit(0).alias(col_name))
-
-    protein_spans = protein_spans.rename(
-        {
-            "singleton": "singleton_protein_span",
-            "specific": "specific_protein_span",
-            "shared": "shared_protein_span",
-        }
-    ).with_columns(
-        protein_total_span=pl.col("singleton_protein_span")
-        + pl.col("specific_protein_span")
-        + pl.col("shared_protein_span")
+    result_lf = attribute_df.lazy().join(
+        protein_spans_lf, on=["taxon_set", "cluster_type"], how="left"
     )
-
-    return attribute_df.join(protein_spans, on="taxon_set", how="left").fill_null(0)
+    result_lf = result_lf.fill_null(0)
+    return result_lf
 
 
 def add_special_cluster_counts(
@@ -199,43 +137,50 @@ def add_special_cluster_counts(
     fuzzy_max: int = 20,
     fuzzy_fraction: float = 0.75,
 ) -> pl.DataFrame:
-    taxon_to_label_df = config_df.select(
-        pl.col("TAXON").alias("taxon"),
-        pl.col(attribute).alias("taxon_set"),
-    ).filter(pl.col("taxon_set").is_not_null())
+    taxon_to_label_df_lazy = (
+        config_df.lazy()
+        .select([pl.col("TAXON").alias("taxon"), pl.col(attribute).alias("taxon_set")])
+        .filter(pl.col("taxon_set").is_not_null())
+    )
 
-    present_taxa_long = (
+    present_taxa_long_lazy = (
         cluster_df.lazy()
         .explode("protein_cluster")
         .with_columns(
             pl.col("protein_cluster").str.split(".").list.get(0).alias("taxon")
         )
-        .join(taxon_to_label_df.lazy(), on="taxon", how="left")
+        .join(taxon_to_label_df_lazy, on="taxon", how="left")
         .select(["cluster_id", "taxon_set", "taxon"])
         .filter(pl.col("taxon_set").is_not_null())
     )
 
-    expected_taxa_long = taxon_to_label_df.select(["taxon_set", "taxon"]).rename(
-        {"taxon": "expected_taxon"}
+    expected_taxa_long_lazy = taxon_to_label_df_lazy.select(
+        ["taxon_set", "taxon"]
+    ).rename({"taxon": "expected_taxon"})
+
+    # Pre-aggregate is_match by cluster_id and expected_taxon
+    preagg_df = (
+        present_taxa_long_lazy.join(expected_taxa_long_lazy, on="taxon_set")
+        .with_columns(is_match=(pl.col("taxon") == pl.col("expected_taxon")))
+        .group_by(["cluster_id", "expected_taxon"])
+        .agg(pl.col("is_match").sum().alias("count"))
     )
 
-    counts_df = (
-        present_taxa_long.join(expected_taxa_long.lazy(), on="taxon_set")
-        .with_columns(is_match=(pl.col("taxon") == pl.col("expected_taxon")))
-        .group_by("cluster_id", "taxon_set", "expected_taxon")
-        .agg(pl.col("is_match").sum().alias("count"))
-        .group_by("cluster_id", "taxon_set")
+    # Join back to taxon_set for final aggregation
+    counts_df_lazy = (
+        preagg_df.join(expected_taxa_long_lazy, on="expected_taxon", how="left")
+        .group_by(["cluster_id", "taxon_set"])
         .agg(pl.col("count").alias("taxon_counts"))
     )
 
-    counts_with_type = counts_df.join(
+    counts_with_type_lazy = counts_df_lazy.join(
         cluster_info_df.lazy().select(["cluster_id", "cluster_type"]),
         on="cluster_id",
         how="left",
     )
 
-    special_counts = (
-        counts_with_type.with_columns(
+    special_counts_lf = (
+        counts_with_type_lazy.with_columns(
             num_expected=pl.col("taxon_counts").list.len(),
             is_true_1to1=(pl.col("taxon_counts").list.len() > 2)
             & (pl.col("taxon_counts").list.eval(pl.element() == 1).list.all()),
@@ -253,88 +198,33 @@ def add_special_cluster_counts(
             & pl.col("all_in_range")
             & ~(pl.col("is_true_1to1"))
         )
-        .group_by("taxon_set")
+        .group_by(["taxon_set", "cluster_type"])
         .agg(
-            pl.col("is_true_1to1")
-            .filter(pl.col("cluster_type") == "specific")
-            .sum()
-            .alias("specific_cluster_true_1to1_count"),
-            pl.col("is_true_1to1")
-            .filter(pl.col("cluster_type") == "shared")
-            .sum()
-            .alias("shared_cluster_true_1to1_count"),
-            pl.col("is_fuzzy")
-            .filter(pl.col("cluster_type") == "specific")
-            .sum()
-            .alias("specific_cluster_fuzzy_count"),
-            pl.col("is_fuzzy")
-            .filter(pl.col("cluster_type") == "shared")
-            .sum()
-            .alias("shared_cluster_fuzzy_count"),
+            pl.col("is_true_1to1").sum().alias("true_1to1_count"),
+            pl.col("is_fuzzy").sum().alias("fuzzy_count"),
         )
-        .collect()
     )
-
-    return attribute_df.join(special_counts, on="taxon_set", how="left").fill_null(0)
+    result_lf = attribute_df.lazy().join(
+        special_counts_lf, on=["taxon_set", "cluster_type"], how="left"
+    )
+    result_lf = result_lf.fill_null(0)
+    return result_lf
 
 
 def add_absent_cluster_counts(
     attribute_df: pl.DataFrame, cluster_info_df: pl.DataFrame
 ) -> pl.DataFrame:
-    total_counts = cluster_info_df.group_by("cluster_type").agg(
-        pl.count().alias("total_count")
-    )
-
-    total_singleton = total_counts.filter(pl.col("cluster_type") == "singleton")[
-        "total_count"
-    ].sum()
-    total_specific = total_counts.filter(pl.col("cluster_type") == "specific")[
-        "total_count"
-    ].sum()
-    total_shared = total_counts.filter(pl.col("cluster_type") == "shared")[
-        "total_count"
-    ].sum()
-
-    present_counts_df = (
-        cluster_info_df.lazy()
-        .explode("taxon_sets")
-        .group_by("taxon_sets", "cluster_type")
+    present_counts_lf = (
+        cluster_info_df.explode("taxon_sets")
+        .group_by(["taxon_sets", "cluster_type"])
         .agg(pl.count().alias("present_count"))
-        .collect()
-        .pivot(
-            index="taxon_sets",
-            columns="cluster_type",
-            values="present_count",
-            aggregate_function="sum",
-        )
         .rename({"taxon_sets": "taxon_set"})
     )
-
-    for col_type in ["singleton", "specific", "shared"]:
-        if col_type not in present_counts_df.columns:
-            present_counts_df = present_counts_df.with_columns(
-                pl.lit(0, dtype=pl.UInt32).alias(col_type)
-            )
-
-    return (
-        attribute_df.join(present_counts_df, on="taxon_set", how="left")
-        .fill_null(0)
-        .with_columns(
-            absent_cluster_singleton_count=(
-                total_singleton - pl.col("singleton")
-            ),
-            absent_cluster_specific_count=(
-                total_specific - pl.col("specific")
-            ),
-            absent_cluster_shared_count=(total_shared - pl.col("shared")),
-        )
-        .with_columns(
-            absent_cluster_total_count=pl.col("absent_cluster_singleton_count")
-            + pl.col("absent_cluster_specific_count")
-            + pl.col("absent_cluster_shared_count")
-        )
-        .drop(["singleton", "specific", "shared"])
+    result_lf = attribute_df.lazy().join(
+        present_counts_lf, on=["taxon_set", "cluster_type"], how="left"
     )
+    result_lf = result_lf.fill_null(0)
+    return result_lf
 
 
 def get_attribute_metrics(
@@ -357,18 +247,19 @@ def get_attribute_metrics(
         .sort("taxon_set")
     )
 
-    cluster_info_df = precompute_cluster_info(cluster_df, config_df, attribute)
-
-    final_df = (
+    cluster_info_lf = precompute_cluster_info(cluster_df, config_df, attribute)
+    # Compose all metrics in long format, passing LazyFrame
+    # Compose all metrics in long format, passing LazyFrame
+    lazy_long_df = (
         attribute_df.pipe(
             add_cluster_and_protein_counts,
-            cluster_info_df=cluster_info_df,
+            cluster_info_df=cluster_info_lf,
             config_df=config_df,
             attribute=attribute,
         )
         .pipe(
             add_protein_spans,
-            cluster_info_df=cluster_info_df,
+            cluster_info_df=cluster_info_lf,
             protein_lengths_df=protein_lengths_df,
         )
         .pipe(
@@ -376,43 +267,58 @@ def get_attribute_metrics(
             cluster_df=cluster_df,
             config_df=config_df,
             attribute=attribute,
-            cluster_info_df=cluster_info_df,
+            cluster_info_df=cluster_info_lf,
         )
-        .pipe(add_absent_cluster_counts, cluster_info_df=cluster_info_df)
+        .pipe(add_absent_cluster_counts, cluster_info_df=cluster_info_lf)
     )
 
-    final_cols = [
-        "#attribute",
-        "taxon_set",
-        "cluster_total_count",
-        "protein_total_count",
-        "protein_total_span",
-        "singleton_cluster_count",
-        "singleton_protein_count",
-        "singleton_protein_span",
-        "specific_cluster_count",
-        "specific_protein_count",
-        "specific_protein_span",
-        "shared_cluster_count",
-        "shared_protein_count",
-        "shared_protein_span",
-        "specific_cluster_true_1to1_count",
-        "specific_cluster_fuzzy_count",
-        "shared_cluster_true_1to1_count",
-        "shared_cluster_fuzzy_count",
-        "absent_cluster_total_count",
-        "absent_cluster_singleton_count",
-        "absent_cluster_specific_count",
-        "absent_cluster_shared_count",
-        "TAXON_count",
-        "TAXON_taxa",
+    # # Profile Polars RAM/compute usage
+    # profile = lazy_long_df.profile()
+    # logger.info(f"[Polars profile] Attribute: {attribute}\n{profile}")
+
+    # # Save full profile node table to CSV for inspection (no abbreviation)
+    # profile_dir = "polars_profiles"
+    # os.makedirs(profile_dir, exist_ok=True)
+    # profile_csv_path = os.path.join(profile_dir, f"{attribute}.profile_nodes.csv")
+    # # Polars profile returns a dict with 'nodes' key containing a DataFrame
+    # # Expect Polars .profile() to return a tuple, with the profile DataFrame as the second item
+    # nodes_df = None
+    # if (
+    #     isinstance(profile, tuple)
+    #     and len(profile) > 1
+    #     and isinstance(profile[1], pl.DataFrame)
+    # ):
+    #     nodes_df = profile[1]
+    #     nodes_df.write_csv(profile_csv_path)
+    #     logger.info(f"[✓] Polars profile nodes saved: {profile_csv_path}")
+
+    long_df = lazy_long_df.collect()
+
+    # Ensure all metric columns exist before pivot
+    metric_cols = [
+        "cluster_count",
+        "protein_count",
+        "protein_span",
+        "true_1to1_count",
+        "fuzzy_count",
+        "present_count",
     ]
+    for col in metric_cols:
+        if col not in long_df.columns:
+            long_df = long_df.with_columns(pl.lit(0).alias(col))
 
-    for col in final_cols:
-        if col not in final_df.columns:
-            final_df = final_df.with_columns(pl.lit(0).alias(col))
+    # Pivot to wide format at the end
+    wide_df = long_df.pivot(
+        index=["#attribute", "taxon_set", "TAXON_count", "TAXON_taxa"],
+        columns="cluster_type",
+        values=metric_cols,
+        aggregate_function="first",
+    )
 
-    return final_df.select(final_cols)
+    logger.debug(f"Config df shape for attribute {attribute}: {config_df.shape}")
+    logger.debug(f"Cluster df shape for attribute {attribute}: {wide_df.shape}")
+
+    return wide_df
 
 
 def get_all_attribute_metrics(
@@ -432,7 +338,7 @@ def get_all_attribute_metrics(
             protein_lengths_df=protein_lengths_df,
             attribute=attribute,
         )
-        attribute_metrics[attribute] = attribute_df
+        # attribute_metrics[attribute] = attribute_df
 
         out_dir = os.path.join(base_output_dir, attribute)
         os.makedirs(out_dir, exist_ok=True)
