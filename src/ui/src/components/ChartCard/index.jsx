@@ -1,8 +1,8 @@
-import React from "react";
-import styles from "./ChartCard.module.scss";
+import Button from "@mui/material/Button";
 import { MdOutlineFileDownload } from "react-icons/md";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import Button from "@mui/material/Button";
+import React from "react";
+import styles from "./ChartCard.module.scss";
 
 const ChartCard = ({
   widthPercent = 100,
@@ -13,10 +13,7 @@ const ChartCard = ({
   children,
 }) => {
   return (
-    <div
-      className={styles.container}
-      style={{ flex: `1 1 ${widthPercent}%`, maxWidth: `${widthPercent}%` }}
-    >
+    <div className={styles.container} style={{ flex: `1 1 ${widthPercent}%` }}>
       <div className={styles.header}>
         <div className={styles.titleContainer}>
           {onOpen && (
