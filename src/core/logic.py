@@ -121,10 +121,9 @@ def parse_attributes_from_config_data(
             if line.startswith("#"):
                 if not attributes:
                     attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                    if (
-                        attributes[0].upper() != "IDX"
-                        or "TAXON" not in [a.upper() for a in attributes]
-                    ):
+                    if attributes[0].upper() != "IDX" or "TAXON" not in [
+                        a.upper() for a in attributes
+                    ]:
                         error_msg = f"[ERROR] - Header must contain IDX and TAXON.\n\t{attributes}"
                         logger.info(error_msg)
                         raise ValueError(error_msg)
