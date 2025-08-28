@@ -94,15 +94,26 @@ const Dashboard = () => {
   };
 
   const handleNavigate = (chartKey) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     const basePaths = {
       attributeSummary: "attribute-summary",
       clusterSummary: "cluster-summary",
       clusterMetrics: "cluster-metrics",
+      rarefactionCurve: "rarefaction-curve",
+      clusterSizeDistribution: "cluster-size-distribution",
     };
     const path = basePaths[chartKey];
-    if (path) navigate(`/${sessionId}/${path}`);
-    else console.warn("Unknown chart key:", chartKey);
+    const attribute = selectedAttributeTaxonset?.attribute;
+    const taxonSet = selectedAttributeTaxonset?.taxonset;
+    if (path) {
+      navigate(
+        `/${sessionId}/${path}?attribute=${attribute}&taxonset=${taxonSet}`
+      );
+    } else {
+      console.warn("Unknown chart key:", chartKey);
+    }
   };
 
   const modalTitleMap = {
@@ -252,6 +263,7 @@ const Dashboard = () => {
                       title={modalTitleMap[key]}
                       isDownloading={downloadLoading?.[key]}
                       onDownload={() => handleDownload(key)}
+                      onOpen={() => handleNavigate(key)}
                       widthPercent={48}
                     >
                       {renderDashboardChart(key)}
