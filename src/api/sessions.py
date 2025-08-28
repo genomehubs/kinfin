@@ -100,11 +100,14 @@ class QueryManager:
             mod_time = datetime.fromtimestamp(os.path.getmtime(session_dir))
 
             if now - mod_time > timedelta(hours=self.expiration_hours):
+                logger.info(f"Cleaning up expired session: {session_id}")
                 shutil.rmtree(session_dir)
 
     def __exit__(self, _, __) -> None:
         """Cleanup all sessions when exiting due to signal"""
-        shutil.rmtree(self.results_base_dir)
+        # Uncomment the next line to remove all session directories on exit
+        # this can be useful for debugging but not for production use
+        # shutil.rmtree(self.results_base_dir)
         exit(0)
 
 
