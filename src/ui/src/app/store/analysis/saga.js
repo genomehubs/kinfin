@@ -48,6 +48,7 @@ import {
 
 import { dispatchErrorToast } from "../../../utils/toastNotifications";
 import { downloadBlobFile } from "../../../utils/downloadBlobFile";
+import { fastIsEqual } from "fast-is-equal";
 import { setDownloadLoading } from "../config/slices/uiStateSlice";
 
 const selectSessionStatusById = (session_id) => (state) =>
@@ -168,7 +169,12 @@ function* getClusterSummarySaga(action) {
     }
 
     if (response.status === "success") {
-      yield put(getClusterSummarySuccess(response));
+      const currentData = yield select(
+        (state) => state.analysis.clusterSummary.data
+      );
+      if (!fastIsEqual(currentData, response)) {
+        yield put(getClusterSummarySuccess(response));
+      }
     } else {
       yield put(getClusterSummaryFailure(response));
       yield call(
@@ -218,7 +224,12 @@ function* getAttributeSummarySaga(action) {
     }
 
     if (response.status === "success") {
-      yield put(getAttributeSummarySuccess(response));
+      const currentData = yield select(
+        (state) => state.analysis.attributeSummary.data
+      );
+      if (!fastIsEqual(currentData, response)) {
+        yield put(getAttributeSummarySuccess(response));
+      }
     } else {
       yield put(getAttributeSummaryFailure(response));
       yield call(
@@ -276,7 +287,12 @@ function* getClusterMetricsSaga(action) {
     }
 
     if (response.status === "success") {
-      yield put(getClusterMetricsSuccess(response));
+      const currentData = yield select(
+        (state) => state.analysis.clusterMetrics.data
+      );
+      if (!fastIsEqual(currentData, response)) {
+        yield put(getClusterMetricsSuccess(response));
+      }
     } else {
       yield put(getClusterMetricsFailure(response));
       yield call(
@@ -304,7 +320,12 @@ function* getPairwiseAnalysisSaga(action) {
 
     const response = yield call(apiGetPairwiseAnalysis, attribute);
     if (response.status === "success") {
-      yield put(getPairwiseAnalysisSuccess(response.data));
+      const currentData = yield select(
+        (state) => state.analysis.getPairwiseAnalysis.data
+      );
+      if (!fastIsEqual(currentData, response)) {
+        yield put(getPairwiseAnalysisSuccess(response));
+      }
     } else {
       yield put(getPairwiseAnalysisFailure(response));
       yield call(
