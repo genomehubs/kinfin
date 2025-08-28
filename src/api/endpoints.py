@@ -1030,6 +1030,9 @@ async def get_cluster_metrics(
         valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
+        if taxon_set == "all":
+            attribute = "all"
+
         if attribute and attribute not in valid_attributes:
             return JSONResponse(
                 content=ResponseSchema(
