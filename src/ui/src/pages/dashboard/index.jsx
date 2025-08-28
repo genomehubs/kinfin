@@ -232,6 +232,7 @@ const Dashboard = () => {
                 (key) => {
                   return (
                     <ChartCard
+                      key={key}
                       title={modalTitleMap[key]}
                       isDownloading={downloadLoading?.[key]}
                       onDownload={() => handleDownload(key)}
@@ -247,6 +248,7 @@ const Dashboard = () => {
                 {["rarefactionCurve", "clusterSizeDistribution"].map((key) => {
                   return (
                     <ChartCard
+                      key={key}
                       title={modalTitleMap[key]}
                       isDownloading={downloadLoading?.[key]}
                       onDownload={() => handleDownload(key)}
