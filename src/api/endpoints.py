@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
@@ -50,10 +51,20 @@ PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
 router = APIRouter()
 
+json_path = os.path.join(os.path.dirname(__file__), "column_descriptions.json")
+
+with open(json_path, "r") as f:
+    COLUMN_DESCRIPTIONS = json.load(f)
+
+# Create a quick lookup for code -> name mapping
+CODE_TO_COLUMN_NAME = {item["code"]: item["name"] for item in COLUMN_DESCRIPTIONS}
+CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
+
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
     clusterId: str
+    isAdvanced: bool
 
 
 class ResponseSchema(BaseModel):
@@ -173,6 +184,16 @@ def get_session_status(session_id: str) -> Dict:
     }
 
 
+def get_nested_value(data, path):
+    keys = path.split(".")
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key, {})
+        else:
+            return None
+    return data if data != {} else None
+
+
 @router.post("/kinfin/init", response_model=ResponseSchema)
 @limiter.limit(LIMIT_INIT)
 async def initialize(input_data: InputSchema, request: Request):
@@ -221,6 +242,10 @@ async def initialize(input_data: InputSchema, request: Request):
         cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
         sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
         taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
+        species_id = os.path.join(cluster_path, "kinfin.SpeciesIDs.txt")
+        fasta_dir = os.path.join(cluster_path, "fastas")
+        tree = os.path.join(cluster_path, "kinfin.tree.nwk")
+        annotations = os.path.join(cluster_path, "kinfin.functional_annotation.txt")
 
         try:
             check_file(cluster_f, install_kinfin=True)
@@ -259,6 +284,13 @@ async def initialize(input_data: InputSchema, request: Request):
             "--plot_format",
             "png",
         ]
+        if (input_data.isAdvanced) :
+            command.extend([
+                "-p", species_id,
+                "-a", fasta_dir,
+                "-t", tree,
+                "-f", annotations,
+            ])
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
         asyncio.create_task(run_cli_command(command, status_file))
@@ -484,6 +516,7 @@ async def get_cluster_summary(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    CS_code: Optional[List[str]] = Query(None, alias="CS_code"),   # ✅ only one param
 ) -> JSONResponse:
     try:
         result_dir = query_manager.get_session_dir(session_id)
@@ -526,6 +559,7 @@ async def get_cluster_summary(
                 status_code=404,
             )
 
+        # --- Parse file ---
         result = parse_cluster_summary_file(
             filepath=filepath,
             include_clusters=include_clusters,
@@ -537,8 +571,71 @@ async def get_cluster_summary(
             min_protein_median_count=min_protein_median_count,
             max_protein_median_count=max_protein_median_count,
         )
+
+        # --- Flatten rows ---
+        flat_result = {k: flatten_dict(v) for k, v in result.items()}
+
+        # --- Load descriptions once ---
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+        code_to_alias = {item["code"]: item.get("alias", item["name"]) for item in column_descriptions}
+        if CS_code:
+            # === OPTIMIZED: build the global key set ONCE ===
+            all_keys_ordered: List[str] = []
+            seen_keys = set()
+            for row in flat_result.values():
+                for k in row.keys():
+                    if k not in seen_keys:
+                        seen_keys.add(k)
+                        all_keys_ordered.append(k)
+
+            selected_columns: List[str] = []
+            selected_set = set()
+            column_aliases = {}
+
+            # First handle non-dynamic columns (no X)
+            for code in CS_code:
+                name = code_to_column.get(code)
+                if not name:
+                    continue
+                alias_template = code_to_alias.get(code, name)
+                if "X" not in name:
+                    flat_name = name.replace(".", "_")
+                    if flat_name not in selected_set:
+                        selected_columns.append(flat_name)
+                        selected_set.add(flat_name)
+                        column_aliases[flat_name] = alias_template
+
+            # Then handle dynamic columns (with X)
+            compiled_patterns = []
+            for code in CS_code:
+                name = code_to_column.get(code)
+                if not name or "X" not in name:
+                    continue
+                pat = re.compile("^" + name.replace("X", "(.+)") + "$")
+                compiled_patterns.append((pat, code_to_alias.get(code, name)))
+
+            for key in all_keys_ordered:
+                for pat, alias_template in compiled_patterns:
+                    m = pat.match(key)
+                    if m and key not in selected_set:
+                        selected_columns.append(key)
+                        selected_set.add(key)
+                        column_aliases[key] = alias_template.replace("X", m.group(1))
+
+            # Keep only selected columns; fill missing with "-"
+            flat_result = {
+                rid: {col: row.get(col, "-") for col in selected_columns}
+                for rid, row in flat_result.items()
+            }
+
+        # --- File Download ---
         if as_file:
-            if not result:
+            if not flat_result:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
@@ -548,36 +645,19 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=404,
                 )
-
             try:
-                flattened_rows = [flatten_dict(row) for row in result.values()]
-
-                if not flattened_rows:
-                    return JSONResponse(
-                        content=ResponseSchema(
-                            status="error",
-                            message="No valid rows in data.",
-                            error="empty_result",
-                            query=str(request.url),
-                        ).model_dump(),
-                        status_code=400,
-                    )
-
-                first_row = flattened_rows[0]
+                rows = list(flat_result.values())
+                fieldnames = list(rows[0].keys()) if rows else []
                 buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
                 writer.writeheader()
-                writer.writerows(flattened_rows)
+                writer.writerows(rows)
                 buffer.seek(0)
-
                 return StreamingResponse(
                     buffer,
                     media_type="text/tab-separated-values",
-                    headers={
-                        "Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"
-                    },
+                    headers={"Content-Disposition": f"attachment; filename={attribute}_cluster_summary.tsv"},
                 )
-
             except Exception as e:
                 return JSONResponse(
                     content=ResponseSchema(
@@ -588,12 +668,10 @@ async def get_cluster_summary(
                     ).model_dump(),
                     status_code=500,
                 )
+
+        # --- Sort & paginate flattened result ---
         paginated_result, total_pages = sort_and_paginate_result(
-            result,
-            sort_by,
-            sort_order,
-            page,
-            size,
+            flat_result, sort_by, sort_order, page, size
         )
 
         response = ResponseSchema(
@@ -606,6 +684,7 @@ async def get_cluster_summary(
             total_pages=total_pages,
         )
         return JSONResponse(response.model_dump())
+
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -817,6 +896,7 @@ async def get_column_descriptions_api(
     size: int = Query(40, ge=1, le=100),
     sort_by: str = Query(None, description="Comma-separated fields to sort by"),
     sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: asc or desc"),
+    file: str = Query(None, description="Filter by file name"),
 ):
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -856,6 +936,8 @@ async def get_column_descriptions_api(
             status_code=500,
         )
 
+    if file:
+        column_data = [row for row in column_data if row.get("file") == file]
     data_dict = {str(i): row for i, row in enumerate(column_data)}
 
     paginated_data_dict, total_pages = sort_and_paginate_result(
@@ -892,8 +974,10 @@ async def get_attribute_summary(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    AS_code: Optional[List[str]] = Query(None, alias="AS_code"),
 ):
     try:
+        # ---- Validate Kinfin session ----
         result_dir = query_manager.get_session_dir(session_id)
         config_f = os.path.join(result_dir, "config.json")
         if not os.path.exists(config_f):
@@ -907,9 +991,9 @@ async def get_attribute_summary(
                 status_code=428,
             )
 
+        # ---- Validate attribute ----
         valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
-
         if attribute and attribute not in valid_attributes:
             return JSONResponse(
                 content=ResponseSchema(
@@ -920,9 +1004,16 @@ async def get_attribute_summary(
                 status_code=400,
             )
 
+        # ---- Load mapping file ----
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+
+        # ---- Read attribute file ----
         filename = f"{attribute}/{attribute}.{ATTRIBUTE_METRICS_FILENAME}"
         filepath = os.path.join(result_dir, filename)
-
         if not os.path.exists(filepath):
             return JSONResponse(
                 content=ResponseSchema(
@@ -934,8 +1025,24 @@ async def get_attribute_summary(
                 status_code=404,
             )
 
+        # ---- Parse flattened attribute summary directly ----
         result = parse_attribute_summary_file(filepath=filepath)
 
+        # ---- Apply AS_code filter ----
+        if AS_code:
+            selected_columns = []
+            for code in AS_code:
+                if code in code_to_column:
+                    col_name = code_to_column[code]
+                    flat_name = col_name.replace(".", "_")
+                    selected_columns.append(flat_name)
+
+            result = {
+                k: {col: v.get(col, "-") for col in selected_columns}
+                for k, v in result.items()
+            }
+
+        # ---- File download mode ----
         if as_file:
             if not result:
                 return ResponseSchema(
@@ -946,12 +1053,12 @@ async def get_attribute_summary(
                 ).to_json_response(status_code=404)
 
             rows = list(result.values())
-            flattened_rows = [flatten_dict(row) for row in rows]
-            first_row = flattened_rows[0]
+            fieldnames = list(result[next(iter(result))].keys()) if rows else []
+
             buffer = io.StringIO()
-            writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+            writer = csv.DictWriter(buffer, fieldnames=fieldnames, delimiter="\t")
             writer.writeheader()
-            writer.writerows(flattened_rows)
+            writer.writerows(rows)
             buffer.seek(0)
 
             return StreamingResponse(
@@ -962,6 +1069,7 @@ async def get_attribute_summary(
                 },
             )
 
+        # ---- Paginate ----
         paginated_result, total_pages = sort_and_paginate_result(
             result,
             sort_by,
@@ -970,16 +1078,17 @@ async def get_attribute_summary(
             size,
         )
 
-        response = ResponseSchema(
-            status="success",
-            message="Attribute summary retrieved successfully",
-            data=paginated_result,
-            query=str(request.url),
-            current_page=page,
-            entries_per_page=size,
-            total_pages=total_pages,
+        return JSONResponse(
+            ResponseSchema(
+                status="success",
+                message="Attribute summary retrieved successfully",
+                data=paginated_result,
+                query=str(request.url),
+                current_page=page,
+                entries_per_page=size,
+                total_pages=total_pages,
+            ).model_dump()
         )
-        return JSONResponse(response.model_dump())
 
     except Exception as e:
         print(e)
@@ -1012,8 +1121,10 @@ async def get_cluster_metrics(
     page: Optional[int] = Query(1),
     size: Optional[int] = Query(10),
     as_file: Optional[bool] = Query(False),
+    CM_code: Optional[List[str]] = Query(None, alias="CM_code"),
 ):
     try:
+        # ---- Validate Kinfin session ----
         result_dir = query_manager.get_session_dir(session_id)
         config_f = os.path.join(result_dir, "config.json")
         if not os.path.exists(config_f):
@@ -1027,6 +1138,7 @@ async def get_cluster_metrics(
                 status_code=428,
             )
 
+        # ---- Validate attribute & taxon_set ----
         valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
         valid_attributes = valid_endpoints["attributes"]
 
@@ -1044,7 +1156,6 @@ async def get_cluster_metrics(
             )
 
         valid_taxon_sets = valid_endpoints["taxon_set"][attribute]
-
         if taxon_set and taxon_set not in valid_taxon_sets:
             return JSONResponse(
                 content=ResponseSchema(
@@ -1055,9 +1166,16 @@ async def get_cluster_metrics(
                 status_code=400,
             )
 
+        # ---- Load column descriptions (for CM_code) ----
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        descriptions_file_path = os.path.join(current_dir, "column_descriptions.json")
+        with open(descriptions_file_path, "r") as f:
+            column_descriptions = json.load(f)
+        code_to_column = {item["code"]: item["name"] for item in column_descriptions}
+
+        # ---- Parse cluster metrics file (already formatted & flat) ----
         filename = f"{attribute}/{attribute}.{taxon_set}.{CLUSTER_METRICS_FILENAME}"
         filepath = os.path.join(result_dir, filename)
-
         if not os.path.exists(filepath):
             return JSONResponse(
                 content=ResponseSchema(
@@ -1070,9 +1188,24 @@ async def get_cluster_metrics(
             )
 
         result = parse_cluster_metrics_file(filepath, cluster_status, cluster_type)
+        rows = list(result.values())
 
+        # ---- Apply CM_code filter ----
+        if CM_code:
+            selected_columns = [code_to_column[code] for code in CM_code if code in code_to_column]
+
+            # Ensure cluster_id is always included
+            if "cluster_id" not in selected_columns:
+                selected_columns.insert(0, "cluster_id")
+
+            rows = [
+                {col: row.get(col, "-") for col in selected_columns}
+                for row in rows
+            ]
+
+        # ---- File download mode ----
         if as_file:
-            if not result:
+            if not rows:
                 return JSONResponse(
                     content=ResponseSchema(
                         status="error",
@@ -1083,54 +1216,42 @@ async def get_cluster_metrics(
                     status_code=404,
                 )
 
-            try:
-                rows = list(result.values())
-                flattened_rows = [flatten_dict(row) for row in rows]
-                first_row = flattened_rows[0] if flattened_rows else {}
+            buffer = io.StringIO()
+            writer = csv.DictWriter(buffer, fieldnames=rows[0].keys(), delimiter="\t")
+            writer.writeheader()
+            writer.writerows(rows)
+            buffer.seek(0)
 
-                buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
-                writer.writeheader()
-                writer.writerows(flattened_rows)
-                buffer.seek(0)
+            return StreamingResponse(
+                buffer,
+                media_type="text/tab-separated-values",
+                headers={
+                    "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
+                },
+            )
 
-                return StreamingResponse(
-                    buffer,
-                    media_type="text/tab-separated-values",
-                    headers={
-                        "Content-Disposition": f"attachment; filename={attribute}_{taxon_set}_cluster_metrics.tsv"
-                    },
-                )
-
-            except Exception as e:
-                return JSONResponse(
-                    content=ResponseSchema(
-                        status="error",
-                        message="Failed to generate TSV file",
-                        error=str(e),
-                        query=str(request.url),
-                    ).model_dump(),
-                    status_code=500,
-                )
-
+        # ---- Paginate ----
+        flat_dict = {rows[i]["cluster_id"]: rows[i] for i in range(len(rows))}
         paginated_result, total_pages = sort_and_paginate_result(
-            result,
+            flat_dict,
             sort_by,
             sort_order,
             page,
             size,
         )
-        response = ResponseSchema(
-            status="success",
-            message="Cluster metrics retrieved successfully",
-            data=paginated_result,
-            query=str(request.url),
-            current_page=page,
-            entries_per_page=size,
-            total_pages=total_pages,
+
+        return JSONResponse(
+            ResponseSchema(
+                status="success",
+                message="Cluster metrics retrieved successfully",
+                data=paginated_result,
+                query=str(request.url),
+                current_page=page,
+                entries_per_page=size,
+                total_pages=total_pages,
+            ).model_dump()
         )
 
-        return JSONResponse(response.model_dump())
     except Exception as e:
         return JSONResponse(
             content=ResponseSchema(

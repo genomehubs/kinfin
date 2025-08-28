@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
@@ -19,8 +19,14 @@ const ClusterSummary = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.cluster_summary.txt"
+    )
+  );
 
-  // Parse pagination params from URL or fallback
+  const attribute = selectedAttributeTaxonset?.attribute || null;
+
   const page = Math.max(
     parseInt(searchParams.get("CS_page") || "1", 10) - 1,
     0
@@ -30,36 +36,144 @@ const ClusterSummary = () => {
     1
   );
 
-  // Set defaults only if not already present in the URL
+  // Apply default pagination & default CS_codes if missing
   useEffect(() => {
-    const hasPage = searchParams.has("CS_page");
-    const hasPageSize = searchParams.has("CS_pageSize");
+    const newParams = new URLSearchParams(searchParams);
 
-    if (!hasPage || !hasPageSize) {
-      setSearchParams(
-        (prev) => {
-          const newParams = new URLSearchParams(prev);
-          if (!hasPage) newParams.set("CS_page", "1");
-          if (!hasPageSize) newParams.set("CS_pageSize", "5");
-          return newParams;
-        },
-        { replace: true }
-      );
+    if (!searchParams.has("CS_page")) {
+      newParams.set("CS_page", "1");
     }
-  }, [searchParams, setSearchParams]);
+    if (!searchParams.has("CS_pageSize")) {
+      newParams.set("CS_pageSize", "5");
+    }
 
-  // Fetch cluster summary data
+    // If no CS_code in URL, set defaults (those with isDefault = true)
+    if (!searchParams.has("CS_code")) {
+      const defaultCodes = columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+
+      defaultCodes.forEach((code) => newParams.append("CS_code", code));
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, columnDescriptions]);
+
+  const csCodes = useMemo(() => searchParams.getAll("CS_code"), [searchParams]);
+
   useEffect(() => {
-    const payload = {
-      page: page + 1, // Backend is 1-based
-      size: pageSize,
-      attribute: selectedAttributeTaxonset?.attribute,
-    };
-
-    if (payload.attribute) {
-      dispatch(getClusterSummary(payload));
+    if (!attribute) {
+      return;
     }
-  }, [page, pageSize, dispatch, selectedAttributeTaxonset]);
+
+    dispatch(
+      getClusterSummary({
+        attribute,
+        page: page + 1,
+        size: pageSize,
+        CS_code: csCodes.length > 0 ? csCodes : undefined,
+      })
+    );
+  }, [dispatch, attribute, page, pageSize, csCodes]);
+
+  // Flatten rows
+  const rowsData = useMemo(() => {
+    if (!clusterSummaryData?.data) {
+      return { rows: [], rowCount: 0 };
+    }
+
+    const rows = Object.values(clusterSummaryData.data).map((row) => ({
+      id: row.id || row.cluster_id || uuidv4(),
+      ...row,
+    }));
+
+    const totalRows =
+      clusterSummaryData.total_entries ??
+      (clusterSummaryData.total_pages && clusterSummaryData.entries_per_page
+        ? clusterSummaryData.total_pages * clusterSummaryData.entries_per_page
+        : rows.length);
+
+    return { rows, rowCount: totalRows };
+  }, [clusterSummaryData]);
+
+  // Columns from columnDescriptions handling X placeholders
+  const defaultColumns = useMemo(() => {
+    if (!rowsData.rows.length) {
+      return [];
+    }
+
+    return columnDescriptions
+      .map((col) => {
+        if (!col.name.includes("X")) {
+          return {
+            field: col.name,
+            headerName: col.alias || col.name,
+            minWidth: 120,
+          };
+        }
+
+        // Handle X in name by matching against actual row keys
+        const sampleRow = rowsData.rows[0];
+        const regex = new RegExp("^" + col.name.replace("X", "(.+)") + "$");
+        return Object.keys(sampleRow)
+          .filter((k) => regex.test(k))
+          .map((field) => {
+            const match = field.match(regex);
+            const headerName = col.alias?.replace("X", match?.[1]) || field;
+            return { field, headerName, minWidth: 120 };
+          });
+      })
+      .flat();
+  }, [columnDescriptions, rowsData.rows]);
+
+  // Map codes to fields
+  const codeToFieldMap = useMemo(
+    () =>
+      columnDescriptions.reduce((acc, col) => {
+        acc[col.code] = col.name;
+        return acc;
+      }, {}),
+    [columnDescriptions]
+  );
+
+  const filteredColumns = useMemo(() => {
+    if (!csCodes || csCodes.length === 0) {
+      return defaultColumns.filter((col) => {
+        const originalCol = columnDescriptions.find(
+          (c) => c.name === col.field
+        );
+        return originalCol?.isDefault;
+      });
+    }
+
+    const allowedFields = csCodes.flatMap((code) => {
+      const template = codeToFieldMap[code];
+      if (!template) {
+        return [];
+      }
+
+      // If no "X" in the template, direct match
+      if (!template.includes("X")) {
+        return [template];
+      }
+
+      // Expand "X" using actual row keys
+      const regex = new RegExp("^" + template.replace("X", "(.+)") + "$");
+      return rowsData.rows.length > 0
+        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k))
+        : [];
+    });
+
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+  }, [
+    csCodes,
+    codeToFieldMap,
+    defaultColumns,
+    columnDescriptions,
+    rowsData.rows,
+  ]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -74,98 +188,6 @@ const ClusterSummary = () => {
     [searchParams, setSearchParams]
   );
 
-  const processedRows = useMemo(() => {
-    const rawData = clusterSummaryData?.data ?? {};
-
-    return Object.values(rawData).map((row) => {
-      const flatCounts =
-        row.protein_counts &&
-        Object.entries(row.protein_counts).reduce((acc, [key, value]) => {
-          acc[key] = value;
-          return acc;
-        }, {});
-
-      return {
-        id: uuidv4(),
-        ...row,
-        ...flatCounts,
-      };
-    });
-  }, [clusterSummaryData]);
-
-  const rowCount = useMemo(() => {
-    if (clusterSummaryData?.total_entries != null) {
-      return clusterSummaryData.total_entries;
-    }
-
-    if (
-      clusterSummaryData?.total_pages != null &&
-      clusterSummaryData?.entries_per_page != null
-    ) {
-      return (
-        clusterSummaryData.total_pages * clusterSummaryData.entries_per_page
-      );
-    }
-
-    return processedRows.length;
-  }, [clusterSummaryData, processedRows]);
-
-  const baseColumns = [
-    { field: "cluster_id", headerName: "Cluster ID", minWidth: 140 },
-    {
-      field: "cluster_protein_count",
-      headerName: "Total Proteins",
-      minWidth: 120,
-    },
-    {
-      field: "protein_median_count",
-      headerName: "Median Count",
-      minWidth: 80,
-    },
-    {
-      field: "TAXON_count",
-      headerName: "TAXON Count",
-      minWidth: 80,
-    },
-    { field: "attribute", headerName: "Attribute", minWidth: 80 },
-    {
-      field: "attribute_cluster_type",
-      headerName: "Cluster Type",
-      minWidth: 80,
-    },
-  ];
-
-  const dynamicColumns = useMemo(() => {
-    const firstRow = processedRows[0] || {};
-    const dynamicKeys = Object.keys(firstRow).filter(
-      (key) =>
-        (key.endsWith("_count") ||
-          key.endsWith("_median") ||
-          key.endsWith("_cov")) &&
-        ![
-          "cluster_protein_count",
-          "TAXON_count",
-          "protein_median_count",
-        ].includes(key)
-    );
-
-    return dynamicKeys.map((key) => ({
-      field: key,
-      headerName: key
-        .replace(/_/g, " ")
-        .replace("count", "Count")
-        .replace("median", "Median")
-        .replace("cov", "Cov")
-        .replace(/\b\w/g, (l) => l.toUpperCase()),
-      minWidth: 100,
-    }));
-  }, [processedRows]);
-
-  const columns = useMemo(
-    () => [...baseColumns, ...dynamicColumns],
-    [dynamicColumns]
-  );
-
   return (
     <div
       style={{
@@ -176,12 +198,12 @@ const ClusterSummary = () => {
       }}
     >
       <DataGrid
-        rows={processedRows}
-        columns={columns}
+        rows={rowsData.rows}
+        columns={filteredColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
-        rowCount={rowCount}
+        rowCount={rowsData.rowCount}
         pageSizeOptions={pageSizeOptions}
         disableSelectionOnClick
         checkboxSelection={false}
@@ -207,12 +229,10 @@ const ClusterSummary = () => {
           },
           "& .MuiDataGrid-columnHeaders": {
             backgroundColor: "#f5f5f5",
-            borderBottom: "1px solid  #cccccc",
-            borderTop: "1px solid  #cccccc",
+            borderBottom: "1px solid #cccccc",
+            borderTop: "1px solid #cccccc",
           },
-          "& .MuiDataGrid-row:nth-of-type(odd)": {
-            backgroundColor: "#ffffff",
-          },
+          "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: "#ffffff" },
           "& .MuiDataGrid-row:nth-of-type(even)": {
             backgroundColor: "#fafafa",
           },

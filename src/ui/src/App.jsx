@@ -19,6 +19,7 @@ import { SnackbarProvider } from "notistack";
 import { ThemeProvider } from "@mui/material/styles";
 import { store } from "./app/store/index";
 import { useTheme } from "./hooks/useTheme";
+import { PersistGate } from "redux-persist/integration/react";
 
 function App() {
   const { theme } = useTheme();

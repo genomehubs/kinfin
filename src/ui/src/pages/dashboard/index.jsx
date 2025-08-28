@@ -20,6 +20,7 @@ import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSu
 import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
 import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
 import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
 import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
 import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
@@ -68,6 +69,9 @@ const Dashboard = () => {
     dispatch(getRunSummary());
     dispatch(getCountsByTaxon());
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
+  useEffect(() => {
+    dispatch(getColumnDescriptions());
+  }, []);
 
   const closeModal = () => setEnlargedChart(null);
 

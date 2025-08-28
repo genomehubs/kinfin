@@ -83,13 +83,20 @@ const AttributeSelector = () => {
   };
 
   const handleApply = () => {
-    setSearchParams(
-      {
-        attribute,
-        taxonset: taxon,
-      },
-      { replace: true }
-    );
+    const newParams = new URLSearchParams();
+
+    // Preserve existing *_code keys and allow multiple values
+    for (const [key, value] of searchParams.entries()) {
+      if (key.endsWith("_code")) {
+        newParams.append(key, value);
+      }
+    }
+
+    newParams.set("attribute", attribute);
+    newParams.set("taxonset", taxon);
+
+    setSearchParams(newParams, { replace: true });
+
     dispatch(
       setSelectedAttributeTaxonset({
         attribute,
@@ -101,13 +108,21 @@ const AttributeSelector = () => {
   const handleClear = () => {
     setAttribute("all");
     setTaxon("all");
-    setSearchParams(
-      {
-        attribute: "all",
-        taxonset: "all",
-      },
-      { replace: true }
-    );
+
+    // Start fresh with URLSearchParams
+    const newParams = new URLSearchParams();
+
+    // Preserve existing *_code keys
+    for (const [key, value] of searchParams.entries()) {
+      if (key.endsWith("_code")) {
+        newParams.append(key, value);
+      }
+    }
+    newParams.set("attribute", "all");
+    newParams.set("taxonset", "all");
+
+    setSearchParams(newParams, { replace: true });
+
     dispatch(
       setSelectedAttributeTaxonset({
         attribute: "all",
