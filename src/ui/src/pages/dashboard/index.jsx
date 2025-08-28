@@ -10,6 +10,7 @@ import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
 import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
 import AppLayout from "../../components/AppLayout";
 import DataTable from "../../components/FileUpload/DataTable";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 
 import { RunSummary } from "../../components";
 import AttributeSelector from "../../components/AttributeSelector";
@@ -68,6 +69,9 @@ const Dashboard = () => {
     dispatch(getRunSummary());
     dispatch(getCountsByTaxon());
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
+  useEffect(() => {
+    dispatch(getColumnDescriptions());
+  }, []);
 
   const closeModal = () => setEnlargedChart(null);
 

@@ -15,6 +15,7 @@ import {
 import { ThemeProvider } from "@mui/material/styles";
 import { lightTheme, darkTheme } from "./utils/theme";
 import { useTheme } from "./hooks/useTheme";
+import { PersistGate } from "redux-persist/integration/react";
 
 function App() {
   const { theme } = useTheme();

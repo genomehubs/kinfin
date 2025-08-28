@@ -36,6 +36,12 @@ import {
 } from "./slices/batchStatusSlice";
 
 import {
+  getColumnDescriptions,
+  getColumnDescriptionsFailure,
+  getColumnDescriptionsSuccess,
+} from "./slices/columnDescriptionsSlice";
+
+import {
   getClusteringSets,
   getClusteringSetsSuccess,
   getClusteringSetsFailure,
@@ -54,6 +60,7 @@ import {
   getBatchStatus as getBatchStatusApi,
   getValidProteomeIds as getValidProteomeIdsApi,
   getClusteringSets as getClusteringSetsApi,
+  getColumnDescriptions as getColumnDescriptionsApi,
 } from "../../services/client";
 
 // --- constants ---
@@ -145,6 +152,7 @@ function* initAnalysisSaga(action) {
     }
   } catch (err) {
     yield put(initAnalysisFailure(err));
+    console.error(err);
     yield call(
       dispatchErrorToast,
       err?.response?.data?.error?.message || "Failed to initialize analysis"
@@ -237,6 +245,36 @@ export function* getBatchStatusSaga(action) {
     );
   }
 }
+function* getColumnDescriptionsSaga(action) {
+  const data = {
+    page: 1,
+    size: 100,
+    file: action?.payload?.file || "",
+  };
+  try {
+    const response = yield call(getColumnDescriptionsApi, data);
+
+    if (response.status === "success") {
+      yield put(getColumnDescriptionsSuccess(response.data));
+      // yield call(
+      //   dispatchSuccessToast,
+      //   "Column descriptions fetched successfully!"
+      // );
+    } else {
+      yield put(getColumnDescriptionsFailure(response));
+      yield call(
+        dispatchErrorToast,
+        response?.error || "Failed to fetch column descriptions"
+      );
+    }
+  } catch (err) {
+    yield put(getColumnDescriptionsFailure(err));
+    yield call(
+      dispatchErrorToast,
+      err?.response?.data?.error || "Failed to fetch column descriptions"
+    );
+  }
+}
 
 function* getClusteringSetsSaga() {
   try {
@@ -266,11 +304,15 @@ function* getClusteringSetsSaga() {
 export function* watchInitAnalysisSaga() {
   yield takeEvery(initAnalysis, initAnalysisSaga);
 }
+
 export function* watchGetRunStatusSaga() {
   yield takeEvery(getRunStatus, getRunStatusSaga);
 }
 export function* watchGetValidProteomeIdsSaga() {
   yield takeEvery(getValidProteomeIds, getValidProteomeIdsSaga);
+}
+export function* watchGetColumnDescriptionsSaga() {
+  yield takeEvery(getColumnDescriptions, getColumnDescriptionsSaga);
 }
 export function* watchGetBatchStatusSaga() {
   yield takeEvery(getBatchStatus, getBatchStatusSaga);
@@ -287,5 +329,6 @@ export default function* configSaga() {
     fork(watchGetValidProteomeIdsSaga),
     fork(watchGetBatchStatusSaga),
     fork(watchGetClusteringSetsSaga),
+    fork(watchGetColumnDescriptionsSaga),
   ]);
 }

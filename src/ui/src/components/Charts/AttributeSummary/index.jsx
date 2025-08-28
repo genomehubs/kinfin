@@ -16,9 +16,17 @@ const AttributeSummary = () => {
     (state) => state?.analysis?.attributeSummary?.data || null
   );
 
-  // Pull params directly from the URL
+  const columnDescriptions = useSelector((state) =>
+    (state?.config?.columnDescriptions?.data || []).filter(
+      (col) => col.file === "*.attribute_metrics.txt"
+    )
+  );
+
   const attribute = searchParams.get("attribute");
-  const taxonset = searchParams.get("taxonset");
+
+  // URL codes filter
+  const asCodes = useMemo(() => searchParams.getAll("AS_code"), [searchParams]);
+
   const page = Math.max(
     parseInt(searchParams.get("AS_page") || "1", 10) - 1,
     0
@@ -28,107 +36,104 @@ const AttributeSummary = () => {
     1
   );
 
-  // Only set default pagination if missing from URL
   useEffect(() => {
     const hasPage = searchParams.has("AS_page");
     const hasPageSize = searchParams.has("AS_pageSize");
+    const hasCodes = searchParams.has("AS_code");
 
-    if (!hasPage || !hasPageSize) {
-      setSearchParams(
-        (prev) => {
-          const newParams = new URLSearchParams(prev);
-          if (!hasPage) newParams.set("AS_page", "1");
-          if (!hasPageSize) newParams.set("AS_pageSize", "10");
-          return newParams;
-        },
-        { replace: true }
-      );
+    const newParams = new URLSearchParams(searchParams);
+
+    if (!hasPage) {
+      newParams.set("AS_page", "1");
     }
-  }, [attribute, taxonset, searchParams, setSearchParams]);
+    if (!hasPageSize) {
+      newParams.set("AS_pageSize", "10");
+    }
 
-  // Fetch data on page, pageSize, attribute changes
+    // If no AS_code in URL, set defaults (those with isDefault = true)
+    if (!hasCodes) {
+      const defaultCodes = columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+
+      defaultCodes.forEach((code) => newParams.append("AS_code", code));
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, columnDescriptions]);
+
+  // Fetch attribute summary
   useEffect(() => {
-    if (!attribute) return;
+    if (!attribute) {
+      return;
+    }
 
-    const payload = {
-      attribute,
-      page: page + 1,
-      size: pageSize,
-    };
+    dispatch(
+      getAttributeSummary({
+        attribute,
+        page: page + 1,
+        size: pageSize,
+        AS_code: asCodes.length > 0 ? asCodes : undefined,
+      })
+    );
+  }, [attribute, page, pageSize, asCodes, dispatch]);
 
-    dispatch(getAttributeSummary(payload));
-  }, [attribute, page, pageSize, dispatch]);
+  // Map codes to field names
+  const codeToFieldMap = useMemo(
+    () =>
+      columnDescriptions.reduce((acc, col) => {
+        acc[col.code] = col.name;
+        return acc;
+      }, {}),
+    [columnDescriptions]
+  );
 
+  // Prepare rows
   const { rows, rowCount } = useMemo(() => {
     const rawData = attributeData?.data ?? {};
     const processedRows = Object.values(rawData).map((row) => ({
-      id: uuidv4(),
-      ...row,
-      singleton_cluster_count: row?.singleton?.cluster_count ?? "-",
-      singleton_protein_count: row?.singleton?.protein_count ?? "-",
-      specific_cluster_count: row?.specific?.cluster_count ?? "-",
-      shared_cluster_count: row?.shared?.cluster_count ?? "-",
-      absent_cluster_total_count: row?.absent?.cluster_total_count ?? "-",
-      TAXON_taxa: Array.isArray(row?.TAXON_taxa)
-        ? row.TAXON_taxa.join(", ")
-        : "-",
+      id: row.id || row.taxon_set || uuidv4(),
+      ...Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [key, value ?? "-"])
+      ),
     }));
-
     const totalRows =
       attributeData?.total_entries ??
       (attributeData?.total_pages && attributeData?.entries_per_page
         ? attributeData.total_pages * attributeData.entries_per_page
         : processedRows.length);
-
-    return {
-      rows: processedRows,
-      rowCount: totalRows,
-    };
+    return { rows: processedRows, rowCount: totalRows };
   }, [attributeData]);
 
-  const columns = useMemo(
-    () => [
-      { field: "taxon_set", headerName: "Taxon Set", minWidth: 150 },
-      {
-        field: "cluster_total_count",
-        headerName: "Total Clusters",
-        minWidth: 80,
-      },
-      {
-        field: "protein_total_count",
-        headerName: "Total Proteins",
-        minWidth: 80,
-      },
-      {
-        field: "singleton_cluster_count",
-        headerName: "Singleton Clusters",
-        minWidth: 80,
-      },
-      {
-        field: "singleton_protein_count",
-        headerName: "Singleton Proteins",
-        minWidth: 80,
-      },
-      {
-        field: "specific_cluster_count",
-        headerName: "Specific Clusters",
-        minWidth: 80,
-      },
-      {
-        field: "shared_cluster_count",
-        headerName: "Shared Clusters",
-        minWidth: 80,
-      },
-      {
-        field: "absent_cluster_total_count",
-        headerName: "Absent Clusters",
-        minWidth: 80,
-      },
-      { field: "TAXON_taxa", headerName: "Taxa", minWidth: 80 },
-    ],
-    []
-  );
+  // Columns loaded dynamically
+  const defaultColumns = useMemo(() => {
+    return columnDescriptions.map((col) => ({
+      field: col.name,
+      headerName: col.alias || col.name,
+      minWidth: 120,
+    }));
+  }, [columnDescriptions]);
 
+  const filteredColumns = useMemo(() => {
+    if (!asCodes || asCodes.length === 0) {
+      return defaultColumns.filter((col) => {
+        const originalCol = columnDescriptions.find(
+          (c) => c.name === col.field
+        );
+        return originalCol?.isDefault;
+      });
+    }
+
+    const allowedFields = asCodes
+      .map((code) => codeToFieldMap[code])
+      .filter(Boolean);
+
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+  }, [asCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
+
+  // Pagination handler
   const handlePaginationModelChange = useCallback(
     (newModel) => {
       updatePaginationParams(
@@ -153,7 +158,7 @@ const AttributeSummary = () => {
     >
       <DataGrid
         rows={rows}
-        columns={columns}
+        columns={filteredColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}
@@ -180,16 +185,12 @@ const AttributeSummary = () => {
             lineHeight: "normal",
             fontWeight: "bold",
           },
-
           "& .MuiDataGrid-columnHeaders": {
             backgroundColor: "#f5f5f5",
             borderBottom: "1px solid  #cccccc",
             borderTop: "1px solid  #cccccc",
           },
-
-          "& .MuiDataGrid-row:nth-of-type(odd)": {
-            backgroundColor: "#ffffff",
-          },
+          "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: "#ffffff" },
           "& .MuiDataGrid-row:nth-of-type(even)": {
             backgroundColor: "#fafafa",
           },

@@ -17,6 +17,7 @@ export const initAnalysis = async (data) => {
   const response = await apiClient.post("/init", {
     config: data.config,
     clusterId: data.clusterId,
+    isAdvanced: false,
   });
   return response.data;
 };
@@ -53,6 +54,14 @@ export const getClusteringSets = async (data) => {
   return response.data;
 };
 
+export const getColumnDescriptions = async (data) => {
+  const response = await apiClient.get("/column-descriptions", {
+    headers: { "x-session-id": getSessionId() },
+    params: { page: data.page, size: data.size, file: data.file },
+  });
+  return response.data;
+};
+
 export const getRunSummary = async () => {
   const response = await apiClient.get("/run-summary", {
     headers: { "x-session-id": getSessionId() },
@@ -77,7 +86,13 @@ export const getCountsByTaxon = async () => {
 export const getClusterSummary = async (data) => {
   const response = await apiClient.get(`/cluster-summary/${data.attribute}`, {
     headers: { "x-session-id": getSessionId() },
-    params: { page: data.page, size: data.size, as_file: data.asFile },
+    params: {
+      page: data.page,
+      size: data.size,
+      as_file: data.asFile,
+      CS_code: data.CS_code,
+    },
+    paramsSerializer: { indexes: null },
   });
   return response.data;
 };
@@ -85,7 +100,13 @@ export const getClusterSummary = async (data) => {
 export const getAttributeSummary = async (data) => {
   const response = await apiClient.get(`/attribute-summary/${data.attribute}`, {
     headers: { "x-session-id": getSessionId() },
-    params: { page: data.page, size: data.size, as_file: data.asFile },
+    params: {
+      page: data.page,
+      size: data.size,
+      as_file: data.asFile,
+      AS_code: data.AS_code,
+    },
+    paramsSerializer: { indexes: null },
   });
   return response.data;
 };
@@ -95,7 +116,13 @@ export const getClusterMetrics = async (data) => {
     `/cluster-metrics/${data.attribute}/${data.taxonSet}`,
     {
       headers: { "x-session-id": getSessionId() },
-      params: { page: data.page, size: data.size, as_file: data.asFile },
+      params: {
+        page: data.page,
+        size: data.size,
+        as_file: data.asFile,
+        CM_code: data.CM_code,
+      },
+      paramsSerializer: { indexes: null },
     }
   );
   return response.data;
