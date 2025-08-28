@@ -1235,11 +1235,12 @@ async def get_pairwise_analysis(
         )
 
 
-@router.get("/kinfin/plot/{plot_type}")
+@router.get("/kinfin/plot/{attribute}/{plot_type}")
 @check_kinfin_session
 @limiter.limit(LIMIT_STANDARD)
 async def get_plot(
     request: Request,
+    attribute: str,
     plot_type: str,
     session_id: str = Depends(header_scheme),
 ) -> FileResponse:
@@ -1247,6 +1248,7 @@ async def get_plot(
     Retrieve a specific plot type for a given session.
 
     Args:
+        attribute (str): The attribute associated with the plot.
         plot_type (str): The type of plot to retrieve.
         session_id (str): The session ID for authentication.
 
@@ -1257,7 +1259,7 @@ async def get_plot(
         HTTPException: If the plot type is invalid, session ID is invalid, or the file is not found.
     """
     try:
-        if plot_type not in ["cluster-size-distribution", "all-rarefaction-curve"]:
+        if plot_type not in ["cluster-size-distribution", "rarefaction-curve"]:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
@@ -1273,8 +1275,8 @@ async def get_plot(
         match plot_type:
             case "cluster-size-distribution":
                 filepath = "cluster_size_distribution.png"
-            case "all-rarefaction-curve":
-                filepath = "all/all.rarefaction_curve.png"
+            case "rarefaction-curve":
+                filepath = f"{attribute}/{attribute}.rarefaction_curve.png"
             case _:
                 return JSONResponse(
                     content=ResponseSchema(

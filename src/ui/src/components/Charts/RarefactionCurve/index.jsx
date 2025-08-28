@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
-import styles from "./ClusterSizeDistribution.module.scss";
+import styles from "./RarefactionCurve.module.scss";
 
-const ClusterSizeDistribution = () => {
+const RarefactionCurve = () => {
   const dispatch = useDispatch();
-  const clusterSizeBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
+  const rarefactionCurveBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.rarefactionCurve
   );
 
   const [blobUrl, setBlobUrl] = useState(null);
@@ -23,26 +23,28 @@ const ClusterSizeDistribution = () => {
   }, [dispatch, attribute]);
 
   useEffect(() => {
-    if (clusterSizeBlob instanceof Blob) {
-      const objectUrl = URL.createObjectURL(clusterSizeBlob);
+    if (rarefactionCurveBlob instanceof Blob) {
+      const objectUrl = URL.createObjectURL(rarefactionCurveBlob);
       setBlobUrl(objectUrl);
 
       return () => {
         URL.revokeObjectURL(objectUrl);
       };
       // } else {
-      //   console.error("❌ clusterSizeBlob is not a Blob:", clusterSizeBlob);
+      //   console.error(
+      //     "❌ rarefactionCurveBlob is not a Blob:",
+      //     rarefactionCurveBlob
+      //   );
     }
-  }, [clusterSizeBlob]);
+  }, [rarefactionCurveBlob]);
 
   return (
     <div className={styles.container}>
       {blobUrl ? (
         <img
-          className={styles.image}
           src={blobUrl}
           alt="Cluster Size Distribution"
-          width="100%"
+          className={styles.image}
         />
       ) : (
         <p>Loading image...</p>
@@ -51,4 +53,4 @@ const ClusterSizeDistribution = () => {
   );
 };
 
-export default ClusterSizeDistribution;
+export default RarefactionCurve;

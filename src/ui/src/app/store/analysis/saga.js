@@ -1,62 +1,54 @@
-import { takeEvery, fork, put, all, call, select } from "redux-saga/effects";
-import { setDownloadLoading } from "../config/slices/uiStateSlice";
-
+import { all, call, fork, put, select, takeEvery } from "redux-saga/effects";
 import {
-  getAvailableAttributesTaxonsets,
-  getAvailableAttributesTaxonsetsSuccess,
-  getAvailableAttributesTaxonsetsFailure,
-} from "./slices/availableAttributesTaxonsetsSlice";
-
-import {
-  getRunSummary,
-  getRunSummarySuccess,
-  getRunSummaryFailure,
-} from "./slices/runSummarySlice";
-
-import {
-  getCountsByTaxon,
-  getCountsByTaxonSuccess,
-  getCountsByTaxonFailure,
-} from "./slices/countsByTaxonSlice";
-
-import {
-  getClusterSummary,
-  getClusterSummarySuccess,
-  getClusterSummaryFailure,
-} from "./slices/clusterSummarySlice";
-
-import {
-  getAttributeSummary,
-  getAttributeSummarySuccess,
-  getAttributeSummaryFailure,
-} from "./slices/attributeSummarySlice";
-
-import {
-  getClusterMetrics,
-  getClusterMetricsSuccess,
-  getClusterMetricsFailure,
-} from "./slices/clusterMetricsSlice";
-
-import {
-  getPairwiseAnalysis,
-  getPairwiseAnalysisSuccess,
-  getPairwiseAnalysisFailure,
-} from "./slices/pairwiseAnalysisSlice";
-
-import { getPlot, getPlotSuccess, getPlotFailure } from "./slices/plotSlice";
-
-import { dispatchErrorToast } from "../../../utils/toastNotifications";
-import {
-  getAvailableAttributes,
-  getCountsByTaxon as apiGetCountsByTaxon,
-  getRunSummary as apiGetRunSummary,
-  getClusterSummary as apiGetClusterSummary,
   getAttributeSummary as apiGetAttributeSummary,
   getClusterMetrics as apiGetClusterMetrics,
+  getClusterSummary as apiGetClusterSummary,
+  getCountsByTaxon as apiGetCountsByTaxon,
   getPairwiseAnalysis as apiGetPairwiseAnalysis,
   getPlot as apiGetPlot,
+  getRunSummary as apiGetRunSummary,
+  getAvailableAttributes,
 } from "../../services/client";
+import {
+  getAttributeSummary,
+  getAttributeSummaryFailure,
+  getAttributeSummarySuccess,
+} from "./slices/attributeSummarySlice";
+import {
+  getAvailableAttributesTaxonsets,
+  getAvailableAttributesTaxonsetsFailure,
+  getAvailableAttributesTaxonsetsSuccess,
+} from "./slices/availableAttributesTaxonsetsSlice";
+import {
+  getClusterMetrics,
+  getClusterMetricsFailure,
+  getClusterMetricsSuccess,
+} from "./slices/clusterMetricsSlice";
+import {
+  getClusterSummary,
+  getClusterSummaryFailure,
+  getClusterSummarySuccess,
+} from "./slices/clusterSummarySlice";
+import {
+  getCountsByTaxon,
+  getCountsByTaxonFailure,
+  getCountsByTaxonSuccess,
+} from "./slices/countsByTaxonSlice";
+import {
+  getPairwiseAnalysis,
+  getPairwiseAnalysisFailure,
+  getPairwiseAnalysisSuccess,
+} from "./slices/pairwiseAnalysisSlice";
+import { getPlot, getPlotFailure, getPlotSuccess } from "./slices/plotSlice";
+import {
+  getRunSummary,
+  getRunSummaryFailure,
+  getRunSummarySuccess,
+} from "./slices/runSummarySlice";
+
+import { dispatchErrorToast } from "../../../utils/toastNotifications";
 import { downloadBlobFile } from "../../../utils/downloadBlobFile";
+import { setDownloadLoading } from "../config/slices/uiStateSlice";
 
 const selectSessionStatusById = (session_id) => (state) =>
   state?.config?.storeConfig?.data?.[session_id]?.status;
@@ -306,21 +298,22 @@ function* getPairwiseAnalysisSaga(action) {
   }
 }
 
-function* getPlotsSaga() {
+function* getPlotsSaga(action) {
+  const { attribute = "all" } = action.payload;
   try {
     const status = yield select(selectSessionStatusById(getSessionId()));
     if (!status) {
       return;
     }
 
-    const [allRarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
-      call(apiGetPlot, "all-rarefaction-curve"),
-      call(apiGetPlot, "cluster-size-distribution"),
+    const [rarefactionCurveBlob, clusterSizeDistributionBlob] = yield all([
+      call(apiGetPlot, { plotType: "rarefaction-curve", attribute }),
+      call(apiGetPlot, { plotType: "cluster-size-distribution", attribute }),
     ]);
 
     yield put(
       getPlotSuccess({
-        allRarefactionCurve: allRarefactionCurveBlob,
+        rarefactionCurve: rarefactionCurveBlob,
         clusterSizeDistribution: clusterSizeDistributionBlob,
       })
     );
