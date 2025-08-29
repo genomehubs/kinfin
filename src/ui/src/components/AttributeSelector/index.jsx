@@ -1,19 +1,20 @@
-import { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { useSearchParams } from "react-router-dom";
-import { setSelectedAttributeTaxonset } from "../../app/store/config/slices/uiStateSlice";
-import styles from "./AttributeSelector.module.scss";
-
 import {
+  Box,
+  Button,
   FormControl,
   InputLabel,
-  Select,
   MenuItem,
-  Button,
-  Box,
+  Select,
 } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useRef, useState } from "react";
+
+import { setSelectedAttributeTaxonset } from "../../app/store/config/slices/uiStateSlice";
+import styles from "./AttributeSelector.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const AttributeSelector = () => {
+  const initialized = useRef(false);
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -21,56 +22,61 @@ const AttributeSelector = () => {
     (state) => state?.analysis?.availableAttributesTaxonsets?.data
   );
 
+  const selectedAttributeTaxonset = useSelector(
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset
+  );
+
   // Read from URL initially
-  const initialAttribute = searchParams.get("attribute") || "";
-  const initialTaxon = searchParams.get("taxonset") || "";
+  const initialAttribute =
+    searchParams.get("attribute") ||
+    selectedAttributeTaxonset?.attribute ||
+    "all";
+  const initialTaxon =
+    searchParams.get("taxonset") ||
+    selectedAttributeTaxonset?.taxonset ||
+    "all";
 
   const [attribute, setAttribute] = useState(initialAttribute);
   const [taxon, setTaxon] = useState(initialTaxon);
 
   useEffect(() => {
-    if (responseData && (!initialAttribute || !initialTaxon)) {
-      const firstAttribute = responseData.attributes?.[0];
+    if (initialized.current) {
+      return;
+    }
+
+    if (!responseData) {
+      return;
+    }
+
+    // Only set if attribute/taxon are empty
+    if (!attribute && !taxon) {
+      const firstAttribute = responseData.attributes?.[0] || "";
       const firstTaxonset = firstAttribute
-        ? responseData.taxon_set?.[firstAttribute]?.[0]
-        : null;
+        ? responseData.taxon_set?.[firstAttribute]?.[0] || ""
+        : "";
 
       if (firstAttribute && firstTaxonset) {
-        const newAttribute = initialAttribute || firstAttribute;
-        const newTaxonset = initialTaxon || firstTaxonset;
-
-        setAttribute(newAttribute);
-        setTaxon(newTaxonset);
+        setAttribute(firstAttribute);
+        setTaxon(firstTaxonset);
 
         setSearchParams(
           {
-            attribute: newAttribute,
-            taxonset: newTaxonset,
+            attribute: firstAttribute,
+            taxonset: firstTaxonset,
           },
           { replace: true }
         );
 
         dispatch(
           setSelectedAttributeTaxonset({
-            attribute: newAttribute,
-            taxonset: newTaxonset,
+            attribute: firstAttribute,
+            taxonset: firstTaxonset,
           })
         );
+        initialized.current = true;
       }
     }
-  }, [responseData, initialAttribute, initialTaxon, setSearchParams, dispatch]);
-
-  // Apply selection when URL params change (existing functionality)
-  useEffect(() => {
-    if (initialAttribute && initialTaxon) {
-      dispatch(
-        setSelectedAttributeTaxonset({
-          attribute: initialAttribute,
-          taxonset: initialTaxon,
-        })
-      );
-    }
-  }, [initialAttribute, initialTaxon, dispatch]);
+  }, [responseData, setSearchParams, dispatch]);
 
   const handleAttributeChange = (e) => {
     const newAttribute = e.target.value;
@@ -97,12 +103,12 @@ const AttributeSelector = () => {
 
     setSearchParams(newParams, { replace: true });
 
-    dispatch(
-      setSelectedAttributeTaxonset({
-        attribute,
-        taxonset: taxon,
-      })
-    );
+    // dispatch(
+    //   setSelectedAttributeTaxonset({
+    //     attribute,
+    //     taxonset: taxon,
+    //   })
+    // );
   };
 
   const handleClear = () => {

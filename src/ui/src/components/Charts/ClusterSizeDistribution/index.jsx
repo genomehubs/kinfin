@@ -15,7 +15,7 @@ const ClusterSizeDistribution = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
-  const attribute = selectedAttributeTaxonset?.attribute || null;
+  const attribute = selectedAttributeTaxonset?.attribute || "all";
 
   useEffect(() => {
     const payload = { attribute };

@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
-import styles from "./ClusterMetrics.module.scss";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
 import AppLayout from "../../components/AppLayout";
-import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
-import { useDispatch, useSelector } from "react-redux";
-import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
-import { useSearchParams } from "react-router-dom";
+import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import CustomisationDialog from "../../components/CustomisationDialog";
-
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import styles from "./ClusterMetrics.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const ClusterMetricsPage = () => {
   const dispatch = useDispatch();
@@ -20,6 +20,7 @@ const ClusterMetricsPage = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
+
   const clusterMetricsDownloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics
   );
@@ -34,13 +35,20 @@ const ClusterMetricsPage = () => {
   const [selectedCodes, setSelectedCodes] = useState([]);
 
   useEffect(() => {
-    const paramsCodes = searchParams.getAll("CM_code");
-    setSelectedCodes(paramsCodes);
-  }, [searchParams]);
-
-  useEffect(() => {
     dispatch(getColumnDescriptions());
   }, []);
+
+  useEffect(() => {
+    const codes = searchParams.has("CM_code")
+      ? searchParams.getAll("CM_code")
+      : columnDescriptions
+          .filter((col) => col.isDefault)
+          .map((col) => col.code);
+    if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
+      setSelectedCodes(codes);
+    }
+  }, [searchParams, columnDescriptions]);
+
   // Download handler
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "clusterMetrics", loading: true }));
@@ -51,6 +59,7 @@ const ClusterMetricsPage = () => {
     };
     dispatchSuccessToast("Cluster Metrics download has started");
     dispatch(getClusterMetrics(payload));
+
     setTimeout(
       () =>
         dispatch(
@@ -65,19 +74,13 @@ const ClusterMetricsPage = () => {
     setCustomiseOpen(true);
   };
 
-  // Checkbox handler
-  const handleCheckboxChange = (code) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
-  };
-
   // Apply customisation
-  const handleApply = () => {
+  const handleApply = (newSelectedCodes) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("CM_code");
-    selectedCodes.forEach((c) => newParams.append("CM_code", c));
+    newSelectedCodes.forEach((c) => newParams.append("CM_code", c));
     setSearchParams(newParams);
+    setSelectedCodes(newSelectedCodes);
     setCustomiseOpen(false);
   };
 
@@ -108,13 +111,8 @@ const ClusterMetricsPage = () => {
         onClose={handleCancel}
         onApply={handleApply}
         selectedCodes={selectedCodes}
-        onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Cluster Metrics"
-        onSelectAll={() =>
-          setSelectedCodes(columnDescriptions.map((c) => c.code))
-        }
-        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

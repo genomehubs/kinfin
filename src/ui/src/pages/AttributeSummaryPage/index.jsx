@@ -1,28 +1,29 @@
 import React, { useEffect, useState } from "react";
-import styles from "./AttributeSummary.module.scss";
-import AppLayout from "../../components/AppLayout";
-import AttributeSummary from "../../components/Charts/AttributeSummary";
-import AttributeSelector from "../../components/AttributeSelector";
-import ChartCard from "../../components/ChartCard";
 import { useDispatch, useSelector } from "react-redux";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
-import { useParams, useSearchParams } from "react-router-dom";
-import CustomisationDialog from "../../components/CustomisationDialog";
 
+import AppLayout from "../../components/AppLayout";
+import AttributeSelector from "../../components/AttributeSelector";
+import AttributeSummary from "../../components/Charts/AttributeSummary";
+import ChartCard from "../../components/ChartCard";
+import CustomisationDialog from "../../components/CustomisationDialog";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import styles from "./AttributeSummary.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const AttributeSummaryPage = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
+
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
   );
-  const { sessionId } = useParams();
 
   const columnDescriptions = useSelector((state) =>
     (state?.config?.columnDescriptions?.data || []).filter(
@@ -36,10 +37,17 @@ const AttributeSummaryPage = () => {
   useEffect(() => {
     dispatch(getColumnDescriptions());
   }, []);
+
   useEffect(() => {
-    const paramsCodes = searchParams.getAll("AS_code");
-    setSelectedCodes(paramsCodes);
-  }, [searchParams]);
+    const codes = searchParams.has("AS_code")
+      ? searchParams.getAll("AS_code")
+      : columnDescriptions
+          .filter((col) => col.isDefault)
+          .map((col) => col.code);
+    if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
+      setSelectedCodes(codes);
+    }
+  }, [searchParams, columnDescriptions]);
 
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
@@ -64,17 +72,12 @@ const AttributeSummaryPage = () => {
     setCustomiseOpen(true);
   };
 
-  const handleCheckboxChange = (code) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
-  };
-
-  const handleApply = () => {
+  const handleApply = (newSelectedCodes) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("AS_code");
-    selectedCodes.forEach((c) => newParams.append("AS_code", c));
+    newSelectedCodes.forEach((c) => newParams.append("AS_code", c));
     setSearchParams(newParams);
+    setSelectedCodes(newSelectedCodes);
     setCustomiseOpen(false);
   };
 
@@ -105,13 +108,8 @@ const AttributeSummaryPage = () => {
         onClose={handleCancel}
         onApply={handleApply}
         selectedCodes={selectedCodes}
-        onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Attribute Summary"
-        onSelectAll={() =>
-          setSelectedCodes(columnDescriptions.map((c) => c.code))
-        }
-        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

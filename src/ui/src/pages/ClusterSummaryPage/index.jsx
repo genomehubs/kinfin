@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-import styles from "./ClusterSummary.module.scss";
+import { useDispatch, useSelector } from "react-redux";
+
 import AppLayout from "../../components/AppLayout";
-import ClusterSummary from "../../components/Charts/ClusterSummary";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
-import { useDispatch, useSelector } from "react-redux";
-import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
-import { useSearchParams } from "react-router-dom";
-import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
+import ClusterSummary from "../../components/Charts/ClusterSummary";
 import CustomisationDialog from "../../components/CustomisationDialog";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
+import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import styles from "./ClusterSummary.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const ClusterSummaryPage = () => {
   const dispatch = useDispatch();
@@ -19,9 +20,11 @@ const ClusterSummaryPage = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset
   );
+
   const clusterSummaryDownloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading?.clusterSummary
   );
+
   const columnDescriptions = useSelector((state) =>
     (state?.config?.columnDescriptions?.data || []).filter(
       (col) => col.file === "*.cluster_summary.txt"
@@ -31,14 +34,21 @@ const ClusterSummaryPage = () => {
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState([]);
 
-  // Load selected codes from URL
-  useEffect(() => {
-    const paramsCodes = searchParams.getAll("CS_code");
-    setSelectedCodes(paramsCodes);
-  }, [searchParams]);
   useEffect(() => {
     dispatch(getColumnDescriptions());
   }, []);
+
+  useEffect(() => {
+    const codes = searchParams.has("CS_code")
+      ? searchParams.getAll("CS_code")
+      : columnDescriptions
+          .filter((col) => col.isDefault)
+          .map((col) => col.code);
+    if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
+      setSelectedCodes(codes);
+    }
+  }, [searchParams, columnDescriptions]);
+
   const handleDownload = () => {
     dispatch(setDownloadLoading({ type: "clusterSummary", loading: true }));
     const payload = {
@@ -58,17 +68,12 @@ const ClusterSummaryPage = () => {
     setCustomiseOpen(true);
   };
 
-  const handleCheckboxChange = (code) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
-  };
-
-  const handleApply = () => {
+  const handleApply = (newSelectedCodes) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("CS_code");
-    selectedCodes.forEach((c) => newParams.append("CS_code", c));
+    newSelectedCodes.forEach((c) => newParams.append("CS_code", c));
     setSearchParams(newParams);
+    setSelectedCodes(newSelectedCodes);
     setCustomiseOpen(false);
   };
 
@@ -99,13 +104,8 @@ const ClusterSummaryPage = () => {
         onClose={handleCancel}
         onApply={handleApply}
         selectedCodes={selectedCodes}
-        onCheckboxChange={handleCheckboxChange}
         columnDescriptions={columnDescriptions}
         title="Customise Cluster Summary"
-        onSelectAll={() =>
-          setSelectedCodes(columnDescriptions.map((c) => c.code))
-        }
-        onDeselectAll={() => setSelectedCodes([])}
       />
     </AppLayout>
   );

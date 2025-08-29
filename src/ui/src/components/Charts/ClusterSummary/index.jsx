@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
+
 import { DataGrid } from "@mui/x-data-grid";
-import styles from "./ClusterSummary.module.scss";
 import { getClusterSummary } from "../../../app/store/analysis/slices/clusterSummarySlice";
-import { v4 as uuidv4 } from "uuid";
+import styles from "./ClusterSummary.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -25,7 +26,7 @@ const ClusterSummary = () => {
     )
   );
 
-  const attribute = selectedAttributeTaxonset?.attribute || null;
+  const attribute = selectedAttributeTaxonset?.attribute || "null";
 
   const page = Math.max(
     parseInt(searchParams.get("CS_page") || "1", 10) - 1,
@@ -36,32 +37,14 @@ const ClusterSummary = () => {
     1
   );
 
-  // Apply default pagination & default CS_codes if missing
-  useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
-
-    if (!searchParams.has("CS_page")) {
-      newParams.set("CS_page", "1");
-    }
-    if (!searchParams.has("CS_pageSize")) {
-      newParams.set("CS_pageSize", "5");
-    }
-
-    // If no CS_code in URL, set defaults (those with isDefault = true)
+  const csCodes = useMemo(() => {
     if (!searchParams.has("CS_code")) {
-      const defaultCodes = columnDescriptions
+      return columnDescriptions
         .filter((col) => col.isDefault)
         .map((col) => col.code);
-
-      defaultCodes.forEach((code) => newParams.append("CS_code", code));
     }
-
-    if (newParams.toString() !== searchParams.toString()) {
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams, columnDescriptions]);
-
-  const csCodes = useMemo(() => searchParams.getAll("CS_code"), [searchParams]);
+    return searchParams.getAll("CS_code");
+  }, [searchParams, columnDescriptions]);
 
   useEffect(() => {
     if (!attribute) {
