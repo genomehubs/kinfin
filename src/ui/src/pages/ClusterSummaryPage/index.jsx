@@ -81,6 +81,10 @@ const ClusterSummaryPage = () => {
     setCustomiseOpen(false);
   };
 
+  const handleClose = () => {
+    window.history.back();
+  };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
@@ -93,6 +97,7 @@ const ClusterSummaryPage = () => {
             isDownloading={clusterSummaryDownloadLoading}
             onDownload={handleDownload}
             onCustomise={handleCustomisation}
+            onClose={handleClose}
           >
             <ClusterSummary />
           </ChartCard>

@@ -38,6 +38,10 @@ const ClusterSizeDistributionPage = () => {
     );
   };
 
+  const handleClose = () => {
+    window.history.back();
+  };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
@@ -51,6 +55,7 @@ const ClusterSizeDistributionPage = () => {
               downloadLoading?.downloadLoading?.ClusterSizeDistribution
             }
             onDownload={handleDownload}
+            onClose={handleClose}
           >
             <ClusterSizeDistribution />
           </ChartCard>

@@ -38,6 +38,10 @@ const RarefactionCurvePage = () => {
     );
   };
 
+  const handleClose = () => {
+    window.history.back();
+  };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
@@ -49,6 +53,7 @@ const RarefactionCurvePage = () => {
             title="Rarefaction Curve"
             isDownloading={downloadLoading?.downloadLoading?.rareFactionCurve}
             onDownload={handleDownload}
+            onClose={handleClose}
           >
             <RarefactionCurve />
           </ChartCard>

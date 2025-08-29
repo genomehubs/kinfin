@@ -88,6 +88,10 @@ const ClusterMetricsPage = () => {
     setCustomiseOpen(false);
   };
 
+  const handleClose = () => {
+    window.history.back();
+  };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
@@ -100,6 +104,7 @@ const ClusterMetricsPage = () => {
             isDownloading={clusterMetricsDownloadLoading}
             onDownload={handleDownload}
             onCustomise={handleCustomisation}
+            onClose={handleClose}
           >
             <ClusterMetrics />
           </ChartCard>

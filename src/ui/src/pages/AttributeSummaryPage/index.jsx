@@ -85,6 +85,10 @@ const AttributeSummaryPage = () => {
     setCustomiseOpen(false);
   };
 
+  const handleClose = () => {
+    window.history.back();
+  };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
@@ -97,6 +101,7 @@ const AttributeSummaryPage = () => {
             isDownloading={downloadLoading?.downloadLoading?.attributeSummary}
             onDownload={handleDownload}
             onCustomise={handleCustomisation}
+            onClose={handleClose}
           >
             <AttributeSummary />
           </ChartCard>
