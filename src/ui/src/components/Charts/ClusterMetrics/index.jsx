@@ -27,8 +27,14 @@ const ClusterMetrics = () => {
     )
   );
 
-  const attribute = selectedAttributeTaxonset?.attribute || "all";
-  const taxonSet = selectedAttributeTaxonset?.taxonset || "all";
+  const attribute =
+    selectedAttributeTaxonset?.attribute ||
+    searchParams.get("attribute") ||
+    "all";
+  const taxonSet =
+    selectedAttributeTaxonset?.taxonset ||
+    searchParams.get("taxonSet") ||
+    "all";
 
   const page = Math.max(
     parseInt(searchParams.get("CM_page") || "1", 10) - 1,

@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
 import styles from "./RarefactionCurve.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const RarefactionCurve = () => {
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const rarefactionCurveBlob = useSelector(
     (state) => state?.analysis?.plot?.data?.rarefactionCurve
   );
@@ -15,7 +17,10 @@ const RarefactionCurve = () => {
   const selectedAttributeTaxonset = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset || null
   );
-  const attribute = selectedAttributeTaxonset?.attribute || "all";
+  const attribute =
+    selectedAttributeTaxonset?.attribute ||
+    searchParams.get("attribute") ||
+    "all";
 
   useEffect(() => {
     const payload = { attribute };

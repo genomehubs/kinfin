@@ -27,12 +27,14 @@ import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
 import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
 import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
 import styles from "./Dashboard.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [parsedData, setParsedData] = useState([]);
+  const [searchParams] = useSearchParams();
 
   const dispatch = useDispatch();
   const { sessionId } = useParams();
@@ -109,12 +111,8 @@ const Dashboard = () => {
       clusterSizeDistribution: "cluster-size-distribution",
     };
     const path = basePaths[chartKey];
-    const attribute = selectedAttributeTaxonset?.attribute;
-    const taxonSet = selectedAttributeTaxonset?.taxonset;
     if (path) {
-      navigate(
-        `/${sessionId}/${path}?attribute=${attribute}&taxonset=${taxonSet}`
-      );
+      navigate(`/${sessionId}/${path}?${searchParams.toString()}`);
     } else {
       console.warn("Unknown chart key:", chartKey);
     }

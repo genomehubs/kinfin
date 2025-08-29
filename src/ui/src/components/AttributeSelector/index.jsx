@@ -103,12 +103,12 @@ const AttributeSelector = () => {
 
     setSearchParams(newParams, { replace: true });
 
-    // dispatch(
-    //   setSelectedAttributeTaxonset({
-    //     attribute,
-    //     taxonset: taxon,
-    //   })
-    // );
+    dispatch(
+      setSelectedAttributeTaxonset({
+        attribute,
+        taxonset: taxon,
+      })
+    );
   };
 
   const handleClear = () => {
