@@ -1,38 +1,40 @@
-import React, { useState, useEffect } from "react";
-import styles from "./Dashboard.module.scss";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
-import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
-import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
-import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
-import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
-import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
-import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
-import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
-import AppLayout from "../../components/AppLayout";
-import DataTable from "../../components/FileUpload/DataTable";
-import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
-
-import { RunSummary } from "../../components";
-import AttributeSelector from "../../components/AttributeSelector";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import AttributeSummary from "../../components/Charts/AttributeSummary";
-import ClusterSummary from "../../components/Charts/ClusterSummary";
-import ClusterMetrics from "../../components/Charts/ClusterMetrics";
-import AllRarefactionCurve from "../../components/Charts/AllRarefactionCurve";
-import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import { useNavigate, useParams } from "react-router-dom";
-import { downloadBlobFile } from "../../utils/downloadBlobFile";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import Modal from "@mui/material/Modal";
+
+import AppLayout from "../../components/AppLayout";
+import AttributeSelector from "../../components/AttributeSelector";
+import AttributeSummary from "../../components/Charts/AttributeSummary";
 import Box from "@mui/material/Box";
 import ChartCard from "../../components/ChartCard";
+import ClusterMetrics from "../../components/Charts/ClusterMetrics";
+import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
+import ClusterSummary from "../../components/Charts/ClusterSummary";
+import DataTable from "../../components/FileUpload/DataTable";
+import Modal from "@mui/material/Modal";
+import RarefactionCurve from "../../components/Charts/RarefactionCurve";
+import { RunSummary } from "../../components";
+import { dispatchSuccessToast } from "../../utils/toastNotifications";
+import { downloadBlobFile } from "../../utils/downloadBlobFile";
+import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
+import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
+import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
+import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
+import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
+import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
+import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
+import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
+import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
 import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import styles from "./Dashboard.module.scss";
+import { useSearchParams } from "react-router-dom";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [parsedData, setParsedData] = useState([]);
+  const [searchParams] = useSearchParams();
 
   const dispatch = useDispatch();
   const { sessionId } = useParams();
@@ -49,8 +51,8 @@ const Dashboard = () => {
     (state) => state?.config?.uiState?.downloadLoading
   );
 
-  const allRarefactionCurveBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.allRarefactionCurve
+  const rarefactionCurveBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.rarefactionCurve
   );
 
   const clusterSizeDistributionBlob = useSelector(
@@ -98,22 +100,29 @@ const Dashboard = () => {
   };
 
   const handleNavigate = (chartKey) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     const basePaths = {
       attributeSummary: "attribute-summary",
       clusterSummary: "cluster-summary",
       clusterMetrics: "cluster-metrics",
+      rarefactionCurve: "rarefaction-curve",
+      clusterSizeDistribution: "cluster-size-distribution",
     };
     const path = basePaths[chartKey];
-    if (path) navigate(`/${sessionId}/${path}`);
-    else console.warn("Unknown chart key:", chartKey);
+    if (path) {
+      navigate(`/${sessionId}/${path}?${searchParams.toString()}`);
+    } else {
+      console.warn("Unknown chart key:", chartKey);
+    }
   };
 
   const modalTitleMap = {
     attributeSummary: "Attribute Summary",
     clusterSummary: "Cluster Summary",
     clusterMetrics: "Cluster Metrics",
-    allRarefactionCurve: "All Rarefaction Curve",
+    rarefactionCurve: "Rarefaction Curve",
     clusterSizeDistribution: "Cluster Size Distribution",
   };
 
@@ -140,11 +149,11 @@ const Dashboard = () => {
       case "clusterMetrics":
         dispatch(getClusterMetrics(basePayload));
         break;
-      case "allRarefactionCurve":
-        if (allRarefactionCurveBlob instanceof Blob) {
+      case "rarefactionCurve":
+        if (rarefactionCurveBlob instanceof Blob) {
           downloadBlobFile(
-            allRarefactionCurveBlob,
-            "all_rarefaction_curve.png",
+            rarefactionCurveBlob,
+            "rarefaction_curve.png",
             "image/png"
           );
           dispatch(setDownloadLoading({ type: chartKey, loading: false }));
@@ -190,8 +199,8 @@ const Dashboard = () => {
         return <ClusterSummary />;
       case "clusterMetrics":
         return <ClusterMetrics />;
-      case "allRarefactionCurve":
-        return <AllRarefactionCurve />;
+      case "rarefactionCurve":
+        return <RarefactionCurve />;
       case "clusterSizeDistribution":
         return <ClusterSizeDistribution />;
       default:
@@ -236,6 +245,7 @@ const Dashboard = () => {
                 (key) => {
                   return (
                     <ChartCard
+                      key={key}
                       title={modalTitleMap[key]}
                       isDownloading={downloadLoading?.[key]}
                       onDownload={() => handleDownload(key)}
@@ -248,20 +258,20 @@ const Dashboard = () => {
               )}
 
               <div className={styles.rowContainer}>
-                {["allRarefactionCurve", "clusterSizeDistribution"].map(
-                  (key) => {
-                    return (
-                      <ChartCard
-                        title={modalTitleMap[key]}
-                        isDownloading={downloadLoading?.[key]}
-                        onDownload={() => handleDownload(key)}
-                        widthPercent={48}
-                      >
-                        {renderDashboardChart(key)}
-                      </ChartCard>
-                    );
-                  }
-                )}
+                {["rarefactionCurve", "clusterSizeDistribution"].map((key) => {
+                  return (
+                    <ChartCard
+                      key={key}
+                      title={modalTitleMap[key]}
+                      isDownloading={downloadLoading?.[key]}
+                      onDownload={() => handleDownload(key)}
+                      onOpen={() => handleNavigate(key)}
+                      widthPercent={48}
+                    >
+                      {renderDashboardChart(key)}
+                    </ChartCard>
+                  );
+                })}
               </div>
             </div>
           </div>

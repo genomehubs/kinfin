@@ -4,4 +4,6 @@ export const breadcrumbMap = {
   "attribute-summary": "Attribute Summary",
   "cluster-summary": "Cluster Summary",
   "cluster-metrics": "Cluster Metrics",
+  "rarefaction-curve": "Rarefaction Curve",
+  "cluster-size-distribution": "Cluster Size Distribution",
 };

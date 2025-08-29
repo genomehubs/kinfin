@@ -1,15 +1,15 @@
-import React from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
+import BreadcrumbsNav from "../BreadcrumbsNav";
+import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
-import Button from "@mui/material/Button";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import React from "react";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
 import { setSelectedClusterSet } from "../../app/store/config/slices/uiStateSlice";
-import BreadcrumbsNav from "../BreadcrumbsNav";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = ({
   onMenuClick,
@@ -26,7 +26,7 @@ const Navbar = ({
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="fixed" color="inherit" sx={{ zIndex: 1002 }}>
+      <AppBar position="fixed" color="inherit" sx={{ zIndex: 2002 }}>
         <Toolbar>
           {variant === "analysis" && (
             <IconButton

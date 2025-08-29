@@ -1,15 +1,30 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
+
 import { DataGrid } from "@mui/x-data-grid";
-import styles from "./ClusterMetrics.module.scss";
 import { getClusterMetrics } from "../../../app/store/analysis/slices/clusterMetricsSlice";
-import { v4 as uuidv4 } from "uuid";
+import styles from "./ClusterMetrics.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
 const ClusterMetrics = () => {
+  const isCurrentPage = window.location.pathname.includes("cluster-metrics");
+  const [isFullScreen, setIsFullScreen] = React.useState(
+    document.fullscreenElement != null
+  );
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(document.fullscreenElement != null);
+    };
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    };
+  }, []);
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -26,8 +41,14 @@ const ClusterMetrics = () => {
     )
   );
 
-  const attribute = selectedAttributeTaxonset?.attribute || null;
-  const taxonSet = selectedAttributeTaxonset?.taxonset || null;
+  const attribute =
+    selectedAttributeTaxonset?.attribute ||
+    searchParams.get("attribute") ||
+    "all";
+  const taxonSet =
+    selectedAttributeTaxonset?.taxonset ||
+    searchParams.get("taxonSet") ||
+    "all";
 
   const page = Math.max(
     parseInt(searchParams.get("CM_page") || "1", 10) - 1,
@@ -38,33 +59,15 @@ const ClusterMetrics = () => {
     1
   );
 
-  // Apply default pagination params & default CM_codes if missing
-  useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
-
-    if (!searchParams.has("CM_page")) {
-      newParams.set("CM_page", "1");
-    }
-    if (!searchParams.has("CM_pageSize")) {
-      newParams.set("CM_pageSize", "10");
-    }
-
-    // If no CM_code in URL, set defaults (those with isDefault = true)
+  const cmCodes = useMemo(() => {
     if (!searchParams.has("CM_code")) {
-      const defaultCodes = columnDescriptions
+      return columnDescriptions
         .filter((col) => col.isDefault)
         .map((col) => col.code);
-
-      defaultCodes.forEach((code) => newParams.append("CM_code", code));
     }
+    return searchParams.getAll("CM_code");
+  }, [searchParams, columnDescriptions]);
 
-    if (newParams.toString() !== searchParams.toString()) {
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams, columnDescriptions]);
-
-  // cmCodes from URL
-  const cmCodes = useMemo(() => searchParams.getAll("CM_code"), [searchParams]);
   // Fetch cluster metrics
   useEffect(() => {
     if (!attribute || !taxonSet) {
@@ -88,7 +91,7 @@ const ClusterMetrics = () => {
     }
 
     const rows = Object.values(clusterMetrics.data).map((row) => ({
-      id: uuidv4(),
+      id: row.id || row.cluster_id || uuidv4(),
       ...row,
     }));
 
@@ -152,7 +155,11 @@ const ClusterMetrics = () => {
   return (
     <div
       style={{
-        height: "50vh",
+        maxHeight: isCurrentPage
+          ? isFullScreen
+            ? "100vh"
+            : "calc(100vh - 200px)"
+          : "50vh",
         width: "100%",
         overflowX: "auto",
         borderRadius: "12px",

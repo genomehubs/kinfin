@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  data: { allRarefactionCurve: null, clusterSizeDistribution: null },
+  data: { rarefactionCurve: null, clusterSizeDistribution: null },
   loading: false,
   error: null,
 };

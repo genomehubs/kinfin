@@ -1,14 +1,30 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
+
 import { DataGrid } from "@mui/x-data-grid";
 import { getAttributeSummary } from "../../../app/store/analysis/slices/attributeSummarySlice";
-import { v4 as uuidv4 } from "uuid";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
 const AttributeSummary = () => {
+  const isCurrentPage = window.location.pathname.includes("attribute-summary");
+  const [isFullScreen, setIsFullScreen] = React.useState(
+    document.fullscreenElement != null
+  );
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(document.fullscreenElement != null);
+    };
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    };
+  }, []);
+
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -24,8 +40,14 @@ const AttributeSummary = () => {
 
   const attribute = searchParams.get("attribute");
 
-  // URL codes filter
-  const asCodes = useMemo(() => searchParams.getAll("AS_code"), [searchParams]);
+  const asCodes = useMemo(() => {
+    if (!searchParams.has("AS_code")) {
+      return columnDescriptions
+        .filter((col) => col.isDefault)
+        .map((col) => col.code);
+    }
+    return searchParams.getAll("AS_code");
+  }, [searchParams, columnDescriptions]);
 
   const page = Math.max(
     parseInt(searchParams.get("AS_page") || "1", 10) - 1,
@@ -35,34 +57,6 @@ const AttributeSummary = () => {
     parseInt(searchParams.get("AS_pageSize") || "10", 10),
     1
   );
-
-  useEffect(() => {
-    const hasPage = searchParams.has("AS_page");
-    const hasPageSize = searchParams.has("AS_pageSize");
-    const hasCodes = searchParams.has("AS_code");
-
-    const newParams = new URLSearchParams(searchParams);
-
-    if (!hasPage) {
-      newParams.set("AS_page", "1");
-    }
-    if (!hasPageSize) {
-      newParams.set("AS_pageSize", "10");
-    }
-
-    // If no AS_code in URL, set defaults (those with isDefault = true)
-    if (!hasCodes) {
-      const defaultCodes = columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-
-      defaultCodes.forEach((code) => newParams.append("AS_code", code));
-    }
-
-    if (newParams.toString() !== searchParams.toString()) {
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams, columnDescriptions]);
 
   // Fetch attribute summary
   useEffect(() => {
@@ -150,7 +144,11 @@ const AttributeSummary = () => {
   return (
     <div
       style={{
-        height: "50vh",
+        maxHeight: isCurrentPage
+          ? isFullScreen
+            ? "100vh"
+            : "calc(100vh - 200px)"
+          : "50vh",
         width: "100%",
         overflowX: "auto",
         borderRadius: "12px",

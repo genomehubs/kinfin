@@ -91,7 +91,10 @@ def extract_attributes_and_taxon_sets(filepath: str):
         attribute = filename.split(".")[0]
         taxon_set = filename.split(".")[1]
         attributes.add(attribute)
-        result["taxon_set"][attribute].append(taxon_set)
+        if attribute not in result["taxon_set"]:
+            result["taxon_set"][attribute] = ["all"]
+        if taxon_set != "all":
+            result["taxon_set"][attribute].append(taxon_set)
     result["attributes"] = sorted(attributes)
     return result
 

@@ -1,12 +1,13 @@
-import React from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
 } from "@mui/material";
+
+import React from "react";
 
 const RenameDialog = ({
   open,
@@ -20,9 +21,13 @@ const RenameDialog = ({
   label = "Enter a name for this analysis",
 }) => {
   const handleInputChange = (e) => {
-    setValue(e.target.value);
-    if (error) {
+    const newValue = e.target.value;
+    setValue(newValue);
+    // Only allow alphanumeric and underscore
+    if (/^[A-Za-z0-9_]*$/.test(newValue)) {
       setError("");
+    } else {
+      setError("Only alphanumeric characters and underscores are allowed.");
     }
   };
 
@@ -35,7 +40,10 @@ const RenameDialog = ({
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      onSubmit();
+      // Only submit if no error
+      if (!error) {
+        onSubmit();
+      }
     } else if (e.key === "Escape") {
       handleCancel();
     }
@@ -54,14 +62,18 @@ const RenameDialog = ({
           variant="outlined"
           value={value}
           error={!!error}
-          helperText={error}
+          helperText={error || " "}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={handleCancel}>Cancel</Button>
-        <Button onClick={onSubmit} variant="contained">
+        <Button
+          onClick={onSubmit}
+          variant="contained"
+          disabled={!!error || !value}
+        >
           Submit
         </Button>
       </DialogActions>
