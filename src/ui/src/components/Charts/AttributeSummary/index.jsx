@@ -10,6 +10,21 @@ import { v4 as uuidv4 } from "uuid";
 const pageSizeOptions = [10, 25, 50];
 
 const AttributeSummary = () => {
+  const isCurrentPage = window.location.pathname.includes("attribute-summary");
+  const [isFullScreen, setIsFullScreen] = React.useState(
+    document.fullscreenElement != null
+  );
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(document.fullscreenElement != null);
+    };
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    };
+  }, []);
+
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -129,7 +144,11 @@ const AttributeSummary = () => {
   return (
     <div
       style={{
-        height: "50vh",
+        maxHeight: isCurrentPage
+          ? isFullScreen
+            ? "100vh"
+            : "calc(100vh - 200px)"
+          : "50vh",
         width: "100%",
         overflowX: "auto",
         borderRadius: "12px",
