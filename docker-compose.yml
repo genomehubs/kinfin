@@ -1,0 +1,20 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: kinfin-api
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000" # change if your API uses a different port
+    depends_on:
+      - ui
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: kinfin-ui
+    ports:
+      - "5173:80"
