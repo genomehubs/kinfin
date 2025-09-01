@@ -76,6 +76,7 @@ const AttributeSelector = () => {
         initialized.current = true;
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseData, setSearchParams, dispatch]);
 
   const handleAttributeChange = (e) => {
