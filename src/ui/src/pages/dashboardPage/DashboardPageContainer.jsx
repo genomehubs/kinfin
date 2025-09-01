@@ -1,12 +1,14 @@
-import RarefactionCurvePage from "./RarefactionCurvePage";
+import DashboardPage from "./DashboardPage";
 import React from "react";
 import { compose } from "recompose";
+import withClusterSizeDistribution from "../../hocs/withClusterSizeDistribution";
 import withRarefactionCurve from "../../hocs/withRarefactionCurve";
 import withSelectedAttributeTaxonset from "../../hocs/withSelectedAttributeTaxonset";
 
-const RarefactionCurvePageContainer = compose(
+const DashboardPageContainer = compose(
   withSelectedAttributeTaxonset,
+  withClusterSizeDistribution,
   withRarefactionCurve
-)(RarefactionCurvePage);
+)(DashboardPage);
 
-export default RarefactionCurvePageContainer;
+export default DashboardPageContainer;

@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
 import styles from "./RarefactionCurve.module.scss";
+import { useDispatch } from "react-redux";
 
-const RarefactionCurve = ({ attribute }) => {
+const RarefactionCurve = ({ attribute, rarefactionCurveBlob }) => {
   const dispatch = useDispatch();
-  const rarefactionCurveBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.rarefactionCurve
-  );
 
   const [blobUrl, setBlobUrl] = useState(null);
 

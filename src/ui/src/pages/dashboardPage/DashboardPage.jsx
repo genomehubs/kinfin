@@ -25,7 +25,11 @@ import { mapChartName } from "../../utils/mappings";
 import styles from "./Dashboard.module.scss";
 import { useSearchParams } from "react-router-dom";
 
-const Dashboard = () => {
+const Dashboard = ({
+  selectedAttributeTaxonset,
+  rarefactionCurveBlob,
+  clusterSizeDistributionBlob,
+}) => {
   const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
@@ -38,21 +42,8 @@ const Dashboard = () => {
   const sessionDetails = useSelector(
     (state) => state?.config?.storeConfig?.data?.[sessionId]
   );
-
-  const selectedAttributeTaxonset = useSelector(
-    (state) => state?.config?.uiState?.selectedAttributeTaxonset
-  );
-
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
-  );
-
-  const rarefactionCurveBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.rarefactionCurve
-  );
-
-  const clusterSizeDistributionBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
   );
 
   useEffect(() => {

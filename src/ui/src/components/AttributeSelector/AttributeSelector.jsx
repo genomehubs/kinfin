@@ -114,7 +114,7 @@ const AttributeSelector = ({
           >
             <MenuItem value="">Select Taxon Set</MenuItem>
             {attribute &&
-              responseData?.taxon_set[attribute]?.map((tx) => (
+              responseData?.taxon_set?.[attribute]?.map((tx) => (
                 <MenuItem key={tx} value={tx}>
                   {tx}
                 </MenuItem>

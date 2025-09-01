@@ -3,18 +3,18 @@ import { useDispatch, useSelector } from "react-redux";
 import AppLayout from "../../components/AppLayout";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
-import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution/ClusterSizeDistribution";
+import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import React from "react";
 import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterSizeDistribution.module.scss";
 
-const ClusterSizeDistributionPage = ({ selectedAttributeTaxonset }) => {
+const ClusterSizeDistributionPage = ({
+  selectedAttributeTaxonset,
+  clusterSizeDistributionBlob,
+}) => {
   const dispatch = useDispatch();
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
-  );
-  const clusterSizeDistributionBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
   );
 
   const handleClose = () => {

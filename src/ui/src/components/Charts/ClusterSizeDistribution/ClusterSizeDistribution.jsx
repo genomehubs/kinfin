@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
 import styles from "./ClusterSizeDistribution.module.scss";
+import { useDispatch } from "react-redux";
 
-const ClusterSizeDistribution = ({ attribute }) => {
+const ClusterSizeDistribution = ({
+  attribute,
+  clusterSizeDistributionBlob,
+}) => {
   const dispatch = useDispatch();
-  const clusterSizeBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
-  );
-
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
@@ -18,17 +17,15 @@ const ClusterSizeDistribution = ({ attribute }) => {
   }, [dispatch, attribute]);
 
   useEffect(() => {
-    if (clusterSizeBlob instanceof Blob) {
-      const objectUrl = URL.createObjectURL(clusterSizeBlob);
+    if (clusterSizeDistributionBlob instanceof Blob) {
+      const objectUrl = URL.createObjectURL(clusterSizeDistributionBlob);
       setBlobUrl(objectUrl);
 
       return () => {
         URL.revokeObjectURL(objectUrl);
       };
-      // } else {
-      //   console.error("❌ clusterSizeBlob is not a Blob:", clusterSizeBlob);
     }
-  }, [clusterSizeBlob]);
+  }, [clusterSizeDistributionBlob]);
 
   return (
     <div className={styles.container}>
