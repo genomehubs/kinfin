@@ -143,7 +143,7 @@ const AttributeSelector = () => {
         <FormControl fullWidth size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Attribute</InputLabel>
           <Select
-            value={attribute}
+            value={responseData?.attributes ? attribute : ""}
             onChange={handleAttributeChange}
             label="Attribute"
           >
@@ -163,7 +163,11 @@ const AttributeSelector = () => {
           disabled={!attribute}
         >
           <InputLabel>Taxon Set</InputLabel>
-          <Select value={taxon} onChange={handleTaxonChange} label="Taxon Set">
+          <Select
+            value={responseData?.attributes ? taxon : ""}
+            onChange={handleTaxonChange}
+            label="Taxon Set"
+          >
             <MenuItem value="">Select Taxon Set</MenuItem>
             {attribute &&
               responseData?.taxon_set[attribute]?.map((tx) => (
