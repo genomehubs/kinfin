@@ -25,5 +25,8 @@
 
   // Enable auto save
   "files.autoSave": "onFocusChange",
-  "cSpell.words": ["Kinfin", "proteome"]
+  "cSpell.words": ["Kinfin", "proteome"],
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda",
+  "python-envs.pythonProjects": []
 }

@@ -5,7 +5,9 @@ const ValidationErrors = ({ validationErrors }) => {
   const hasHeaders = validationErrors.headers.length > 0;
   const hasRows = Object.keys(validationErrors.rows).length > 0;
 
-  if (!hasHeaders && !hasRows) return null;
+  if (!hasHeaders && !hasRows) {
+    return null;
+  }
 
   return (
     <div className={styles.errorMessage}>

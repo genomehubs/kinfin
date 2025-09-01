@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import io
+import itertools
 import json
 import logging
 import os
@@ -619,13 +620,12 @@ async def get_cluster_summary(
                 pat = re.compile("^" + name.replace("X", "(.+)") + "$")
                 compiled_patterns.append((pat, code_to_alias.get(code, name)))
 
-            for key in all_keys_ordered:
-                for pat, alias_template in compiled_patterns:
-                    m = pat.match(key)
-                    if m and key not in selected_set:
-                        selected_columns.append(key)
-                        selected_set.add(key)
-                        column_aliases[key] = alias_template.replace("X", m.group(1))
+            for key, (pat, alias_template) in itertools.product(all_keys_ordered, compiled_patterns):
+                m = pat.match(key)
+                if m and key not in selected_set:
+                    selected_columns.append(key)
+                    selected_set.add(key)
+                    column_aliases[key] = alias_template.replace("X", m.group(1))
 
             # Keep only selected columns; fill missing with "-"
             flat_result = {

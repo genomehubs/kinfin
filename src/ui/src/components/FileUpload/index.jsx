@@ -1,13 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import styles from "./FileUpload.module.scss";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { read, utils } from "xlsx";
-import Papa from "papaparse";
-import { useSelector } from "react-redux";
-import FileDropZone from "./FileDropzone";
-import ValidationErrors from "./ValidationErrors";
-import { validateDataset } from "../../utils/validateDataset";
+
 import DataTable from "./DataTable";
+import FileDropZone from "./FileDropzone";
 import JsonEditor from "./JsonEditor";
+import Papa from "papaparse";
+import ValidationErrors from "./ValidationErrors";
+import styles from "./FileUpload.module.scss";
+import { useSelector } from "react-redux";
+import { validateDataset } from "../../utils/validateDataset";
 
 const SUPPORTED_EXTENSIONS = {
   xls: "excel",
@@ -60,7 +61,9 @@ const FileUpload = ({
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     const ext = file.name.split(".").pop().toLowerCase();
     const fileType = SUPPORTED_EXTENSIONS[ext];
@@ -139,7 +142,9 @@ const FileUpload = ({
   };
 
   const handleHeaderEdit = (oldHeader, newHeader) => {
-    if (!parsedData?.length || oldHeader === newHeader) return;
+    if (!parsedData?.length || oldHeader === newHeader) {
+      return;
+    }
 
     const headers = Object.keys(parsedData[0]);
     const normalized = headers.map((h) => h.trim().toLowerCase());
