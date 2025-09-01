@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+from cachetools import TTLCache
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
@@ -518,6 +519,16 @@ async def get_cluster_summary(
     as_file: Optional[bool] = Query(False),
     CS_code: Optional[List[str]] = Query(None, alias="CS_code"),   # ✅ only one param
 ) -> JSONResponse:
+    # --- Add cachetools.TTLCache ---
+    # Cache key: (session_id, attribute, include_clusters, exclude_clusters, include_properties, exclude_properties, min_cluster_protein_count, max_cluster_protein_count, min_protein_median_count, max_protein_median_count)
+    # Only cache the parsed file and flattened result, not pagination or sorting
+    global _cluster_summary_cache
+    if '_cluster_summary_cache' not in globals():
+        _cluster_summary_cache = TTLCache(maxsize=32, ttl=300)  # 32 entries, 5 minutes
+    cache_key = (
+        session_id, attribute, include_clusters, exclude_clusters, include_properties, exclude_properties,
+        min_cluster_protein_count, max_cluster_protein_count, min_protein_median_count, max_protein_median_count
+    )
     try:
         result_dir = query_manager.get_session_dir(session_id)
         config_f = os.path.join(result_dir, "config.json")
@@ -559,21 +570,25 @@ async def get_cluster_summary(
                 status_code=404,
             )
 
-        # --- Parse file ---
-        result = parse_cluster_summary_file(
-            filepath=filepath,
-            include_clusters=include_clusters,
-            exclude_clusters=exclude_clusters,
-            include_properties=include_properties,
-            exclude_properties=exclude_properties,
-            min_cluster_protein_count=min_cluster_protein_count,
-            max_cluster_protein_count=max_cluster_protein_count,
-            min_protein_median_count=min_protein_median_count,
-            max_protein_median_count=max_protein_median_count,
-        )
-
-        # --- Flatten rows ---
-        flat_result = {k: flatten_dict(v) for k, v in result.items()}
+        # --- Use cache for parsed file and flattened result ---
+        try:
+            flat_result = _cluster_summary_cache[cache_key]
+            print("Cache hit for key: %s", cache_key)
+        except KeyError:
+            print("Cache miss for key: %s", cache_key)
+            result = parse_cluster_summary_file(
+                filepath=filepath,
+                include_clusters=include_clusters,
+                exclude_clusters=exclude_clusters,
+                include_properties=include_properties,
+                exclude_properties=exclude_properties,
+                min_cluster_protein_count=min_cluster_protein_count,
+                max_cluster_protein_count=max_cluster_protein_count,
+                min_protein_median_count=min_protein_median_count,
+                max_protein_median_count=max_protein_median_count,
+            )
+            flat_result = {k: flatten_dict(v) for k, v in result.items()}
+            _cluster_summary_cache[cache_key] = flat_result
 
         # --- Load descriptions once ---
         current_dir = os.path.dirname(os.path.abspath(__file__))
