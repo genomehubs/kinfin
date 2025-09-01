@@ -14,18 +14,14 @@ import DataTable from "../../components/FileUpload/DataTable";
 import Modal from "@mui/material/Modal";
 import RarefactionCurve from "../../components/Charts/RarefactionCurve";
 import { RunSummary } from "../../components";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { downloadBlobFile } from "../../utils/downloadBlobFile";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
 import { getAvailableAttributesTaxonsets } from "../../app/store/analysis/slices/availableAttributesTaxonsetsSlice";
-import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
-import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { getCountsByTaxon } from "../../app/store/analysis/slices/countsByTaxonSlice";
 import { getRunStatus } from "../../app/store/config/slices/runStatusSlice";
 import { getRunSummary } from "../../app/store/analysis/slices/runSummarySlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { mapChartName } from "../../utils/mappings";
 import styles from "./Dashboard.module.scss";
 import { useSearchParams } from "react-router-dom";
 
@@ -73,6 +69,7 @@ const Dashboard = () => {
   }, [dispatch, selectedAttributeTaxonset, sessionId, sessionDetails]);
   useEffect(() => {
     dispatch(getColumnDescriptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const closeModal = () => setEnlargedChart(null);
@@ -116,66 +113,6 @@ const Dashboard = () => {
     } else {
       console.warn("Unknown chart key:", chartKey);
     }
-  };
-
-  const modalTitleMap = {
-    attributeSummary: "Attribute Summary",
-    clusterSummary: "Cluster Summary",
-    clusterMetrics: "Cluster Metrics",
-    rarefactionCurve: "Rarefaction Curve",
-    clusterSizeDistribution: "Cluster Size Distribution",
-  };
-
-  const handleDownload = (chartKey) => {
-    dispatch(setDownloadLoading({ type: chartKey, loading: true }));
-
-    const attribute = selectedAttributeTaxonset?.attribute;
-    const taxonSet = selectedAttributeTaxonset?.taxonset;
-    const basePayload = {
-      attribute,
-      taxonSet,
-      asFile: true,
-    };
-
-    dispatchSuccessToast(`${chartKey} download has started`);
-
-    switch (chartKey) {
-      case "attributeSummary":
-        dispatch(getAttributeSummary(basePayload));
-        break;
-      case "clusterSummary":
-        dispatch(getClusterSummary(basePayload));
-        break;
-      case "clusterMetrics":
-        dispatch(getClusterMetrics(basePayload));
-        break;
-      case "rarefactionCurve":
-        if (rarefactionCurveBlob instanceof Blob) {
-          downloadBlobFile(
-            rarefactionCurveBlob,
-            "rarefaction_curve.png",
-            "image/png"
-          );
-          dispatch(setDownloadLoading({ type: chartKey, loading: false }));
-        }
-        break;
-      case "clusterSizeDistribution":
-        if (clusterSizeDistributionBlob instanceof Blob) {
-          downloadBlobFile(
-            clusterSizeDistributionBlob,
-            "cluster_size_distribution.png",
-            "image/png"
-          );
-          dispatch(setDownloadLoading({ type: chartKey, loading: false }));
-        }
-        break;
-      default:
-        console.warn("Invalid chart key for download:", chartKey);
-    }
-
-    setTimeout(() => {
-      dispatch(setDownloadLoading({ type: chartKey, loading: false }));
-    }, 30000);
   };
 
   const renderModalContent = () => {
@@ -230,7 +167,7 @@ const Dashboard = () => {
                 borderRadius: 2,
               }}
             >
-              <h2>{modalTitleMap[enlargedChart] || ""}</h2>
+              <h2>{mapChartName(enlargedChart)}</h2>
               <div>{renderModalContent()}</div>
             </Box>
           </Modal>
@@ -246,9 +183,15 @@ const Dashboard = () => {
                   return (
                     <ChartCard
                       key={key}
-                      title={modalTitleMap[key]}
+                      title={mapChartName(key)}
                       isDownloading={downloadLoading?.[key]}
-                      onDownload={() => handleDownload(key)}
+                      onDownload={() =>
+                        handleDownload({
+                          chartKey: key,
+                          dispatch,
+                          selectedAttributeTaxonset,
+                        })
+                      }
                       onOpen={() => handleNavigate(key)}
                     >
                       {renderDashboardChart(key)}
@@ -262,9 +205,17 @@ const Dashboard = () => {
                   return (
                     <ChartCard
                       key={key}
-                      title={modalTitleMap[key]}
+                      title={mapChartName(key)}
                       isDownloading={downloadLoading?.[key]}
-                      onDownload={() => handleDownload(key)}
+                      onDownload={() =>
+                        handleDownload({
+                          chartKey: key,
+                          dispatch,
+                          selectedAttributeTaxonset,
+                          rarefactionCurveBlob,
+                          clusterSizeDistributionBlob,
+                        })
+                      }
                       onOpen={() => handleNavigate(key)}
                       widthPercent={48}
                     >

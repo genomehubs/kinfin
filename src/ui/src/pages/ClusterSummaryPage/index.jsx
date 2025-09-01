@@ -6,10 +6,8 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
 import CustomisationDialog from "../../components/CustomisationDialog";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { getClusterSummary } from "../../app/store/analysis/slices/clusterSummarySlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterSummary.module.scss";
 import { useSearchParams } from "react-router-dom";
 
@@ -36,6 +34,7 @@ const ClusterSummaryPage = () => {
 
   useEffect(() => {
     dispatch(getColumnDescriptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -47,22 +46,8 @@ const ClusterSummaryPage = () => {
     if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
       setSelectedCodes(codes);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, columnDescriptions]);
-
-  const handleDownload = () => {
-    dispatch(setDownloadLoading({ type: "clusterSummary", loading: true }));
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
-      taxonSet: selectedAttributeTaxonset?.taxonset,
-      asFile: true,
-    };
-    dispatchSuccessToast("Cluster Summary download has started");
-    dispatch(getClusterSummary(payload));
-
-    setTimeout(() => {
-      dispatch(setDownloadLoading({ type: "clusterSummary", loading: false }));
-    }, 30000);
-  };
 
   const handleCustomisation = () => {
     setCustomiseOpen(true);
@@ -95,7 +80,13 @@ const ClusterSummaryPage = () => {
           <ChartCard
             title="Cluster Summary"
             isDownloading={clusterSummaryDownloadLoading}
-            onDownload={handleDownload}
+            onDownload={() =>
+              handleDownload({
+                chartKey: "clusterSummary",
+                dispatch,
+                selectedAttributeTaxonset,
+              })
+            }
             onCustomise={handleCustomisation}
             onClose={handleClose}
           >

@@ -6,10 +6,8 @@ import AttributeSelector from "../../components/AttributeSelector";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ChartCard from "../../components/ChartCard";
 import CustomisationDialog from "../../components/CustomisationDialog";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./AttributeSummary.module.scss";
 import { useSearchParams } from "react-router-dom";
 
@@ -36,6 +34,7 @@ const AttributeSummaryPage = () => {
 
   useEffect(() => {
     dispatch(getColumnDescriptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -47,26 +46,8 @@ const AttributeSummaryPage = () => {
     if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
       setSelectedCodes(codes);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, columnDescriptions]);
-
-  const handleDownload = () => {
-    dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
-      taxonSet: selectedAttributeTaxonset?.taxonset,
-      asFile: true,
-    };
-    dispatchSuccessToast("Attribute Summary download has started");
-    dispatch(getAttributeSummary(payload));
-
-    setTimeout(
-      () =>
-        dispatch(
-          setDownloadLoading({ type: "attributeSummary", loading: false })
-        ),
-      30000
-    );
-  };
 
   const handleCustomisation = () => {
     setCustomiseOpen(true);
@@ -99,7 +80,13 @@ const AttributeSummaryPage = () => {
           <ChartCard
             title="Attribute Summary"
             isDownloading={downloadLoading?.downloadLoading?.attributeSummary}
-            onDownload={handleDownload}
+            onDownload={() =>
+              handleDownload({
+                chartKey: "attributeSummary",
+                dispatch,
+                selectedAttributeTaxonset,
+              })
+            }
             onCustomise={handleCustomisation}
             onClose={handleClose}
           >

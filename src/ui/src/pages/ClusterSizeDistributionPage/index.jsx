@@ -5,9 +5,7 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import React from "react";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterSizeDistribution.module.scss";
 
 const ClusterSizeDistributionPage = () => {
@@ -18,25 +16,9 @@ const ClusterSizeDistributionPage = () => {
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
   );
-
-  const handleDownload = () => {
-    dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
-      taxonSet: selectedAttributeTaxonset?.taxonset,
-      asFile: true,
-    };
-    dispatchSuccessToast("Attribute Summary download has started");
-    dispatch(getAttributeSummary(payload));
-
-    setTimeout(
-      () =>
-        dispatch(
-          setDownloadLoading({ type: "attributeSummary", loading: false })
-        ),
-      30000
-    );
-  };
+  const clusterSizeDistributionBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.clusterSizeDistribution
+  );
 
   const handleClose = () => {
     window.history.back();
@@ -54,7 +36,14 @@ const ClusterSizeDistributionPage = () => {
             isDownloading={
               downloadLoading?.downloadLoading?.ClusterSizeDistribution
             }
-            onDownload={handleDownload}
+            onDownload={() =>
+              handleDownload({
+                chartKey: "clusterSizeDistribution",
+                dispatch,
+                selectedAttributeTaxonset,
+                clusterSizeDistributionBlob,
+              })
+            }
             onClose={handleClose}
           >
             <ClusterSizeDistribution />

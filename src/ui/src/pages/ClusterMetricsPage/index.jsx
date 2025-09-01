@@ -6,10 +6,8 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import CustomisationDialog from "../../components/CustomisationDialog";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { getClusterMetrics } from "../../app/store/analysis/slices/clusterMetricsSlice";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterMetrics.module.scss";
 import { useSearchParams } from "react-router-dom";
 
@@ -36,6 +34,7 @@ const ClusterMetricsPage = () => {
 
   useEffect(() => {
     dispatch(getColumnDescriptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -47,27 +46,8 @@ const ClusterMetricsPage = () => {
     if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
       setSelectedCodes(codes);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, columnDescriptions]);
-
-  // Download handler
-  const handleDownload = () => {
-    dispatch(setDownloadLoading({ type: "clusterMetrics", loading: true }));
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
-      taxonSet: selectedAttributeTaxonset?.taxonset,
-      asFile: true,
-    };
-    dispatchSuccessToast("Cluster Metrics download has started");
-    dispatch(getClusterMetrics(payload));
-
-    setTimeout(
-      () =>
-        dispatch(
-          setDownloadLoading({ type: "clusterMetrics", loading: false })
-        ),
-      30000
-    );
-  };
 
   // Open customisation modal
   const handleCustomisation = () => {
@@ -102,7 +82,13 @@ const ClusterMetricsPage = () => {
           <ChartCard
             title="Cluster Metrics"
             isDownloading={clusterMetricsDownloadLoading}
-            onDownload={handleDownload}
+            onDownload={() =>
+              handleDownload({
+                chartKey: "clusterMetrics",
+                dispatch,
+                selectedAttributeTaxonset,
+              })
+            }
             onCustomise={handleCustomisation}
             onClose={handleClose}
           >

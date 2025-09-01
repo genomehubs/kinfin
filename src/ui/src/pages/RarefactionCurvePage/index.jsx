@@ -5,9 +5,7 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import RarefactionCurve from "../../components/Charts/RarefactionCurve";
 import React from "react";
-import { dispatchSuccessToast } from "../../utils/toastNotifications";
-import { getAttributeSummary } from "../../app/store/analysis/slices/attributeSummarySlice";
-import { setDownloadLoading } from "../../app/store/config/slices/uiStateSlice";
+import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./RarefactionCurve.module.scss";
 
 const RarefactionCurvePage = () => {
@@ -18,25 +16,9 @@ const RarefactionCurvePage = () => {
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
   );
-
-  const handleDownload = () => {
-    dispatch(setDownloadLoading({ type: "attributeSummary", loading: true }));
-    const payload = {
-      attribute: selectedAttributeTaxonset?.attribute,
-      taxonSet: selectedAttributeTaxonset?.taxonset,
-      asFile: true,
-    };
-    dispatchSuccessToast("Attribute Summary download has started");
-    dispatch(getAttributeSummary(payload));
-
-    setTimeout(
-      () =>
-        dispatch(
-          setDownloadLoading({ type: "attributeSummary", loading: false })
-        ),
-      30000
-    );
-  };
+  const rarefactionCurveBlob = useSelector(
+    (state) => state?.analysis?.plot?.data?.rarefactionCurve
+  );
 
   const handleClose = () => {
     window.history.back();
@@ -52,7 +34,14 @@ const RarefactionCurvePage = () => {
           <ChartCard
             title="Rarefaction Curve"
             isDownloading={downloadLoading?.downloadLoading?.rareFactionCurve}
-            onDownload={handleDownload}
+            onDownload={() =>
+              handleDownload({
+                chartKey: "rarefactionCurve",
+                dispatch,
+                selectedAttributeTaxonset,
+                rarefactionCurveBlob,
+              })
+            }
             onClose={handleClose}
           >
             <RarefactionCurve />
