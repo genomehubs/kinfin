@@ -1,14 +1,411 @@
 import logging
 import warnings
-from typing import Dict, List
+from typing import Dict, List, Set
 
+import matplotlib as mat
+import matplotlib.pyplot as plt
+import numpy as np
 import polars as pl
+from matplotlib.ticker import NullFormatter
 from scipy import stats
 
 logger = logging.getLogger("kinfin_logger")
 
 
 warnings.filterwarnings("ignore", message="Precision loss occurred*")
+
+mat.use("agg")
+
+plt.style.use("ggplot")
+
+mat.rc("ytick", labelsize=20)
+mat.rc("xtick", labelsize=20)
+mat.rcParams.update({"font.size": 22})
+
+
+def generate_background_plots(
+    results_df: pl.DataFrame, attribute: str, output_dir: str, plot_format: str = "png"
+):
+    if results_df.height == 0:
+        return
+
+    for taxon_key, data in results_df.group_by("TAXON_1"):
+        taxon_1 = taxon_key[0]
+        log2fc_values = (
+            data.get_column("log2_mean(TAXON_1/background)")
+            .drop_nulls()
+            .to_numpy()
+            .copy()
+        )
+        p_values = (
+            data.get_column("mwu_pvalue(TAXON_1 vs. background)")
+            .drop_nulls()
+            .to_numpy()
+            .copy()
+        )
+
+        if len(p_values) == 0:
+            continue
+
+        p_values[p_values == 0] = 0.01 / (len(p_values) + 1)
+
+        plt.figure(1, figsize=(24, 12))
+        left, width = 0.1, 0.65
+        bottom, height = 0.1, 0.65
+        rect_scatter = [left, bottom, width, height]
+        axScatter = plt.axes(rect_scatter)
+        axScatter.set_facecolor("white")
+
+        ooFive = 0.05
+        ooOne = 0.01
+        log2fc_percentile = np.percentile(np.abs(log2fc_values), 95)
+
+        axScatter.axhline(y=ooFive, linewidth=2, color="orange", linestyle="--")
+        ooFive_artist = plt.Line2D((0, 1), (0, 0), color="orange", linestyle="--")
+        axScatter.axhline(y=ooOne, linewidth=2, color="red", linestyle="--")
+        ooOne_artist = plt.Line2D((0, 1), (0, 0), color="red", linestyle="--")
+
+        axScatter.axvline(x=1.0, linewidth=2, color="purple", linestyle="--")
+        axScatter.axvline(x=-1.0, linewidth=2, color="purple", linestyle="--")
+        v1_artist = plt.Line2D((0, 1), (0, 0), color="purple", linestyle="--")
+        axScatter.axvline(
+            x=log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+        axScatter.axvline(
+            x=-log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+        nine_five_percentile_artist = plt.Line2D(
+            (0, 1), (0, 0), color="blue", linestyle="--"
+        )
+
+        axScatter.scatter(
+            log2fc_values, p_values, alpha=0.8, edgecolors="none", s=25, c="grey"
+        )
+
+        legend = axScatter.legend(
+            [ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+            [
+                f"p-value = {ooFive}",
+                f"p-value = {ooOne}",
+                "|log2FC| = 1",
+                f"|log2FC-95%ile| = {log2fc_percentile:.2f}",
+            ],
+            fontsize=18,
+            frameon=True,
+        )
+        legend.get_frame().set_facecolor("white")
+
+        x_max_abs = np.max(np.abs(log2fc_values)) if len(log2fc_values) > 0 else 1.0
+        axScatter.set_xlim(-x_max_abs - 1, x_max_abs + 1)
+        axScatter.set_ylim(1.1, np.min(p_values) * 0.1)
+        axScatter.set_yscale("log")
+        axScatter.set_xlabel(f"log2(mean({taxon_1})/mean(background))", fontsize=18)
+        axScatter.set_ylabel("p-value", fontsize=18)
+
+        axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
+        axScatter.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+
+        plot_file = f"{output_dir}/{attribute}/{attribute}.pairwise_representation_test.{taxon_1}_background.{plot_format}"
+        print(f"[✓] Plotting: {plot_file}")
+        plt.savefig(plot_file, format=plot_format)
+        plt.close()
+
+
+def generate_background_representation_test(
+    cluster_df: pl.DataFrame,
+    attribute: str,
+    label_to_taxons: Dict[str, Dict[str, Set[str]]],
+    output_dir: str,
+    min_proteomes: int = 2,
+):
+    """
+    Performs a statistical test for each label against all other labels (background).
+    """
+    all_results = []
+    taxon_map_df = pl.DataFrame(
+        [
+            (taxon, label)
+            for label, taxons in label_to_taxons[attribute].items()
+            for taxon in taxons
+        ],
+        schema=["taxons", "label"],
+        orient="row",
+    )
+
+    protein_counts_per_taxon = (
+        cluster_df.explode("taxons")
+        .group_by("cluster_id", "taxons")
+        .agg(pl.count().alias("count"))
+        .join(taxon_map_df, on="taxons")
+    )
+
+    for current_label in label_to_taxons[attribute]:
+        label_counts = (
+            protein_counts_per_taxon.group_by("cluster_id")
+            .agg(
+                pl.col("count")
+                .filter(pl.col("label") == current_label)
+                .alias("inside_counts"),
+                pl.col("count")
+                .filter(pl.col("label") != current_label)
+                .alias("outside_counts"),
+            )
+            .filter(
+                (pl.col("inside_counts").list.len() >= min_proteomes)
+                & (pl.col("outside_counts").list.len() >= min_proteomes)
+            )
+        )
+
+        if label_counts.height == 0:
+            continue
+
+        stats_df = label_counts.with_columns(
+            TAXON_1_mean=pl.col("inside_counts").list.mean(),
+            background_mean=pl.col("outside_counts").list.mean(),
+        ).with_columns(
+            log2_mean=pl.when(
+                (pl.col("TAXON_1_mean") > 0) & (pl.col("background_mean") > 0)
+            )
+            .then((pl.col("TAXON_1_mean") / pl.col("background_mean")).log(base=2))
+            .when(pl.col("TAXON_1_mean") == pl.col("background_mean"))
+            .then(0.0)
+            .otherwise(None)
+        )
+
+        p_values = []
+        for row in stats_df.iter_rows(named=True):
+            c1, c2 = row["inside_counts"], row["outside_counts"]
+            if len(set(c1)) == 1 and len(set(c2)) == 1 and c1[0] == c2[0]:
+                p_values.append(1.0)
+                continue
+            try:
+                pvalue = stats.mannwhitneyu(c1, c2, alternative="two-sided").pvalue
+                p_values.append(pvalue)
+            except ValueError:
+                p_values.append(1.0)
+
+        final_df = stats_df.with_columns(pl.Series("p_value", p_values)).select(
+            pl.col("cluster_id").alias("#cluster_id"),
+            pl.lit(current_label).alias("TAXON_1"),
+            pl.col("TAXON_1_mean"),
+            pl.lit("background").alias("TAXON_2"),
+            pl.col("background_mean").alias("TAXON_2_mean"),
+            pl.col("log2_mean").alias("log2_mean(TAXON_1/background)"),
+            pl.col("p_value").alias("mwu_pvalue(TAXON_1 vs. background)"),
+        )
+        all_results.append(final_df)
+
+    if not all_results:
+        return
+
+    full_results_df = pl.concat(all_results)
+    generate_background_plots(full_results_df, attribute, output_dir)
+
+
+def generate_pairwise_plots(
+    pairwise_df: pl.DataFrame,
+    attribute: str,
+    output_dir: str,
+    plot_format: str = "png",
+):
+
+    if pairwise_df.height == 0:
+        return
+
+    pair_groups = pairwise_df.group_by("TAXON_1", "TAXON_2")
+
+    for (taxon_1, taxon_2), data in pair_groups:
+        log2fc_values = (
+            data.get_column("log2_mean(TAXON_1/TAXON_2)").drop_nulls().to_numpy().copy()
+        )
+        p_values = (
+            data.get_column("mwu_pvalue(TAXON_1 vs. TAXON_2)")
+            .drop_nulls()
+            .to_numpy()
+            .copy()
+        )
+
+        if len(p_values) == 0:
+            continue
+
+        p_values[p_values == 0] = 0.01 / (len(p_values) + 1)
+
+        plt.figure(1, figsize=(24, 12))
+
+        left, width = 0.1, 0.65
+        bottom, height = 0.1, 0.65
+        bottom_h = left + width + 0.02
+        rect_scatter = [left, bottom, width, height]
+        rect_histx = [left, bottom_h, width, 0.2]
+
+        axScatter = plt.axes(rect_scatter)
+        axScatter.set_facecolor("white")
+        axHistx = plt.axes(rect_histx)
+        axHistx.set_facecolor("white")
+
+        nullfmt = NullFormatter()
+        axHistx.xaxis.set_major_formatter(nullfmt)
+        axHistx.yaxis.set_major_formatter(nullfmt)
+
+        binwidth = 0.05
+        xymax = np.max([np.max(np.fabs(log2fc_values)), np.max(np.fabs(p_values))])
+        lim = (int(xymax / binwidth) + 1) * binwidth
+        bins = np.arange(-lim, lim + binwidth, binwidth)
+        axHistx.hist(
+            log2fc_values, bins=bins, histtype="stepfilled", color="grey", align="mid"
+        )
+
+        ooFive = 0.05
+        ooOne = 0.01
+        log2fc_percentile = np.percentile(np.abs(log2fc_values), 95)
+
+        axScatter.axhline(y=ooFive, linewidth=2, color="orange", linestyle="--")
+        ooFive_artist = plt.Line2D((0, 1), (0, 0), color="orange", linestyle="--")
+        axScatter.axhline(y=ooOne, linewidth=2, color="red", linestyle="--")
+        ooOne_artist = plt.Line2D((0, 1), (0, 0), color="red", linestyle="--")
+
+        axScatter.axvline(x=1.0, linewidth=2, color="purple", linestyle="--")
+        axScatter.axvline(x=-1.0, linewidth=2, color="purple", linestyle="--")
+        v1_artist = plt.Line2D((0, 1), (0, 0), color="purple", linestyle="--")
+        axScatter.axvline(
+            x=log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+        axScatter.axvline(
+            x=-log2fc_percentile, linewidth=2, color="blue", linestyle="--"
+        )
+        nine_five_percentile_artist = plt.Line2D(
+            (0, 1), (0, 0), color="blue", linestyle="--"
+        )
+
+        axScatter.scatter(
+            log2fc_values, p_values, alpha=0.8, edgecolors="none", s=25, c="grey"
+        )
+
+        legend = axScatter.legend(
+            [ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+            [
+                f"p-value = {ooFive}",
+                f"p-value = {ooOne}",
+                "|log2FC| = 1",
+                f"|log2FC-95%ile| = {log2fc_percentile:.2f}",
+            ],
+            fontsize=18,
+            frameon=True,
+        )
+        legend.get_frame().set_facecolor("white")
+
+        x_max_abs = np.max(np.abs(log2fc_values))
+        axScatter.set_xlim(-x_max_abs - 1, x_max_abs + 1)
+        axScatter.set_ylim(1.1, np.min(p_values) * 0.1)
+        axScatter.set_yscale("log")
+        axScatter.set_xlabel(f"log2(mean({taxon_1})/mean({taxon_2}))", fontsize=18)
+        axScatter.set_ylabel("p-value", fontsize=18)
+
+        axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
+        axScatter.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+
+        axHistx.set_xlim(axScatter.get_xlim())
+
+        plot_file = f"{output_dir}/{attribute}/{attribute}.pairwise_representation_test.{taxon_1}_{taxon_2}.{plot_format}"
+        print(f"[✓] Plotting: {plot_file}")
+        plt.savefig(plot_file, format=plot_format)
+        plt.close()
+
+
+def generate_pairwise_representation_test(
+    cluster_df: pl.DataFrame,
+    attribute: str,
+    label_to_taxons: Dict[str, Dict[str, Set[str]]],
+    output_dir: str,
+    min_proteomes: int = 2,
+):
+    taxon_to_label_mapping = [
+        (taxon, label)
+        for label, taxons in label_to_taxons[attribute].items()
+        for taxon in taxons
+    ]
+    taxon_map_df = pl.DataFrame(
+        taxon_to_label_mapping, schema=["taxons", "label"], orient="row"
+    )
+
+    protein_counts_per_taxon = (
+        cluster_df.explode("taxons")
+        .group_by("cluster_id", "taxons")
+        .agg(pl.count().alias("count"))
+    )
+
+    counts_by_label = (
+        protein_counts_per_taxon.join(taxon_map_df, on="taxons")
+        .group_by("cluster_id", "label")
+        .agg(pl.col("count").alias("counts_list"))
+    )
+
+    counts_by_label_filtered = counts_by_label.filter(
+        pl.col("counts_list").list.len() >= min_proteomes
+    )
+
+    pairwise_df = counts_by_label_filtered.join(
+        counts_by_label_filtered, on="cluster_id", suffix="_2"
+    ).filter(pl.col("label") < pl.col("label_2"))
+
+    if pairwise_df.height == 0:
+        print(
+            f"[!] No valid pairs for pairwise test in attribute '{attribute}'. Skipping."
+        )
+        return
+
+    stats_df = pairwise_df.with_columns(
+        TAXON_1_mean=pl.col("counts_list").list.mean(),
+        TAXON_2_mean=pl.col("counts_list_2").list.mean(),
+    ).with_columns(
+        pl.when((pl.col("TAXON_1_mean") > 0) & (pl.col("TAXON_2_mean") > 0))
+        .then((pl.col("TAXON_1_mean") / pl.col("TAXON_2_mean")).log(base=2))
+        .when(pl.col("TAXON_1_mean") == pl.col("TAXON_2_mean"))
+        .then(0.0)
+        .otherwise(None)
+        .alias("log2_mean(TAXON_1/TAXON_2)"),
+    )
+
+    p_values = []
+    counts1_series = stats_df["counts_list"]
+    counts2_series = stats_df["counts_list_2"]
+
+    for i in range(stats_df.height):
+        c1 = counts1_series[i]
+        c2 = counts2_series[i]
+
+        if len(c1.unique()) == 1 and len(c2.unique()) == 1 and c1[0] == c2[0]:
+            p_values.append(1.0)
+            continue
+        try:
+            pvalue = stats.mannwhitneyu(c1, c2, alternative="two-sided").pvalue
+            p_values.append(pvalue)
+        except ValueError:
+            p_values.append(1.0)
+
+    final_df = stats_df.with_columns(
+        pl.Series("mwu_pvalue(TAXON_1 vs. TAXON_2)", p_values)
+    ).drop("counts_list", "counts_list_2")
+
+    output_df = final_df.select(
+        pl.col("cluster_id").alias("#cluster_id"),
+        pl.col("label").alias("TAXON_1"),
+        pl.col("TAXON_1_mean"),
+        pl.col("label_2").alias("TAXON_2"),
+        pl.col("TAXON_2_mean"),
+        pl.col("log2_mean(TAXON_1/TAXON_2)"),
+        pl.col("mwu_pvalue(TAXON_1 vs. TAXON_2)"),
+    ).sort("#cluster_id", "TAXON_1", "TAXON_2")
+
+    file_path = f"{output_dir}/{attribute}/{attribute}.pairwise_representation_test.txt"
+    print(f"[✓] Writing: {file_path}")
+    output_df.write_csv(file_path, separator="\t")
+
+    generate_pairwise_plots(
+        pairwise_df=output_df,
+        attribute=attribute,
+        output_dir=output_dir,
+    )
 
 
 def add_status_and_TAXON_protein_count_columns(
@@ -321,5 +718,18 @@ def get_all_cluster_metrics(
             file_path = f"{base_output_dir}/{attribute}/{attribute}.{label_group}.cluster_metrics.txt"
             logger.info(f"[✓] Writing: {file_path}")
             metrics_df.write_csv(file_path, separator="\t")
+
+        generate_pairwise_representation_test(
+            cluster_df=cluster_df,
+            attribute=attribute,
+            label_to_taxons=label_to_taxons,
+            output_dir=base_output_dir,
+        )
+        generate_background_representation_test(
+            cluster_df=cluster_df,
+            attribute=attribute,
+            label_to_taxons=label_to_taxons,
+            output_dir=base_output_dir,
+        )
 
     return cluster_metrics
