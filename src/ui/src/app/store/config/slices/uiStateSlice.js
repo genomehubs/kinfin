@@ -1,7 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const params = new URLSearchParams(window.location.search);
+
 const initialState = {
-  selectedAttributeTaxonset: null,
+  selectedAttributeTaxonset: {
+    attribute: params.get("attribute") || "all",
+    taxonset: params.get("taxonset") || "all",
+  },
   selectedClusterSet: null,
   pollingLoadingBySessionId: {}, // object keyed by sessionId
   downloadLoading: {}, // object keyed by type
