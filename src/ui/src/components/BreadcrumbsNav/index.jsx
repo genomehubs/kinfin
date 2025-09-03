@@ -1,9 +1,12 @@
-import React from "react";
 import { Breadcrumbs, Link, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
+import React from "react";
+
 const BreadcrumbsNav = ({ items = [] }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   return (
     <Breadcrumbs
@@ -22,7 +25,7 @@ const BreadcrumbsNav = ({ items = [] }) => {
             underline="hover"
             color="inherit"
             component="button"
-            onClick={() => navigate(item.href)}
+            onClick={() => navigate(`${item.href}/?${searchParams.toString()}`)}
           >
             {item.label}
           </Link>

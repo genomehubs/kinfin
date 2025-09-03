@@ -1,21 +1,25 @@
-import React, { useEffect } from "react";
 import "./App.module.scss";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider } from "react-redux";
-import { store } from "./app/store/index";
-import { SnackbarProvider } from "notistack";
+
 import {
-  Dashboard,
-  Home,
-  DefineNodeLabels,
   AttributeSummaryPage,
   ClusterMetricsPage,
+  ClusterSizeDistributionPage,
   ClusterSummaryPage,
+  Dashboard,
+  DefineNodeLabels,
+  Home,
+  RarefactionCurvePage,
 } from "./pages";
-import { ThemeProvider } from "@mui/material/styles";
-import { lightTheme, darkTheme } from "./utils/theme";
-import { useTheme } from "./hooks/useTheme";
+import React, { useEffect } from "react";
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { darkTheme, lightTheme } from "./utils/theme";
+
 import { PersistGate } from "redux-persist/integration/react";
+import { Provider } from "react-redux";
+import { SnackbarProvider } from "notistack";
+import { ThemeProvider } from "@mui/material/styles";
+import { store } from "./app/store/index";
+import { useTheme } from "./hooks/useTheme";
 
 function App() {
   const { theme } = useTheme();
@@ -54,6 +58,15 @@ function App() {
                   path="/:sessionId/cluster-metrics"
                   element={<ClusterMetricsPage />}
                 />
+                <Route
+                  path="/:sessionId/rarefaction-curve"
+                  element={<RarefactionCurvePage />}
+                />
+                <Route
+                  path="/:sessionId/cluster-size-distribution"
+                  element={<ClusterSizeDistributionPage />}
+                />
+
                 <Route
                   path="/define-node-labels"
                   element={<DefineNodeLabels />}

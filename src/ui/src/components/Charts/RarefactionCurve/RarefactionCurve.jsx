@@ -1,32 +1,34 @@
 import React, { useEffect, useState } from "react";
-import styles from "./AllRarefactionCurve.module.scss";
-import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
-import { useDispatch, useSelector } from "react-redux";
 
-const AllRarefactionCurve = () => {
+import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
+import styles from "./RarefactionCurve.module.scss";
+import { useDispatch } from "react-redux";
+
+const RarefactionCurve = ({ attribute, rarefactionCurveBlob }) => {
   const dispatch = useDispatch();
-  const clusterSizeBlob = useSelector(
-    (state) => state?.analysis?.plot?.data?.allRarefactionCurve
-  );
 
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
-    dispatch(getPlot());
-  }, [dispatch]);
+    const payload = { attribute };
+    dispatch(getPlot(payload));
+  }, [dispatch, attribute]);
 
   useEffect(() => {
-    if (clusterSizeBlob instanceof Blob) {
-      const objectUrl = URL.createObjectURL(clusterSizeBlob);
+    if (rarefactionCurveBlob instanceof Blob) {
+      const objectUrl = URL.createObjectURL(rarefactionCurveBlob);
       setBlobUrl(objectUrl);
 
       return () => {
         URL.revokeObjectURL(objectUrl);
       };
-    } else {
-      console.error("❌ clusterSizeBlob is not a Blob:", clusterSizeBlob);
+      // } else {
+      //   console.error(
+      //     "❌ rarefactionCurveBlob is not a Blob:",
+      //     rarefactionCurveBlob
+      //   );
     }
-  }, [clusterSizeBlob]);
+  }, [rarefactionCurveBlob]);
 
   return (
     <div className={styles.container}>
@@ -43,4 +45,4 @@ const AllRarefactionCurve = () => {
   );
 };
 
-export default AllRarefactionCurve;
+export default RarefactionCurve;

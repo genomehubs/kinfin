@@ -135,10 +135,13 @@ export const getPairwiseAnalysis = async (attribute) => {
   return response.data;
 };
 
-export const getPlot = async (plotType) => {
-  const response = await apiClient.get(`/plot/${plotType}`, {
-    headers: { "x-session-id": getSessionId() },
-    responseType: "blob",
-  });
+export const getPlot = async (data) => {
+  const response = await apiClient.get(
+    `/plot/${data.attribute}/${data.plotType}`,
+    {
+      headers: { "x-session-id": getSessionId() },
+      responseType: "blob",
+    }
+  );
   return response.data;
 };

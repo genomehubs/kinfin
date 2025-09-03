@@ -1,67 +1,60 @@
 import {
-  takeEvery,
-  fork,
-  put,
   all,
   call,
   delay,
+  fork,
+  put,
   select,
+  takeEvery,
 } from "redux-saga/effects";
-
-// --- slice actions ---
 import {
-  initAnalysis,
-  initAnalysisSuccess,
-  initAnalysisFailure,
-} from "./slices/analysisSlice";
-
-import {
-  getRunStatus,
-  getRunStatusSuccess,
-  getRunStatusFailure,
-} from "./slices/runStatusSlice";
-
-import { storeConfig, updateSessionMeta } from "./slices/configSlice";
-
-import {
-  getValidProteomeIds,
-  getValidProteomeIdsSuccess,
-  getValidProteomeIdsFailure,
-} from "./slices/proteomeIdsSlice";
-
+  dispatchErrorToast,
+  dispatchSuccessToast,
+} from "../../../utils/toastNotifications";
 import {
   getBatchStatus,
-  getBatchStatusSuccess,
   getBatchStatusFailure,
+  getBatchStatusSuccess,
 } from "./slices/batchStatusSlice";
-
+import {
+  getBatchStatus as getBatchStatusApi,
+  getClusteringSets as getClusteringSetsApi,
+  getColumnDescriptions as getColumnDescriptionsApi,
+  getStatus as getStatusApi,
+  getValidProteomeIds as getValidProteomeIdsApi,
+  initAnalysis as initAnalysisApi,
+} from "../../services/client";
+import {
+  getClusteringSets,
+  getClusteringSetsFailure,
+  getClusteringSetsSuccess,
+} from "./slices/clusteringSetsSlice";
 import {
   getColumnDescriptions,
   getColumnDescriptionsFailure,
   getColumnDescriptionsSuccess,
 } from "./slices/columnDescriptionsSlice";
-
 import {
-  getClusteringSets,
-  getClusteringSetsSuccess,
-  getClusteringSetsFailure,
-} from "./slices/clusteringSetsSlice";
+  getRunStatus,
+  getRunStatusFailure,
+  getRunStatusSuccess,
+} from "./slices/runStatusSlice";
+import {
+  getValidProteomeIds,
+  getValidProteomeIdsFailure,
+  getValidProteomeIdsSuccess,
+} from "./slices/proteomeIdsSlice";
+// --- slice actions ---
+import {
+  initAnalysis,
+  initAnalysisFailure,
+  initAnalysisSuccess,
+} from "./slices/analysisSlice";
+import { storeConfig, updateSessionMeta } from "./slices/configSlice";
 
+import { fastIsEqual } from "fast-is-equal";
+import { selectColumnDescriptions } from "./selectors/columnDescriptionsSelectors";
 import { setPollingLoading } from "./slices/uiStateSlice";
-
-import {
-  dispatchErrorToast,
-  dispatchSuccessToast,
-} from "../../../utils/toastNotifications";
-
-import {
-  initAnalysis as initAnalysisApi,
-  getStatus as getStatusApi,
-  getBatchStatus as getBatchStatusApi,
-  getValidProteomeIds as getValidProteomeIdsApi,
-  getClusteringSets as getClusteringSetsApi,
-  getColumnDescriptions as getColumnDescriptionsApi,
-} from "../../services/client";
 
 // --- constants ---
 const POLLING_INTERVAL = 5000; // 5 seconds
@@ -188,18 +181,32 @@ function* getRunStatusSaga() {
 
 function* getValidProteomeIdsSaga(action) {
   const { clusterId } = action.payload;
+  let allData = [];
+  let page = 1;
+  let totalPages = 1;
   try {
-    const data = { page: 1, size: 100, clusterId };
-    const response = yield call(getValidProteomeIdsApi, data);
+    do {
+      const data = { page, size: 100, clusterId };
+      const response = yield call(getValidProteomeIdsApi, data);
 
-    if (response.status === "success") {
-      yield put(getValidProteomeIdsSuccess(response.data));
-    } else {
-      yield put(getValidProteomeIdsFailure(response));
-      yield call(
-        dispatchErrorToast,
-        response?.error || "Failed to fetch valid proteome IDs"
-      );
+      if (response.status === "success") {
+        if (page === 1) {
+          totalPages = response.total_pages || 1;
+        }
+        allData = { ...allData, ...response.data };
+        page++;
+      } else {
+        yield put(getValidProteomeIdsFailure(response));
+        yield call(
+          dispatchErrorToast,
+          response?.error || "Failed to fetch valid proteome IDs"
+        );
+        break;
+      }
+    } while (page <= totalPages);
+
+    if (Object.keys(allData).length > 0) {
+      yield put(getValidProteomeIdsSuccess(allData));
     }
   } catch (err) {
     yield put(getValidProteomeIdsFailure(err));
@@ -255,7 +262,10 @@ function* getColumnDescriptionsSaga(action) {
     const response = yield call(getColumnDescriptionsApi, data);
 
     if (response.status === "success") {
-      yield put(getColumnDescriptionsSuccess(response.data));
+      const currentData = yield select(selectColumnDescriptions);
+      if (!fastIsEqual(currentData.data, response.data)) {
+        yield put(getColumnDescriptionsSuccess(response.data));
+      }
       // yield call(
       //   dispatchSuccessToast,
       //   "Column descriptions fetched successfully!"

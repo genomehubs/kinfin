@@ -1,3 +1,4 @@
+
 .container {
   width: 100%;
   display: flex;
@@ -5,13 +6,18 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 24px;
+  margin-bottom: 16px;
+}
+
+.leftAlign {
+  justify-content: flex-start !important;
 }
 
 .statContainer {
   background-color: var(--sidebar-bg);
   padding: 8px 12px;
   border-radius: 8px;
-  width: 10vw;
+  width: 160px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -20,17 +26,33 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); // subtle shadow
 }
 
-.container::after {
-  content: "";
-  flex: 1 1 12vw;
-  visibility: hidden;
-}
+// .container::after {
+//   content: "";
+//   flex: 1 1 12vw;
+//   visibility: hidden;
+// }
 
 .statContainer .data {
   font-size: 24px;
   font-weight: 600;
   margin: 0;
   color: var(--accent-color);
+}
+
+.statContainer .noValue {
+  background-color: var(--accent-color);
+  color: rgba(0, 0, 0, 0);
+  min-width: 100px;
+  height: 1em;
+  margin: 0.25em 0;
+  opacity: 0.5;
+  animation: pulseOpacity 3s infinite;
+}
+
+@keyframes pulseOpacity {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.5; }
 }
 
 .statContainer .dataName {

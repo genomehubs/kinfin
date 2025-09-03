@@ -18,10 +18,16 @@ const RunSummary = () => {
   return (
     <>
       {/* <p>Run Summary</p> */}
-      <div className={styles.container}>
+      <div className={`${styles.container} ${styles.leftAlign}`}>
         {stats.map((stat, index) => (
           <div key={index} className={styles.statContainer}>
-            <p className={styles.data}>{stat.value ?? "N/A"}</p>
+            <p
+              className={`${styles.data} ${
+                stat.value == null ? styles.noValue : ""
+              }`}
+            >
+              {stat.value ?? "N/A"}
+            </p>
             <p className={styles.dataName}>{stat.label}</p>
           </div>
         ))}

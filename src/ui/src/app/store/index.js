@@ -1,7 +1,8 @@
-import { configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
-import createSagaMiddleware from "redux-saga";
+
+import { configureStore } from "@reduxjs/toolkit";
 import createIndexedDBStorage from "redux-persist-indexeddb-storage";
+import createSagaMiddleware from "redux-saga";
 import rootReducer from "./reducers";
 import rootSaga from "./sagas";
 

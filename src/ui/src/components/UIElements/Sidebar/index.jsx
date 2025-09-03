@@ -1,42 +1,41 @@
-import { useState, useRef, useEffect } from "react";
-import styles from "./Sidebar.module.scss";
-import { useTheme } from "../../../hooks/useTheme";
-import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import CircularProgress from "@mui/material/CircularProgress";
 import {
   Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Menu,
   MenuItem,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  Button,
 } from "@mui/material";
-import Tooltip from "@mui/material/Tooltip";
-import ErrorIcon from "@mui/icons-material/Error";
-import PauseCircleIcon from "@mui/icons-material/PauseCircle";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-
-import RenameDialog from "./RenameDialog";
-
-// MUI Icons
-import MenuIcon from "@mui/icons-material/Menu";
-import DownloadIcon from "@mui/icons-material/Download";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
-import LightModeIcon from "@mui/icons-material/LightMode";
+import CircularProgress from "@mui/material/CircularProgress";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-
-import { renameConfig } from "../../../app/store/config/slices/configSlice";
+import ErrorIcon from "@mui/icons-material/Error";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import LightModeIcon from "@mui/icons-material/LightMode";
+// MUI Icons
+import MenuIcon from "@mui/icons-material/Menu";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
+import RenameDialog from "./RenameDialog";
+import Tooltip from "@mui/material/Tooltip";
 import { deleteConfig } from "../../../app/store/config/slices/configSlice";
-import { getValidProteomeIds } from "../../../app/store/config/slices/proteomeIdsSlice";
 import { getBatchStatus } from "../../../app/store/config/slices/batchStatusSlice";
+import { getValidProteomeIds } from "../../../app/store/config/slices/proteomeIdsSlice";
+import { renameConfig } from "../../../app/store/config/slices/configSlice";
+import styles from "./Sidebar.module.scss";
+import { useTheme } from "../../../hooks/useTheme";
+
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
   if (!config || typeof config !== "object") {
