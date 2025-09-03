@@ -41,7 +41,18 @@
 
 .statContainer .noValue {
   background-color: var(--accent-color);
+  color: rgba(0, 0, 0, 0);
+  min-width: 100px;
+  height: 1em;
+  margin: 0.25em 0;
   opacity: 0.5;
+  animation: pulseOpacity 3s infinite;
+}
+
+@keyframes pulseOpacity {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.5; }
 }
 
 .statContainer .dataName {
