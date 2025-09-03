@@ -53,6 +53,7 @@ import {
 import { storeConfig, updateSessionMeta } from "./slices/configSlice";
 
 import { fastIsEqual } from "fast-is-equal";
+import { selectColumnDescriptions } from "./selectors/columnDescriptionsSelectors";
 import { setPollingLoading } from "./slices/uiStateSlice";
 
 // --- constants ---
@@ -261,9 +262,7 @@ function* getColumnDescriptionsSaga(action) {
     const response = yield call(getColumnDescriptionsApi, data);
 
     if (response.status === "success") {
-      const currentData = yield select(
-        (state) => state.config.columnDescriptions
-      );
+      const currentData = yield select(selectColumnDescriptions);
       if (!fastIsEqual(currentData.data, response.data)) {
         yield put(getColumnDescriptionsSuccess(response.data));
       }

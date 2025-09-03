@@ -10,7 +10,10 @@ import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
 
-const ClusterSummary = ({ attribute }) => {
+const ClusterSummary = ({
+  attribute,
+  clusterSummaryColumnDescriptions: columnDescriptions,
+}) => {
   const isCurrentPage = window.location.pathname.includes("cluster-summary");
   const [isFullScreen, setIsFullScreen] = React.useState(
     document.fullscreenElement != null
@@ -30,12 +33,6 @@ const ClusterSummary = ({ attribute }) => {
 
   const clusterSummaryData = useSelector(
     (state) => state?.analysis?.clusterSummary?.data
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.cluster_summary.txt"
-    )
   );
 
   const page = Math.max(

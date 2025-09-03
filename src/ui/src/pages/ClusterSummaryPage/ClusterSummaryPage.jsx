@@ -4,25 +4,22 @@ import { useDispatch, useSelector } from "react-redux";
 import AppLayout from "../../components/AppLayout";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
-import ClusterSummary from "../../components/Charts/ClusterSummary/ClusterSummary";
+import ClusterSummary from "../../components/Charts/ClusterSummary";
 import CustomisationDialog from "../../components/CustomisationDialog";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterSummary.module.scss";
 import { useSearchParams } from "react-router-dom";
 
-const ClusterSummaryPage = ({ selectedAttributeTaxonset }) => {
+const ClusterSummaryPage = ({
+  selectedAttributeTaxonset,
+  clusterSummaryColumnDescriptions: columnDescriptions,
+}) => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const clusterSummaryDownloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading?.clusterSummary
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.cluster_summary.txt"
-    )
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);

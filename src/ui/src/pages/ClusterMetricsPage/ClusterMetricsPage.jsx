@@ -4,25 +4,22 @@ import { useDispatch, useSelector } from "react-redux";
 import AppLayout from "../../components/AppLayout";
 import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
-import ClusterMetrics from "../../components/Charts/ClusterMetrics/ClusterMetrics";
+import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import CustomisationDialog from "../../components/CustomisationDialog";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterMetrics.module.scss";
 import { useSearchParams } from "react-router-dom";
 
-const ClusterMetricsPage = ({ selectedAttributeTaxonset }) => {
+const ClusterMetricsPage = ({
+  selectedAttributeTaxonset,
+  clusterMetricsColumnDescriptions: columnDescriptions,
+}) => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const clusterMetricsDownloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.cluster_metrics.txt"
-    )
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);

@@ -10,7 +10,11 @@ import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
-const ClusterMetrics = ({ attribute, taxonset }) => {
+const ClusterMetrics = ({
+  attribute,
+  taxonset,
+  clusterMetricsColumnDescriptions: columnDescriptions,
+}) => {
   const isCurrentPage = window.location.pathname.includes("cluster-metrics");
   const [isFullScreen, setIsFullScreen] = React.useState(
     document.fullscreenElement != null
@@ -30,12 +34,6 @@ const ClusterMetrics = ({ attribute, taxonset }) => {
 
   const clusterMetrics = useSelector(
     (state) => state?.analysis?.clusterMetrics?.data || null
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.cluster_metrics.txt"
-    )
   );
 
   const page = Math.max(

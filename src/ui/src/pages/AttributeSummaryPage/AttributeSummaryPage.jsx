@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import AppLayout from "../../components/AppLayout";
 import AttributeSelector from "../../components/AttributeSelector";
-import AttributeSummary from "../../components/Charts/AttributeSummary/AttributeSummary";
+import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ChartCard from "../../components/ChartCard";
 import CustomisationDialog from "../../components/CustomisationDialog";
 import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
@@ -11,18 +11,20 @@ import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./AttributeSummary.module.scss";
 import { useSearchParams } from "react-router-dom";
 
-const AttributeSummaryPage = ({ selectedAttributeTaxonset }) => {
+const AttributeSummaryPage = ({
+  selectedAttributeTaxonset,
+  attributeSummaryColumnDescriptions: columnDescriptions,
+}) => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // useEffect(() => {
+  //   dispatch(getColumnDescriptions());
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
+
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.attribute_metrics.txt"
-    )
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);

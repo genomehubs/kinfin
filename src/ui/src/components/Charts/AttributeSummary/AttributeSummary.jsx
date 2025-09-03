@@ -9,7 +9,10 @@ import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
-const AttributeSummary = ({ attribute }) => {
+const AttributeSummary = ({
+  attribute,
+  attributeSummaryColumnDescriptions: columnDescriptions,
+}) => {
   const isCurrentPage = window.location.pathname.includes("attribute-summary");
   const [isFullScreen, setIsFullScreen] = React.useState(
     document.fullscreenElement != null
@@ -30,12 +33,6 @@ const AttributeSummary = ({ attribute }) => {
 
   const attributeData = useSelector(
     (state) => state?.analysis?.attributeSummary?.data || null
-  );
-
-  const columnDescriptions = useSelector((state) =>
-    (state?.config?.columnDescriptions?.data || []).filter(
-      (col) => col.file === "*.attribute_metrics.txt"
-    )
   );
 
   const asCodes = useMemo(() => {
@@ -70,7 +67,7 @@ const AttributeSummary = ({ attribute }) => {
         AS_code: asCodes.length > 0 ? asCodes : undefined,
       })
     );
-  }, [attribute, page, pageSize, asCodes, dispatch]);
+  }, [attribute, page, pageSize, asCodes, dispatch, columnDescriptions]);
 
   // Map codes to field names
   const codeToFieldMap = useMemo(

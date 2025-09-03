@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  data: null,
+  data: [],
   loading: false,
   error: null,
 };
@@ -13,7 +13,7 @@ const columnDescriptionsSlice = createSlice({
     getColumnDescriptions: (state) => {
       state.loading = true;
       state.error = null;
-      state.data = null;
+      state.data = [];
     },
     getColumnDescriptionsSuccess: (state, action) => {
       state.loading = false;
@@ -23,7 +23,7 @@ const columnDescriptionsSlice = createSlice({
     getColumnDescriptionsFailure: (state, action) => {
       state.loading = false;
       state.error = action.payload;
-      state.data = null;
+      state.data = [];
     },
     getColumnDescriptionsReset: () => initialState,
   },
