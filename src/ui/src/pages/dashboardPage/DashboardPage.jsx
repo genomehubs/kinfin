@@ -25,7 +25,7 @@ import { mapChartName } from "../../utils/mappings";
 import styles from "./Dashboard.module.scss";
 import { useSearchParams } from "react-router-dom";
 
-const Dashboard = ({
+const DashboardPage = ({
   selectedAttributeTaxonset,
   rarefactionCurveBlob,
   clusterSizeDistributionBlob,
@@ -270,4 +270,4 @@ const Dashboard = ({
   );
 };
 
-export default Dashboard;
+export default DashboardPage;
