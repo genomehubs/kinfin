@@ -84,4 +84,4 @@ def run_server(
 
     app.include_router(router)
 
-    uvicorn.run(app=app, port=args.port)
+    uvicorn.run(app=app, host="0.0.0.0", port=args.port)
