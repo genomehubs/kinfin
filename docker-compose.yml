@@ -6,10 +6,9 @@ services:
     container_name: kinfin-api
     volumes:
       - ./data:/app/data
+      - /home/dinesh/tmp/kinfin:/kinfin # FIXED path
     ports:
-      - "8000:8000" # change if your API uses a different port
-    depends_on:
-      - ui
+      - "8000:8000"
 
   ui:
     build:
@@ -18,3 +17,5 @@ services:
     container_name: kinfin-ui
     ports:
       - "5173:80"
+    depends_on:
+      - api

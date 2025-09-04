@@ -6,9 +6,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
-
+ENV KINFIN_WORKDIR=/kinfin
 ENV KINFIN_PORT=8000
-ENV RESULTS_BASE_DIR=/data/output
+ENV RESULTS_BASE_DIR=/kinfin/output
 ENV SESSION_INACTIVITY_THRESHOLD=24
 ENV KINFIN_LIMIT_INIT=1/minute
 ENV KINFIN_LIMIT_STANDARD=60/minute
