@@ -831,8 +831,10 @@ async def get_clustering_sets_api(
     size: int = Query(10, ge=1, le=100),
 ):
     try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        clustering_file_path = os.path.join(current_dir, "clustering.json")
+        clustering_file_path = os.getenv("KINFIN_CLUSTERING_FILE")
+        if not clustering_file_path:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            clustering_file_path = os.path.join(current_dir, "clustering.json")
 
         clustering_data = await asyncio.to_thread(
             parse_clustering_file, clustering_file_path
