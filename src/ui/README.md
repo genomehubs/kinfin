@@ -67,6 +67,8 @@ export SESSION_INACTIVITY_THRESHOLD=24  # Files retained for 24 hours
 export KINFIN_LIMIT_INIT=1/minute
 export KINFIN_LIMIT_STANDARD=60/minute
 export KINFIN_LIMIT_LOW=300/minute
+# optionally define a custom clustering file path
+# export KINFIN_CLUSTERING_FILE="/path/to/clustering.json"
 
 ./src/main.py serve -p $KINFIN_PORT
 ```
