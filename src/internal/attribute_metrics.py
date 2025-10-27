@@ -25,10 +25,7 @@ def precompute_cluster_info(
         .agg(
             pl.col("taxon_set").drop_nulls().unique().alias("taxon_sets"),
             pl.col("protein_cluster").first().alias("protein_cluster"),
-            pl.col("protein_cluster")
-            .first()
-            .list.len()
-            .alias("protein_cluster_len"),
+            pl.col("protein_cluster").first().list.len().alias("protein_cluster_len"),
         )
         .with_columns(
             pl.when(pl.col("protein_cluster_len") == 1)
@@ -320,12 +317,8 @@ def add_absent_cluster_counts(
         attribute_df.join(present_counts_df, on="taxon_set", how="left")
         .fill_null(0)
         .with_columns(
-            absent_cluster_singleton_count=(
-                total_singleton - pl.col("singleton")
-            ),
-            absent_cluster_specific_count=(
-                total_specific - pl.col("specific")
-            ),
+            absent_cluster_singleton_count=(total_singleton - pl.col("singleton")),
+            absent_cluster_specific_count=(total_specific - pl.col("specific")),
             absent_cluster_shared_count=(total_shared - pl.col("shared")),
         )
         .with_columns(
@@ -424,7 +417,6 @@ def get_all_attribute_metrics(
 ) -> None:
     config_df = config_df.with_columns(pl.lit("all").alias("all"))
 
-    attribute_metrics = {}
     for attribute in attributes:
         attribute_df = get_attribute_metrics(
             cluster_df=cluster_df,
@@ -432,7 +424,6 @@ def get_all_attribute_metrics(
             protein_lengths_df=protein_lengths_df,
             attribute=attribute,
         )
-        attribute_metrics[attribute] = attribute_df
 
         out_dir = os.path.join(base_output_dir, attribute)
         os.makedirs(out_dir, exist_ok=True)
@@ -440,5 +431,3 @@ def get_all_attribute_metrics(
         out_path = os.path.join(out_dir, f"{attribute}.attribute_metrics.txt")
         attribute_df.write_csv(out_path, separator="\t")
         logger.info(f"[✓] Writing: {out_path}")
-
-    return attribute_metrics

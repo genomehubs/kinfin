@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+import polars as pl
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
@@ -32,6 +33,15 @@ from api.utils import (
     run_cli_command,
     sort_and_paginate_result,
 )
+from internal import (
+    attribute_metrics,
+    cluster_metrics,
+    cluster_summary,
+    counts,
+    parsers,
+    plots,
+    utils,
+)
 from internal.utils import check_file
 
 from .config.limits import LIMIT_INIT, LIMIT_STANDARD
@@ -49,6 +59,98 @@ PAIRWISE_ANALYSIS_FILE = "pairwise_representation_test.txt"
 
 
 router = APIRouter()
+
+
+def get_session_data(session_dir: str):
+    config_file = os.path.join(session_dir, "config.txt")
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Config file not found: {config_file}")
+
+    nodesdb_f = os.environ.get("NODESDB_F")
+    ndb_f = os.environ.get("NDB_F")
+
+    if not nodesdb_f or not ndb_f:
+        raise RuntimeError("NODESDB_F and NDB_F environment variables must be set")
+
+    nodesdb = parsers.nodesdb(filepath=nodesdb_f, outpath=ndb_f)
+    config_df, attributes = parsers.configfile(config_file, nodesdb)
+
+    cluster_file = os.path.join(session_dir, "cluster_data.parquet")
+    if not os.path.exists(cluster_file):
+        raise FileNotFoundError(f"Cluster data not found: {cluster_file}")
+
+    cluster_df = pl.read_parquet(cluster_file)
+
+    label_columns = [
+        col for col in config_df.columns if col not in ("#IDX", "TAXON", "TAXID", "OUT")
+    ]
+
+    taxon_label_dict = {
+        row["TAXON"]: {
+            **{label: row[label] for label in label_columns},
+            "TAXON": row["TAXON"],
+            "all": "all",
+        }
+        for row in config_df.to_dicts()
+    }
+
+    return cluster_df, config_df, attributes, taxon_label_dict
+
+
+async def run_analysis(
+    session_id: str, result_dir: str, cluster_file: str, config_file: str
+):
+    """
+    Args:
+        session_id: The session ID
+        result_dir: Path to the result directory
+        cluster_file: Path to the cluster file
+        config_file: Path to the config file
+    """
+    status_file = os.path.join(result_dir, f"{session_id}.status")
+    try:
+        with open(status_file, "w") as f:
+            f.write("status=running\n")
+
+        log_path = os.path.join(result_dir, "kinfin.log")
+        from internal.logger import setup_logger
+
+        setup_logger(log_path)
+
+        nodesdb_f = os.environ.get("NODESDB_F")
+        ndb_f = os.environ.get("NDB_F")
+
+        if not nodesdb_f or not ndb_f:
+            raise RuntimeError("NODESDB_F and NDB_F environment variables must be set")
+
+        nodesdb = parsers.nodesdb(filepath=nodesdb_f, outpath=ndb_f)
+        config_df, attributes = parsers.configfile(config_file, nodesdb)
+
+        utils.setup_dirs(result_dir, attributes)
+
+        cluster_df = parsers.clusterfile(cluster_file, config_df, result_dir)
+
+        from internal import classify_clusters
+
+        cluster_df = classify_clusters(cluster_df, config_df, attributes)
+
+        cluster_data_path = os.path.join(result_dir, "cluster_data.parquet")
+        cluster_df.write_parquet(cluster_data_path)
+
+        del cluster_df, config_df, nodesdb
+
+        with open(status_file, "w") as f:
+            f.write("status=completed\n")
+            f.write("exit_code=0\n")
+
+        LOGGER.info(f"[✓] Analysis completed for session {session_id}")
+
+    except Exception as e:
+        with open(status_file, "w") as f:
+            f.write("status=error\n")
+            f.write("exit_code=1\n")
+            f.write(f"error={str(e)}\n")
+        LOGGER.error(f"[✗] Analysis failed for session {session_id}: {e}")
 
 
 class InputSchema(BaseModel):
@@ -203,7 +305,6 @@ async def initialize(input_data: InputSchema, request: Request):
                 status_code=400,
             )
         cluster_info = CLUSTERING_DATASETS.get(input_data.clusterId)
-
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
@@ -219,14 +320,14 @@ async def initialize(input_data: InputSchema, request: Request):
         cluster_path = os.path.join(KINFIN_WORKDIR, cluster_info["path"])
 
         cluster_f = os.path.join(cluster_path, "Orthogroups.txt")
-        # ! NOT NEEDED 
+        # ! NOT NEEDED
         # sequence_ids_f = os.path.join(cluster_path, "kinfin.SequenceIDs.txt")
         # taxon_idx_mapping_file = os.path.join(cluster_path, "taxon_idx_mapping.json")
 
         try:
             # TODO
             check_file(cluster_f, install_kinfin=True)
-            # ! NOT NEEDED 
+            # ! NOT NEEDED
             # check_file(sequence_ids_f, install_kinfin=True)
             # check_file(taxon_idx_mapping_file, install_kinfin=True)
         except FileNotFoundError as e:
@@ -243,20 +344,7 @@ async def initialize(input_data: InputSchema, request: Request):
         session_id, result_dir = query_manager.get_or_create_session(input_data.config)
         config_f = os.path.join(result_dir, "config.txt")
 
-        command = [
-            "python",
-            "src/main.py",
-            "analyse",
-            "-g",
-            cluster_f,
-            "-c",
-            config_f,
-            "-o",
-            result_dir,
-        ]
-
-        status_file = os.path.join(result_dir, f"{session_id}.status")
-        asyncio.create_task(run_cli_command(command, status_file))
+        asyncio.create_task(run_analysis(session_id, result_dir, cluster_f, config_f))
 
         return JSONResponse(
             content=ResponseSchema(
@@ -408,15 +496,24 @@ async def get_counts_by_tanon(
         filepath = os.path.join(result_dir, COUNTS_FILEPATH)
 
         if not os.path.exists(filepath):
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"{RUN_SUMMARY_FILEPATH} File Not Found",
-                    error="File does not exist",
-                    query=str(request.url),
-                ).model_dump(),
-                status_code=404,
-            )
+            try:
+                cluster_df, config_df, _, _ = get_session_data(result_dir)
+                counts.get_cluster_counts_by_taxon(
+                    cluster_df=cluster_df,
+                    config_df=config_df,
+                    base_output_dir=result_dir,
+                )
+                del cluster_df, config_df
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate counts by taxon",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         result = parse_taxon_counts_file(
             filepath,
@@ -494,32 +591,53 @@ async def get_cluster_summary(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
-        valid_attributes = valid_endpoints["attributes"]
-
-        if attribute and attribute not in valid_attributes:
+        try:
+            cluster_df, config_df, attributes, _ = get_session_data(result_dir)
+        except Exception as e:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid attribute: {attribute}. Must be one of {valid_attributes}.",
+                    message="Failed to load session data",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=500,
+            )
+
+        if attribute and attribute not in attributes:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid attribute: {attribute}. Must be one of {attributes}.",
                     error="Invalid Input",
                 ).model_dump(),
                 status_code=400,
             )
 
-        filename = f"{attribute}/{attribute}.{CLUSTER_SUMMARY_FILENAME}"
-        filepath = os.path.join(result_dir, filename)
+        output_dir = os.path.join(result_dir, attribute)
+        filepath = os.path.join(output_dir, f"{attribute}.cluster_summary.txt")
 
         if not os.path.exists(filepath):
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"{COUNTS_FILEPATH} File Not Found",
-                    error="File does not exist",
-                    query=str(request.url),
-                ).model_dump(),
-                status_code=404,
-            )
+            try:
+                summary_df = cluster_summary.get_cluster_summary(
+                    cluster_df=cluster_df,
+                    attribute=attribute,
+                    config_df=config_df,
+                )
+
+                os.makedirs(output_dir, exist_ok=True)
+                summary_df.write_csv(filepath, separator="\t")
+                del summary_df, cluster_df, config_df
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate cluster summary",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         result = parse_cluster_summary_file(
             filepath=filepath,
@@ -560,7 +678,9 @@ async def get_cluster_summary(
 
                 first_row = flattened_rows[0]
                 buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer = csv.DictWriter(
+                    buffer, fieldnames=first_row.keys(), delimiter="\t"
+                )
                 writer.writeheader()
                 writer.writerows(flattened_rows)
                 buffer.seek(0)
@@ -813,7 +933,9 @@ async def get_column_descriptions_api(
     page: int = Query(1, ge=1),
     size: int = Query(40, ge=1, le=100),
     sort_by: str = Query(None, description="Comma-separated fields to sort by"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: asc or desc"),
+    sort_order: str = Query(
+        "asc", regex="^(asc|desc)$", description="Sort order: asc or desc"
+    ),
 ):
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -904,32 +1026,53 @@ async def get_attribute_summary(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
-        valid_attributes = valid_endpoints["attributes"]
-
-        if attribute and attribute not in valid_attributes:
+        try:
+            cluster_df, config_df, attributes, _ = get_session_data(result_dir)
+        except Exception as e:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid attribute: {attribute}. Must be one of {valid_attributes}.",
+                    message="Failed to load session data",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=500,
+            )
+
+        if attribute and attribute not in attributes:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid attribute: {attribute}. Must be one of {attributes}.",
                     error="Invalid Input",
                 ).model_dump(),
                 status_code=400,
             )
 
-        filename = f"{attribute}/{attribute}.{ATTRIBUTE_METRICS_FILENAME}"
-        filepath = os.path.join(result_dir, filename)
+        output_dir = os.path.join(result_dir, attribute)
+        filepath = os.path.join(output_dir, f"{attribute}.attribute_metrics.txt")
 
         if not os.path.exists(filepath):
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"{COUNTS_FILEPATH} File Not Found",
-                    error="File does not exist",
-                    query=str(request.url),
-                ).model_dump(),
-                status_code=404,
-            )
+            try:
+                attribute_df = attribute_metrics.get_attribute_metrics(
+                    cluster_df=cluster_df,
+                    config_df=config_df,
+                    attribute=attribute,
+                )
+
+                os.makedirs(output_dir, exist_ok=True)
+                attribute_df.write_csv(filepath, separator="\t")
+                del attribute_df, cluster_df, config_df
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate attribute metrics",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         result = parse_attribute_summary_file(filepath=filepath)
 
@@ -1024,44 +1167,98 @@ async def get_cluster_metrics(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
-        valid_attributes = valid_endpoints["attributes"]
-
-        if attribute and attribute not in valid_attributes:
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"Invalid attribute: {attribute}. Must be one of {valid_attributes}.",
-                    error="Invalid Input",
-                ).model_dump(),
-                status_code=400,
+        try:
+            cluster_df, config_df, attributes, taxon_label_dict = get_session_data(
+                result_dir
             )
-
-        valid_taxon_sets = valid_endpoints["taxon_set"][attribute]
-
-        if taxon_set and taxon_set not in valid_taxon_sets:
+        except Exception as e:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid taxon set: {taxon_set}. Must be one of {valid_taxon_sets}.",
-                    error="Invalid Input",
-                ).model_dump(),
-                status_code=400,
-            )
-
-        filename = f"{attribute}/{attribute}.{taxon_set}.{CLUSTER_METRICS_FILENAME}"
-        filepath = os.path.join(result_dir, filename)
-
-        if not os.path.exists(filepath):
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"{CLUSTER_METRICS_FILENAME} File Not Found",
-                    error="File does not exist",
+                    message="Failed to load session data",
+                    error=str(e),
                     query=str(request.url),
                 ).model_dump(),
-                status_code=404,
+                status_code=500,
             )
+
+        if attribute and attribute not in attributes:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid attribute: {attribute}. Must be one of {attributes}.",
+                    error="Invalid Input",
+                ).model_dump(),
+                status_code=400,
+            )
+
+        unique_label_values = {
+            col: config_df.select(pl.col(col)).unique().to_series().to_list()
+            for col in config_df.columns
+            if col not in ("#IDX", "TAXON", "TAXID", "OUT")
+        }
+        unique_label_values["all"] = ["all"]
+        unique_label_values["TAXON"] = config_df["TAXON"].to_list()
+
+        if taxon_set and taxon_set not in unique_label_values[attribute]:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid taxon set: {taxon_set}. Must be one of {unique_label_values[attribute]}.",
+                    error="Invalid Input",
+                ).model_dump(),
+                status_code=400,
+            )
+
+        output_dir = os.path.join(result_dir, attribute)
+        filepath = os.path.join(
+            output_dir, f"{attribute}.{taxon_set}.cluster_metrics.txt"
+        )
+
+        if not os.path.exists(filepath):
+            try:
+                label_to_taxons = {
+                    attr: {
+                        label: {
+                            taxon
+                            for taxon, labels in taxon_label_dict.items()
+                            if labels.get(attr) == label
+                        }
+                        for label in unique_label_values[attr]
+                    }
+                    for attr in attributes
+                }
+
+                base_metrics_df = (
+                    cluster_df.pipe(
+                        cluster_metrics.add_status_and_TAXON_protein_count_columns,
+                        label_to_taxons,
+                    )
+                    .rename({"TAXON_count": "cluster_proteome_count"})
+                    .pipe(cluster_metrics.add_all_taxon_info_columns, label_to_taxons)
+                )
+
+                metrics_df = cluster_metrics.get_cluster_metrics(
+                    attribute=attribute,
+                    label_group=taxon_set,
+                    label_to_taxons=label_to_taxons,
+                    base_metrics_df=base_metrics_df,
+                )
+
+                # Write to file
+                os.makedirs(output_dir, exist_ok=True)
+                metrics_df.write_csv(filepath, separator="\t")
+                del metrics_df, base_metrics_df, cluster_df, config_df
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate cluster metrics",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         result = parse_cluster_metrics_file(filepath, cluster_status, cluster_type)
 
@@ -1083,7 +1280,9 @@ async def get_cluster_metrics(
                 first_row = flattened_rows[0] if flattened_rows else {}
 
                 buffer = io.StringIO()
-                writer = csv.DictWriter(buffer, fieldnames=first_row.keys(), delimiter="\t")
+                writer = csv.DictWriter(
+                    buffer, fieldnames=first_row.keys(), delimiter="\t"
+                )
                 writer.writeheader()
                 writer.writerows(flattened_rows)
                 buffer.seek(0)
@@ -1168,14 +1367,26 @@ async def get_pairwise_analysis(
                 status_code=428,
             )
 
-        valid_endpoints = extract_attributes_and_taxon_sets(result_dir)
-        valid_attributes = valid_endpoints["attributes"]
-
-        if attribute and attribute not in valid_attributes:
+        try:
+            cluster_df, config_df, attributes, taxon_label_dict = get_session_data(
+                result_dir
+            )
+        except Exception as e:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid attribute: {attribute}. Must be one of {valid_attributes}.",
+                    message="Failed to load session data",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=500,
+            )
+
+        if attribute and attribute not in attributes:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message=f"Invalid attribute: {attribute}. Must be one of {attributes}.",
                     error="Invalid Input",
                 ).model_dump(),
                 status_code=400,
@@ -1185,15 +1396,45 @@ async def get_pairwise_analysis(
         filepath = os.path.join(result_dir, filename)
 
         if not os.path.exists(filepath):
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message=f"{PAIRWISE_ANALYSIS_FILE} File Not Found",
-                    error="File does not exist",
-                    query=str(request.url),
-                ).model_dump(),
-                status_code=404,
-            )
+            try:
+                unique_label_values = {
+                    col: config_df.select(pl.col(col)).unique().to_series().to_list()
+                    for col in config_df.columns
+                    if col not in ("#IDX", "TAXON", "TAXID", "OUT")
+                }
+                unique_label_values["all"] = ["all"]
+                unique_label_values["TAXON"] = config_df["TAXON"].to_list()
+
+                label_to_taxons = {
+                    attr: {
+                        label: {
+                            taxon
+                            for taxon, labels in taxon_label_dict.items()
+                            if labels.get(attr) == label
+                        }
+                        for label in unique_label_values[attr]
+                    }
+                    for attr in attributes
+                }
+
+                # Generate pairwise analysis
+                cluster_metrics.generate_pairwise_representation_test(
+                    cluster_df=cluster_df,
+                    attribute=attribute,
+                    label_to_taxons=label_to_taxons,
+                    output_dir=result_dir,
+                )
+
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate pairwise analysis",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         result = parse_pairwise_file(filepath, taxon_1, taxon_2)
 
@@ -1266,35 +1507,48 @@ async def get_plot(
             )
 
         result_dir = query_manager.get_session_dir(session_id)
-        filepath: str = ""
-        match plot_type:
-            case "cluster-size-distribution":
-                filepath = "cluster_size_distribution.png"
-            case "all-rarefaction-curve":
-                filepath = "all/all.rarefaction_curve.png"
-            case _:
-                return JSONResponse(
-                    content=ResponseSchema(
-                        status="error",
-                        message="Invalid Plot Type",
-                        error="invalid_plot_type",
-                        query=str(request.url),
-                    ).model_dump(),
-                    status_code=404,
-                )
 
-        filepath = os.path.join(result_dir, filepath)
-
-        if not os.path.exists(filepath):
+        if plot_type == "cluster-size-distribution":
+            filepath = os.path.join(result_dir, "cluster_size_distribution.png")
+        elif plot_type == "all-rarefaction-curve":
+            filepath = os.path.join(result_dir, "all", "all.rarefaction_curve.png")
+        else:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Plot not found",
-                    error="plot_not_found",
+                    message=f"Unknown plot type: {plot_type}",
+                    error="invalid_plot_type",
                     query=str(request.url),
                 ).model_dump(),
-                status_code=404,
+                status_code=400,
             )
+
+        if not os.path.exists(filepath):
+            try:
+                cluster_df, config_df, attributes, _ = get_session_data(result_dir)
+
+                if plot_type == "cluster-size-distribution":
+                    plots.plot_cluster_sizes(
+                        cluster_df=cluster_df, base_output_dir=result_dir
+                    )
+                elif plot_type == "all-rarefaction-curve":
+                    plots.generate_kinfin_rarefaction_plots(
+                        cluster_df=cluster_df,
+                        config_df=config_df,
+                        attributes=attributes,
+                        base_output_dir=result_dir,
+                    )
+
+            except Exception as e:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Failed to generate plot",
+                        error=str(e),
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=500,
+                )
 
         return FileResponse(
             filepath,

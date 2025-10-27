@@ -32,11 +32,9 @@ def run_server(
 
     query_manager.cluster_f = cluster_f
     query_manager.nodesdb_f = nodesdb_f
-    # query_manager.sequence_ids_f = sequence_ids_f
-    # query_manager.taxon_idx_mapping_file = taxon_idx_mapping_file
-    # query_manager.pfam_mapping_f = pfam_mapping_f
-    # query_manager.ipr_mapping_f = ipr_mapping_f
-    # query_manager.go_mapping_f = go_mapping_f
+
+    os.environ["NODESDB_F"] = nodesdb_f
+    os.environ["NDB_F"] = ndb_f
 
     app = FastAPI()
     app.state.limiter = limiter

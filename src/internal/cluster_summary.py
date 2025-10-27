@@ -211,16 +211,12 @@ def get_all_cluster_summaries(
     base_output_dir: str,
 ) -> None:
 
-    cluster_summaries = {}
     for attribute in attributes:
         summary_df = get_cluster_summary(
             cluster_df=cluster_df,
             attribute=attribute,
             config_df=config_df,
         )
-        cluster_summaries[attribute] = summary_df
         file_path = f"{base_output_dir}/{attribute}/{attribute}.cluster_summary.txt"
         logger.info(f"[✓] Writing: {file_path}")
         summary_df.write_csv(file_path, separator="\t")
-
-    return cluster_summaries

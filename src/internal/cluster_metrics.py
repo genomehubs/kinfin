@@ -693,8 +693,6 @@ def get_all_cluster_metrics(
         for attr in attributes
     }
 
-    cluster_metrics = {}
-
     base_metrics_df = (
         cluster_df.pipe(
             add_status_and_TAXON_protein_count_columns,
@@ -705,7 +703,6 @@ def get_all_cluster_metrics(
     )
 
     for attribute in attributes:
-        cluster_metrics[attribute] = {}
         for label_group in unique_label_values[attribute]:
             metrics_df = get_cluster_metrics(
                 attribute=attribute,
@@ -714,22 +711,19 @@ def get_all_cluster_metrics(
                 base_metrics_df=base_metrics_df,
             )
 
-            cluster_metrics[attribute][label_group] = metrics_df
             file_path = f"{base_output_dir}/{attribute}/{attribute}.{label_group}.cluster_metrics.txt"
             logger.info(f"[✓] Writing: {file_path}")
             metrics_df.write_csv(file_path, separator="\t")
 
-        generate_pairwise_representation_test(
-            cluster_df=cluster_df,
-            attribute=attribute,
-            label_to_taxons=label_to_taxons,
-            output_dir=base_output_dir,
-        )
-        generate_background_representation_test(
-            cluster_df=cluster_df,
-            attribute=attribute,
-            label_to_taxons=label_to_taxons,
-            output_dir=base_output_dir,
-        )
-
-    return cluster_metrics
+        # generate_pairwise_representation_test(
+        #     cluster_df=cluster_df,
+        #     attribute=attribute,
+        #     label_to_taxons=label_to_taxons,
+        #     output_dir=base_output_dir,
+        # )
+        # generate_background_representation_test(
+        #     cluster_df=cluster_df,
+        #     attribute=attribute,
+        #     label_to_taxons=label_to_taxons,
+        #     output_dir=base_output_dir,
+        # )

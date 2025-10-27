@@ -1,8 +1,11 @@
 import asyncio
-import glob
 import json
-from collections import defaultdict
+import os
 from typing import Any, Dict
+
+import polars as pl
+
+from internal import parsers
 
 
 def read_status(status_file):
@@ -81,18 +84,33 @@ async def run_cli_command(command: list, status_file: str):
         return None
 
 
-def extract_attributes_and_taxon_sets(filepath: str):
-    files = glob.glob(f"{filepath}/**/*.cluster_metrics.txt")
-    files = [file.split(filepath)[1] for file in files]
-    attributes = set()
-    result = {"attributes": [], "taxon_set": defaultdict(list)}
-    for file in files:
-        filename = file.split("/")[-1]
-        attribute = filename.split(".")[0]
-        taxon_set = filename.split(".")[1]
-        attributes.add(attribute)
-        result["taxon_set"][attribute].append(taxon_set)
-    result["attributes"] = sorted(attributes)
+def extract_attributes_and_taxon_sets(session_dir: str):
+    """
+    Extract attributes and taxon sets directly from the session's config file,
+    rather than relying on pre-generated *.cluster_metrics.txt files.
+    """
+    config_file = os.path.join(session_dir, "config.txt")
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Config file not found: {config_file}")
+
+    nodesdb_f = os.environ.get("NODESDB_F")
+    ndb_f = os.environ.get("NDB_F")
+    if not nodesdb_f or not ndb_f:
+        raise RuntimeError("NODESDB_F and NDB_F environment variables must be set")
+
+    nodesdb = parsers.nodesdb(filepath=nodesdb_f, outpath=ndb_f)
+    config_df, attributes = parsers.configfile(config_file, nodesdb)
+
+    label_columns = [
+        col for col in attributes if col not in ("#IDX", "TAXON", "TAXID", "OUT")
+    ]
+
+    result = {
+        "attributes": label_columns,
+        "taxon_set": {
+            label: sorted(config_df[label].unique()) for label in label_columns
+        },
+    }
     return result
 
 
