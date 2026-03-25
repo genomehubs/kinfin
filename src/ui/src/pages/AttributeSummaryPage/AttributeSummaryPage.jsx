@@ -10,6 +10,8 @@ import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./AttributeSummary.module.scss";
 import useColumnDescriptions from "#hooks/useColumnDescriptions.js";
 import { useSearchParams } from "react-router-dom";
+import useNavigateBack from "#hooks/useNavigateBack";
+import { setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction } from "../../app/store/config/slices/uiStateSlice";
 
 const AttributeSummaryPage = ({
   // selectedAttributeTaxonset: _selectedAttributeTaxonset,
@@ -45,8 +47,7 @@ const AttributeSummaryPage = ({
 
   const setSelectedAttributeTaxonset =
     propSetSelectedAttributeTaxonset ??
-    ((payload) =>
-      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+    ((payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)));
 
   useEffect(() => {
     const codes = searchParams.has("AS_code")
@@ -77,9 +78,8 @@ const AttributeSummaryPage = ({
     setCustomiseOpen(false);
   };
 
-  const handleClose = () => {
-    window.history.back();
-  };
+  const goBack = useNavigateBack();
+  const handleClose = () => goBack();
 
   const selectedAttributeTaxonset = { attribute, taxonset };
 

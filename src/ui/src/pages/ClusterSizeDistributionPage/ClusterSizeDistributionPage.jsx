@@ -6,6 +6,8 @@ import ChartCard from "../../components/ChartCard";
 import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import React from "react";
 import { handleDownload } from "../../utils/downloadHandlers";
+import useNavigateBack from "#hooks/useNavigateBack";
+import { setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction } from "../../app/store/config/slices/uiStateSlice";
 import styles from "./ClusterSizeDistribution.module.scss";
 
 const ClusterSizeDistributionPage = ({
@@ -20,9 +22,8 @@ const ClusterSizeDistributionPage = ({
     (state) => state?.config?.uiState?.downloadLoading,
   );
 
-  const handleClose = () => {
-    window.history.back();
-  };
+  const goBack = useNavigateBack();
+  const handleClose = () => goBack();
 
   const selectedFromStore = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset,
@@ -33,8 +34,7 @@ const ClusterSizeDistributionPage = ({
 
   const setSelectedAttributeTaxonset =
     propSetSelectedAttributeTaxonset ??
-    ((payload) =>
-      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+    ((payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)));
 
   const effectiveSelected = { attribute, taxonset };
 

@@ -1,6 +1,7 @@
 import { Box, Button, Dialog, DialogContent, IconButton } from "@mui/material";
 import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "#utils/constants";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useCarousel from "#hooks/useCarousel";
 
 import CloseIcon from "@mui/icons-material/Close";
 import Navbar from "#components/Navbar";
@@ -11,19 +12,11 @@ const Home = () => {
   const navigate = useNavigate();
 
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState(0);
-  const [fade, setFade] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFade(true);
-      setTimeout(() => {
-        setCurrentImage((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
-        setFade(false);
-      }, 500);
-    }, HOME_PAGE_CONFIG.carouselInterval);
-    return () => clearInterval(interval);
-  }, []);
+  const { current: currentImage, isFading: fade } = useCarousel({
+    length: CAROUSEL_IMAGES.length,
+    interval: HOME_PAGE_CONFIG.carouselInterval,
+    transitionMs: 500,
+  });
 
   return (
     <Box sx={{ flexGrow: 1 }}>

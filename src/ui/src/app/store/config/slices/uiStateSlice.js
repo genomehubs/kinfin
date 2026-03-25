@@ -1,6 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const params = new URLSearchParams(window.location.search);
+import { getInitialUrlSearchParams } from "#utils/getInitialUrlSearchParams";
+
+const params = getInitialUrlSearchParams();
 
 const initialState = {
   selectedAttributeTaxonset: {

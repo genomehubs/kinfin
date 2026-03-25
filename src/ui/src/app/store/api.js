@@ -4,12 +4,11 @@ import axios from "axios";
 import { storeConfig } from "./config/slices/configSlice";
 import { setPollingLoading } from "./config/slices/uiStateSlice";
 import { toCamelCase } from "#utils/changeCase.js";
+import { getSessionId, setSessionId } from "../utils/session";
 
 const { VITE_KINFIN_API_HOST } = import.meta.env;
 
-const getSessionId = () =>
-  localStorage.getItem("currentSessionId") ||
-  "6599179a64accf331ffe653db00a0e24";
+// session id access is centralized in app/utils/session.js
 
 /**
  * Map server status values to UI status values.
@@ -130,7 +129,7 @@ export const api = createApi({
         try {
           const { data } = await queryFulfilled;
           if (data?.sessionId) {
-            localStorage.setItem("currentSessionId", data.sessionId);
+            setSessionId(data.sessionId);
             // prefer the name provided by the UI; fall back to server name or a default
             const storedName =
               arg?.name ?? data?.name ?? `Session ${data.sessionId}`;

@@ -16,46 +16,24 @@ import RarefactionCurve from "#components/Charts/RarefactionCurve";
 import RunSummary from "#components/RunSummary";
 import { handleDownload } from "../../utils/downloadHandlers";
 import { mapChartName } from "../../utils/mappings";
-import { storeConfig } from "../../app/store/config/slices/configSlice";
-import { setPollingLoading } from "../../app/store/config/slices/uiStateSlice";
+import {
+  setPollingLoading,
+  setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction,
+} from "../../app/store/config/slices/uiStateSlice";
 import styles from "./Dashboard.module.scss";
 import useColumnDescriptions from "#hooks/useColumnDescriptions.js";
 import useColumnDescriptionsSets from "#hooks/useColumnDescriptionsSets.js";
-import { useGetRunStatusQuery } from "#store/api";
+import useSessionPolling from "#hooks/useSessionPolling";
 import { useInitAnalysis } from "#hooks/useInitAnalysis";
 import usePlot from "#hooks/usePlot";
 import { useSearchParams } from "react-router-dom";
-
-/**
- * Map server status values to UI status values.
- * Server returns: "running", "pending", "completed", "error", "not_initialized"
- * UI expects: "initialising", "active", "error", "inactive"
- */
-const mapServerStatusToUiStatus = (serverStatus) => {
-  if (!serverStatus) return "inactive";
-
-  switch (serverStatus) {
-    case "running":
-    case "pending":
-      return "initialising";
-    case "completed":
-      return "active";
-    case "error":
-      return "error";
-    case "not_initialized":
-    case "inactive":
-      return "inactive";
-    default:
-      return "inactive";
-  }
-};
+import { setSessionId } from "../../app/utils/session";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [enlargedChart, setEnlargedChart] = useState(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [parsedData, setParsedData] = useState([]);
-  const [shouldContinuePolling, setShouldContinuePolling] = useState(true);
   const [searchParams] = useSearchParams();
 
   const dispatch = useDispatch();
@@ -76,7 +54,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     if (sessionId) {
-      localStorage.setItem("currentSessionId", sessionId);
+      setSessionId(sessionId);
     }
   }, [sessionId]);
 
@@ -89,7 +67,7 @@ const DashboardPage = () => {
   const taxonset = selectedFromStore?.taxonset ?? "all";
 
   const dispatchSetSelected = (payload) =>
-    dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload });
+    dispatch(setSelectedAttributeTaxonsetAction(payload));
 
   const selectedAttributeTaxonsetLocal = { attribute, taxonset };
 
@@ -106,78 +84,8 @@ const DashboardPage = () => {
   );
   const clusterSizeDistributionBlob = csdResp?.data ?? csdResp ?? null;
 
-  // Load session metadata from API (source of truth) and store in redux
-  // Poll every 2 seconds ONLY while analysis is initializing (isComplete is false)
-  const {
-    data: sessionMeta,
-    isLoading: sessionLoading,
-    // isFetching: sessionFetching,
-    // error: sessionError,
-  } = useGetRunStatusQuery(sessionId, {
-    skip: !sessionId,
-    pollingInterval: shouldContinuePolling && sessionId ? 2000 : 0,
-  });
-
-  // Update polling state based on whether analysis is complete
-  // This breaks the circularity: pollingInterval depends on shouldContinuePolling state,
-  // and shouldContinuePolling is updated in effect based on sessionMeta response
-  useEffect(() => {
-    if (sessionMeta) {
-      const isComplete =
-        sessionMeta?.data?.isComplete ?? sessionMeta?.isComplete;
-      setShouldContinuePolling(!isComplete);
-    }
-  }, [sessionMeta]);
-
-  useEffect(() => {
-    if (sessionMeta && sessionId) {
-      try {
-        // Normalize: API responses may wrap payload under `data` (ResponseSchema.data)
-        const effective = sessionMeta.data || sessionMeta;
-
-        // Extract status string from nested object if needed
-        // GET /status returns: data.status = { session_id, status: "...", expiryDate }
-        let statusValue = null;
-        if (typeof effective.status === "string") {
-          statusValue = effective.status;
-        } else if (
-          effective.status &&
-          typeof effective.status === "object" &&
-          effective.status.status
-        ) {
-          statusValue = effective.status.status;
-        } else if (
-          sessionMeta.status &&
-          typeof sessionMeta.status === "string"
-        ) {
-          statusValue = sessionMeta.status;
-        }
-
-        // Map server status to UI status
-        const uiStatus = mapServerStatusToUiStatus(statusValue);
-
-        // Only include config/clusterId/clusterName if they actually exist
-        // This preserves previously stored values when /status doesn't return them
-        const payload = {
-          sessionId,
-          name: effective.name || `Session ${sessionId}`,
-          meta: {
-            status: uiStatus,
-            isComplete: effective.isComplete ?? sessionMeta.isComplete ?? null,
-            message: sessionMeta.message || null,
-          },
-        };
-
-        if (effective.config) payload.config = effective.config;
-        if (effective.clusterId) payload.clusterId = effective.clusterId;
-        if (effective.clusterName) payload.clusterName = effective.clusterName;
-
-        dispatch(storeConfig(payload));
-      } catch (err) {
-        console.error("Failed to store session metadata:", err);
-      }
-    }
-  }, [sessionMeta, sessionId, dispatch]);
+  const { sessionMeta, sessionLoading, isLoadingSession } =
+    useSessionPolling(sessionId);
 
   // Only fetch analysis data once we have session metadata/config available.
   const effectiveMeta = sessionMeta?.data ? sessionMeta.data : sessionMeta;
@@ -191,7 +99,7 @@ const DashboardPage = () => {
 
   // Show loading overlay only when we don't have data yet OR the server says it's not complete
   // Don't show it just because a polling request is in flight (that causes flickering)
-  const isLoadingSession = !sessionMeta || effectiveMeta?.isComplete === false;
+  // `isLoadingSession` is provided by `useSessionPolling` hook
 
   // Manage loading overlay state based on session initialization progress
   useEffect(() => {

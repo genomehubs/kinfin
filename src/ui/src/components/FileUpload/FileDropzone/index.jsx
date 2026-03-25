@@ -4,7 +4,6 @@ import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import styles from "./FileDropZone.module.scss";
 
 const FileDropZone = ({
-  onClick,
   selectedName,
   inputRef,
   onChange,
@@ -54,7 +53,6 @@ const FileDropZone = ({
         ref={inputRef}
         accept=".csv,.tsv,.xls,.xlsx,.json"
         onChange={onChange}
-        onInput={onChange}
         onClick={(e) => {
           if (disabled) return;
           // Clear the input value so selecting the same file again fires onChange

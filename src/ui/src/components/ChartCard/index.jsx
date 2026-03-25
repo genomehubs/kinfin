@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import useFullscreen from "#hooks/useFullscreen";
 
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { Button } from "@mui/material";
@@ -22,16 +23,7 @@ const ChartCard = ({
 }) => {
   // add support for full screen view
   const fullScreenRef = useRef(null);
-  const [isFullScreen, setIsFullScreen] = React.useState(false);
-
-  const toggleFullScreen = () => {
-    setIsFullScreen((prev) => !prev);
-    if (!isFullScreen) {
-      fullScreenRef.current.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  };
+  const { isFullScreen, toggleFullScreen } = useFullscreen(fullScreenRef);
 
   const buttonSx = {
     borderRadius: "50px",

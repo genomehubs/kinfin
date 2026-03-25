@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
+import useFullscreen from "#hooks/useFullscreen";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
 
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
@@ -14,20 +16,8 @@ const ClusterSummary = ({
   attribute,
   clusterSummaryColumnDescriptions: columnDescriptions,
 }) => {
-  const isCurrentPage = window.location.pathname.includes("cluster-summary");
-  const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null,
-  );
-
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(document.fullscreenElement != null);
-    };
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
+  const isCurrentPage = useIsCurrentPage("cluster-summary");
+  const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const page = Math.max(

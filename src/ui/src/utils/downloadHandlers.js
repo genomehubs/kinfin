@@ -1,6 +1,7 @@
 import { dispatchSuccessToast } from "./toastNotifications";
 import { downloadBlobFile } from "./downloadBlobFile";
 import { mapChartName } from "./mappings";
+import { setDownloadLoading } from "../app/store/config/slices/uiStateSlice";
 
 /**
  * RTK Query migration: Download handlers now work with blob data directly.
@@ -21,12 +22,7 @@ import { mapChartName } from "./mappings";
 const handleDownload = ({ chartKey, blob, filename, dispatch }) => {
   // Fallback for older code that passes dispatch (for UI state updates like loading)
   const showLoading = dispatch
-    ? (loading) =>
-        dispatch(
-          require("../app/store/config/slices/uiStateSlice").setDownloadLoading(
-            { type: chartKey.to, loading },
-          ),
-        )
+    ? (loading) => dispatch(setDownloadLoading({ type: chartKey, loading }))
     : () => {};
 
   if (!blob || !(blob instanceof Blob)) {

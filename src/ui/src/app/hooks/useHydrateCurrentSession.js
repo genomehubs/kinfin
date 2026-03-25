@@ -4,8 +4,7 @@ import { storeConfig } from "../store/config/slices/configSlice";
 import { useEffect } from "react";
 import { useGetRunStatusQuery } from "../store/api";
 import { useRef } from "react";
-
-const getSessionId = () => localStorage.getItem("currentSessionId") || null;
+import { getSessionId } from "../utils/session";
 
 /**
  * Map server status values to UI status values.

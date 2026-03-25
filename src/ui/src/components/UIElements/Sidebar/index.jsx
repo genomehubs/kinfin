@@ -31,6 +31,7 @@ import { skipToken } from "@reduxjs/toolkit/query/react";
 import styles from "./Sidebar.module.scss";
 import { useBatchStatus } from "#hooks/useBatchStatus.js";
 import useConfigActions from "#hooks/useConfigActions";
+import { downloadBlobFile } from "#utils/downloadBlobFile";
 import { useSelector } from "react-redux";
 import { useTheme } from "#hooks/useTheme";
 import { useValidProteomeIds } from "#hooks/useValidProteomeIds.js";
@@ -52,12 +53,11 @@ const downloadAsTSV = (analysis) => {
     type: "text/tab-separated-values",
   });
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${name || sessionId}.tsv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadBlobFile(
+    blob,
+    `${name || sessionId}.tsv`,
+    "text/tab-separated-values",
+  );
 };
 
 const getStatusInfo = (status) => {

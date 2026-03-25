@@ -10,6 +10,8 @@ import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterMetrics.module.scss";
 import useColumnDescriptions from "#hooks/useColumnDescriptions.js";
 import { useSearchParams } from "react-router-dom";
+import useNavigateBack from "#hooks/useNavigateBack";
+import { setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction } from "../../app/store/config/slices/uiStateSlice";
 
 const ClusterMetricsPage = ({
   // selectedAttributeTaxonset: _selectedAttributeTaxonset,
@@ -37,8 +39,7 @@ const ClusterMetricsPage = ({
 
   const setSelectedAttributeTaxonset =
     propSetSelectedAttributeTaxonset ??
-    ((payload) =>
-      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+    ((payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)));
 
   // fetch column descriptions via RTK Query hook
   const { data: fetchedColumnDescriptions = [] } = useColumnDescriptions();
@@ -79,9 +80,8 @@ const ClusterMetricsPage = ({
     setCustomiseOpen(false);
   };
 
-  const handleClose = () => {
-    window.history.back();
-  };
+  const goBack = useNavigateBack();
+  const handleClose = () => goBack();
 
   const selectedAttributeTaxonset = { attribute, taxonset };
 

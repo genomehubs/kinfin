@@ -6,6 +6,8 @@ import ChartCard from "#components/ChartCard";
 import RarefactionCurve from "#components/Charts/RarefactionCurve";
 import React from "react";
 import { handleDownload } from "#utils/downloadHandlers";
+import useNavigateBack from "#hooks/useNavigateBack";
+import { setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction } from "../../app/store/config/slices/uiStateSlice";
 import styles from "./RarefactionCurve.module.scss";
 
 const RarefactionCurvePage = ({
@@ -20,9 +22,8 @@ const RarefactionCurvePage = ({
     (state) => state?.config?.uiState?.downloadLoading,
   );
 
-  const handleClose = () => {
-    window.history.back();
-  };
+  const goBack = useNavigateBack();
+  const handleClose = () => goBack();
 
   const selectedFromStore = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset,
@@ -33,8 +34,7 @@ const RarefactionCurvePage = ({
 
   const setSelectedAttributeTaxonset =
     propSetSelectedAttributeTaxonset ??
-    ((payload) =>
-      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+    ((payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)));
 
   const effectiveSelected = { attribute, taxonset };
 
