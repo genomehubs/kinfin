@@ -1,7 +1,6 @@
 import ClusterMetricsPage from "./ClusterMetricsPage";
-import ClusterMetricsPageContainer from "./ClusterMetricsPageContainer";
 import React from "react";
 
-export default ClusterMetricsPageContainer;
+export default ClusterMetricsPage;
 
-export { ClusterMetricsPage, ClusterMetricsPageContainer };
+export { ClusterMetricsPage };

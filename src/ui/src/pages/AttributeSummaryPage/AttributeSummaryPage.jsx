@@ -6,39 +6,52 @@ import AttributeSelector from "../../components/AttributeSelector";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
 import ChartCard from "../../components/ChartCard";
 import CustomisationDialog from "../../components/CustomisationDialog";
-import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./AttributeSummary.module.scss";
+import useColumnDescriptions from "#hooks/useColumnDescriptions.js";
 import { useSearchParams } from "react-router-dom";
 
 const AttributeSummaryPage = ({
-  selectedAttributeTaxonset,
+  // selectedAttributeTaxonset: _selectedAttributeTaxonset,
   attributeSummaryColumnDescriptions: columnDescriptions,
+  attribute: propAttribute,
+  taxonset: propTaxonset,
+  setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+  // ensure column descriptions are fetched via RTK Query
+  const { data: fetchedColumnDescriptions = [] } = useColumnDescriptions();
 
-  // useEffect(() => {
-  //   dispatch(getColumnDescriptions());
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
+  const effectiveColumnDescriptions =
+    columnDescriptions && columnDescriptions.length
+      ? columnDescriptions
+      : fetchedColumnDescriptions;
 
   const downloadLoading = useSelector(
-    (state) => state?.config?.uiState?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading,
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState([]);
 
-  useEffect(() => {
-    dispatch(getColumnDescriptions());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // If the container HOC is not used, read selectedAttributeTaxonset from redux
+  const selectedFromStore = useSelector(
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset,
+  );
+
+  const attribute = propAttribute ?? selectedFromStore?.attribute ?? "all";
+  const taxonset = propTaxonset ?? selectedFromStore?.taxonset ?? "all";
+
+  const setSelectedAttributeTaxonset =
+    propSetSelectedAttributeTaxonset ??
+    ((payload) =>
+      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
 
   useEffect(() => {
     const codes = searchParams.has("AS_code")
       ? searchParams.getAll("AS_code")
-      : columnDescriptions
+      : effectiveColumnDescriptions
           .filter((col) => col.isDefault)
           .map((col) => col.code);
     if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
@@ -68,10 +81,16 @@ const AttributeSummaryPage = ({
     window.history.back();
   };
 
+  const selectedAttributeTaxonset = { attribute, taxonset };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
-        <AttributeSelector />
+        <AttributeSelector
+          attribute={attribute}
+          taxonset={taxonset}
+          setSelectedAttributeTaxonset={setSelectedAttributeTaxonset}
+        />
       </div>
       <div className={styles.page}>
         <div className={styles.chartsContainer}>
@@ -88,7 +107,10 @@ const AttributeSummaryPage = ({
             onCustomise={handleCustomisation}
             onClose={handleClose}
           >
-            <AttributeSummary />
+            <AttributeSummary
+              attribute={attribute}
+              attributeSummaryColumnDescriptions={effectiveColumnDescriptions}
+            />
           </ChartCard>
         </div>
       </div>
@@ -98,7 +120,7 @@ const AttributeSummaryPage = ({
         onClose={handleCancel}
         onApply={handleApply}
         selectedCodes={selectedCodes}
-        columnDescriptions={columnDescriptions}
+        columnDescriptions={effectiveColumnDescriptions}
         title="Customise Attribute Summary"
       />
     </AppLayout>

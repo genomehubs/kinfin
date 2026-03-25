@@ -10,7 +10,6 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -23,18 +22,18 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LightModeIcon from "@mui/icons-material/LightMode";
-// MUI Icons
 import MenuIcon from "@mui/icons-material/Menu";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import RenameDialog from "./RenameDialog";
 import Tooltip from "@mui/material/Tooltip";
-import { deleteConfig } from "../../../app/store/config/slices/configSlice";
-import { getBatchStatus } from "../../../app/store/config/slices/batchStatusSlice";
-import { getValidProteomeIds } from "../../../app/store/config/slices/proteomeIdsSlice";
-import { renameConfig } from "../../../app/store/config/slices/configSlice";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import styles from "./Sidebar.module.scss";
-import { useTheme } from "../../../hooks/useTheme";
+import { useBatchStatus } from "#hooks/useBatchStatus.js";
+import useConfigActions from "#hooks/useConfigActions";
+import { useSelector } from "react-redux";
+import { useTheme } from "#hooks/useTheme";
+import { useValidProteomeIds } from "#hooks/useValidProteomeIds.js";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -46,7 +45,7 @@ const downloadAsTSV = (analysis) => {
   const tsvRows = [
     keys.join("\t"),
     ...config.map((row) =>
-      keys.map((k) => (row[k] !== undefined ? row[k] : "")).join("\t")
+      keys.map((k) => (row[k] !== undefined ? row[k] : "")).join("\t"),
     ),
   ];
   const blob = new Blob([tsvRows.join("\n")], {
@@ -98,7 +97,7 @@ const getStatusInfo = (status) => {
 
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
-  const dispatch = useDispatch();
+  const { renameConfig, deleteConfig } = useConfigActions();
   const { sessionId } = useParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [userName, setUserName] = useState("");
@@ -109,33 +108,33 @@ const Sidebar = ({ open, setOpen }) => {
 
   const navigate = useNavigate();
 
-  const analysisConfigs = useSelector(
-    (state) => state?.config?.storeConfig?.data
-  );
+  const analysisConfigs = useSelector((state) => state?.config?.data);
   const pollingLoadingBySessionId = useSelector(
-    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {}
+    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {},
   );
   const selectedClusterSet = useSelector(
-    (state) => state?.config?.uiState?.selectedClusterSet
+    (state) => state?.config?.uiState?.selectedClusterSet,
   );
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
-  useEffect(() => {
-    if (selectedClusterSet) {
-      dispatch(getValidProteomeIds({ clusterId: selectedClusterSet }));
-    }
-  }, [selectedClusterSet]);
+  const { data: validProteomeIds } = useValidProteomeIds(
+    selectedClusterSet
+      ? { clusterId: selectedClusterSet, page: 1, size: 50 }
+      : skipToken,
+  );
 
   const hasFetchedStatusRef = useRef(false);
+  const [getBatchStatus] = useBatchStatus();
   useEffect(() => {
     if (!hasFetchedStatusRef.current && analysisList?.length) {
       const sessionIds = analysisList.map((item) => item.sessionId);
-      dispatch(getBatchStatus({ sessionIds }));
+      getBatchStatus(sessionIds);
       hasFetchedStatusRef.current = true;
     }
-  }, [analysisList]);
+  }, [analysisList, getBatchStatus]);
 
   const groupedAnalysis = analysisList?.reduce((acc, item) => {
+    if (!item || !item.sessionId) return acc;
     const clusterId = item.clusterId || "unassigned";
     if (!acc[clusterId]) {
       acc[clusterId] = {
@@ -156,7 +155,7 @@ const Sidebar = ({ open, setOpen }) => {
       newName: userName.trim(),
       sessionId: selectedItem?.sessionId,
     };
-    dispatch(renameConfig(payload));
+    renameConfig(payload);
     setNameError("");
     setUserName("");
     setModalOpen(false);
@@ -207,7 +206,7 @@ const Sidebar = ({ open, setOpen }) => {
                           ) : (
                             (() => {
                               const { color, icon, label } = getStatusInfo(
-                                item.status
+                                item.status,
                               );
                               return (
                                 <Tooltip title={label} arrow>
@@ -232,7 +231,9 @@ const Sidebar = ({ open, setOpen }) => {
                             })()
                           )}
                         </Box>
-                        <span className={styles.label}>{item.name}</span>
+                        <span className={styles.label}>
+                          {item.name || `Session ${item.sessionId}`}
+                        </span>
                         <IconButton
                           size="small"
                           onClick={(e) => handleMenuOpen(e, item)}
@@ -242,7 +243,7 @@ const Sidebar = ({ open, setOpen }) => {
                       </div>
                     ))}
                   </div>
-                )
+                ),
               )
             ) : (
               <div className={styles.emptyState}>No saved analyses</div>
@@ -321,7 +322,7 @@ const Sidebar = ({ open, setOpen }) => {
             color="error"
             variant="contained"
             onClick={() => {
-              dispatch(deleteConfig(selectedItem?.sessionId));
+              deleteConfig(selectedItem?.sessionId);
               setDeleteDialogOpen(false);
             }}
           >

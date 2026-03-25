@@ -1,7 +1,6 @@
 import ClusterSummary from "./ClusterSummary";
-import ClusterSummaryContainer from "./ClusterSummaryContainer";
 import React from "react";
 
-export default ClusterSummaryContainer;
+export default ClusterSummary;
 
-export { ClusterSummary, ClusterSummaryContainer };
+export { ClusterSummary };

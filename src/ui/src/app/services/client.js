@@ -39,9 +39,9 @@ export const getValidProteomeIds = async (data) => {
   const response = await apiClient.get("/valid-proteome-ids", {
     headers: { "x-session-id": getSessionId() },
     params: {
-      page: data.page,
-      size: data.size,
-      clusterId: data.clusterId,
+      page: data?.page ?? 1,
+      size: data?.size ?? 50,
+      clusterId: data?.clusterId,
     },
   });
   return response.data;
@@ -49,7 +49,7 @@ export const getValidProteomeIds = async (data) => {
 
 export const getClusteringSets = async (data) => {
   const response = await apiClient.get("/clustering-sets", {
-    params: { page: data.page, size: data.size },
+    params: { page: data?.page ?? 1, size: data?.size ?? 50 },
   });
   return response.data;
 };
@@ -57,7 +57,7 @@ export const getClusteringSets = async (data) => {
 export const getColumnDescriptions = async (data) => {
   const response = await apiClient.get("/column-descriptions", {
     headers: { "x-session-id": getSessionId() },
-    params: { page: data.page, size: data.size, file: data.file },
+    params: { page: data?.page ?? 1, size: data?.size ?? 50, file: data?.file },
   });
   return response.data;
 };
@@ -123,7 +123,7 @@ export const getClusterMetrics = async (data) => {
         CM_code: data.CM_code,
       },
       paramsSerializer: { indexes: null },
-    }
+    },
   );
   return response.data;
 };
@@ -141,7 +141,7 @@ export const getPlot = async (data) => {
     {
       headers: { "x-session-id": getSessionId() },
       responseType: "blob",
-    }
+    },
   );
   return response.data;
 };

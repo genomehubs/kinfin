@@ -1,38 +1,39 @@
-import React from "react";
+import React, { useMemo } from "react";
+
 import styles from "./RunSummary.module.scss";
-import { useSelector } from "react-redux";
+import { useGetRunSummaryQuery } from "#store/api";
 
 const RunSummary = () => {
-  const data = useSelector((state) => state?.analysis?.runSummary?.data);
+  const { data: resp } = useGetRunSummaryQuery(undefined, {
+    skip: false,
+  });
 
-  const stats = [
-    { label: "Total Clusters", value: data?.total_clusters },
-    { label: "Total Proteins", value: data?.total_proteins },
-    { label: "Total Proteomes", value: data?.total_proteomes },
-    { label: "Filtered Clusters", value: data?.filtered_clusters },
-    { label: "Filtered Proteins", value: data?.filtered_proteins },
-    { label: "Included Proteins", value: data?.included_proteins_count },
-    { label: "Excluded Proteins", value: data?.excluded_proteins_count },
-  ];
+  const stats = useMemo(() => {
+    const data = resp?.data ?? resp ?? {};
+    return [
+      { label: "Total Clusters", value: data?.totalClusters },
+      { label: "Total Proteins", value: data?.totalProteins },
+      { label: "Total Proteomes", value: data?.totalProteomes },
+      { label: "Filtered Clusters", value: data?.filteredClusters },
+      { label: "Filtered Proteins", value: data?.filteredProteins },
+      { label: "Included Proteins", value: data?.includedProteinsCount },
+      { label: "Excluded Proteins", value: data?.excludedProteinsCount },
+    ];
+  }, [resp]);
 
   return (
-    <>
-      {/* <p>Run Summary</p> */}
-      <div className={`${styles.container} ${styles.leftAlign}`}>
-        {stats.map((stat, index) => (
-          <div key={index} className={styles.statContainer}>
-            <p
-              className={`${styles.data} ${
-                stat.value == null ? styles.noValue : ""
-              }`}
-            >
-              {stat.value ?? "N/A"}
-            </p>
-            <p className={styles.dataName}>{stat.label}</p>
-          </div>
-        ))}
-      </div>
-    </>
+    <div className={`${styles.container} ${styles.leftAlign}`}>
+      {stats.map((stat, index) => (
+        <div key={index} className={styles.statContainer}>
+          <p
+            className={`${styles.data} ${stat.value == null ? styles.noValue : ""}`}
+          >
+            {stat.value ?? "N/A"}
+          </p>
+          <p className={styles.dataName}>{stat.label}</p>
+        </div>
+      ))}
+    </div>
   );
 };
 

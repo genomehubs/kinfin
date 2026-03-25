@@ -6,9 +6,11 @@ import FileDropZone from "./FileDropzone";
 import JsonEditor from "./JsonEditor";
 import Papa from "papaparse";
 import ValidationErrors from "./ValidationErrors";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import styles from "./FileUpload.module.scss";
 import { useSelector } from "react-redux";
-import { validateDataset } from "../../utils/validateDataset";
+import { useValidProteomeIds } from "#hooks/useValidProteomeIds.js";
+import { validateDataset } from "#utils/validateDataset";
 
 const SUPPORTED_EXTENSIONS = {
   xls: "excel",
@@ -22,6 +24,8 @@ const FileUpload = ({
   onDataChange,
   validationErrors,
   setValidationErrors,
+  disabled = false,
+  clusterId = null,
 }) => {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [parsedData, setParsedData] = useState(null);
@@ -30,10 +34,31 @@ const FileUpload = ({
   const [jsonError, setJsonError] = useState("");
 
   const fileInputRef = useRef(null);
+  const lastProcessedFileNameRef = useRef(null);
 
-  const validProteomeIds = useSelector(
-    (state) => state?.config?.validProteomeIds?.data
-  );
+  // Fetch valid proteome ids for the selected cluster (skip when none)
+  const { data: validProteomeResponse, isError: validProteomeError } =
+    useValidProteomeIds(
+      clusterId ? { clusterId, page: 1, size: 100 } : skipToken,
+    );
+
+  // API may return wrapper { data: { ... } } or the map directly.
+  const validProteomeIds =
+    validProteomeResponse?.data ?? validProteomeResponse ?? {};
+
+  useEffect(() => {
+    if (validProteomeError) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        headers: [
+          ...(prev.headers || []),
+          "Failed to fetch valid proteome IDs for selected cluster",
+        ],
+      }));
+    }
+    // only run when error state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validProteomeError]);
 
   const resetViewState = useCallback(() => {
     setJsonError("");
@@ -44,20 +69,40 @@ const FileUpload = ({
     (rawData) => {
       const { data: cleanedData, errors } = validateDataset(
         rawData,
-        validProteomeIds
+        validProteomeIds,
       );
       setParsedData(cleanedData);
       setJsonText(JSON.stringify(cleanedData, null, 2));
       setValidationErrors(errors);
     },
-    [validProteomeIds, setValidationErrors]
+    [validProteomeIds, setValidationErrors],
   );
+
+  const tryParseJson = (text) => {
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      // attempt to sanitize common issues (trailing commas)
+      try {
+        const sanitized = text
+          .replace(/,\s*,/g, ",")
+          .replace(/,\s*([}\]])/g, "$1");
+        return JSON.parse(sanitized);
+      } catch (err2) {
+        throw err;
+      }
+    }
+  };
 
   useEffect(() => {
     onDataChange?.(parsedData);
   }, [parsedData, onDataChange]);
 
   const handleClick = () => fileInputRef.current?.click();
+  const handleClickDisabled = () => {
+    if (disabled) return;
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -89,7 +134,8 @@ const FileUpload = ({
       json: () => {
         reader.onload = (e) => {
           try {
-            const json = JSON.parse(e.target.result);
+            const text = (e.target.result || "").replace(/^\uFEFF/, "");
+            const json = tryParseJson(text);
             updateDataState(json);
           } catch {
             setParsedData([{ error: "Invalid JSON file" }]);
@@ -117,10 +163,61 @@ const FileUpload = ({
     if (handleParse[fileType]) {
       handleParse[fileType]();
     } else {
-      setParsedData([{ error: "Unsupported file format" }]);
-      setJsonText("");
+      // fallback: try reading as text and attempt JSON then CSV parsing
+      reader.onload = (e) => {
+        const text = (e.target.result || "").replace(/^\uFEFF/, "").trim();
+        if (!text) {
+          setParsedData([{ error: "Unsupported or empty file" }]);
+          setJsonText("");
+          return;
+        }
+
+        // try JSON (with tolerant parser)
+        try {
+          const parsed = tryParseJson(text);
+          updateDataState(parsed);
+          return;
+        } catch (err) {
+          // not JSON, try CSV
+        }
+
+        try {
+          const { data } = Papa.parse(text, {
+            header: true,
+            skipEmptyLines: true,
+          });
+          updateDataState(data);
+          return;
+        } catch (err) {
+          setParsedData([{ error: "Unsupported file format" }]);
+          setJsonText("");
+        }
+      };
+      reader.readAsText(file);
     }
   };
+
+  // Fallback: some browsers/platforms don't reliably fire `change` when the
+  // file dialog closes in certain situations. Listen for window focus and
+  // check the input element's files; if a new file is present, process it.
+  useEffect(() => {
+    const onWindowFocus = () => {
+      try {
+        const input = fileInputRef.current;
+        const f = input?.files?.[0];
+        if (f && lastProcessedFileNameRef.current !== f.name) {
+          const simulatedEvent = { target: { files: [f] } };
+          handleFileChange(simulatedEvent);
+          lastProcessedFileNameRef.current = f.name;
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    window.addEventListener("focus", onWindowFocus);
+    return () => window.removeEventListener("focus", onWindowFocus);
+  }, [handleFileChange]);
 
   const handleJsonChange = (e) => {
     const input = e.target.value;
@@ -177,10 +274,11 @@ const FileUpload = ({
     <>
       {!parsedData && (
         <FileDropZone
-          onClick={handleClick}
+          onClick={handleClickDisabled}
           selectedName={selectedFileName}
           inputRef={fileInputRef}
           onChange={handleFileChange}
+          disabled={disabled}
         />
       )}
 

@@ -9,22 +9,43 @@ import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterSizeDistribution.module.scss";
 
 const ClusterSizeDistributionPage = ({
-  selectedAttributeTaxonset,
+  selectedAttributeTaxonset: _selectedAttributeTaxonset,
   clusterSizeDistributionBlob,
+  attribute: propAttribute,
+  taxonset: propTaxonset,
+  setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
   const dispatch = useDispatch();
   const downloadLoading = useSelector(
-    (state) => state?.config?.uiState?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading,
   );
 
   const handleClose = () => {
     window.history.back();
   };
 
+  const selectedFromStore = useSelector(
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset,
+  );
+
+  const attribute = propAttribute ?? selectedFromStore?.attribute ?? "all";
+  const taxonset = propTaxonset ?? selectedFromStore?.taxonset ?? "all";
+
+  const setSelectedAttributeTaxonset =
+    propSetSelectedAttributeTaxonset ??
+    ((payload) =>
+      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+
+  const effectiveSelected = { attribute, taxonset };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
-        <AttributeSelector />
+        <AttributeSelector
+          attribute={attribute}
+          taxonset={taxonset}
+          setSelectedAttributeTaxonset={setSelectedAttributeTaxonset}
+        />
       </div>
       <div className={styles.page}>
         <div className={styles.chartsContainer}>
@@ -37,13 +58,16 @@ const ClusterSizeDistributionPage = ({
               handleDownload({
                 chartKey: "clusterSizeDistribution",
                 dispatch,
-                selectedAttributeTaxonset,
+                selectedAttributeTaxonset: effectiveSelected,
                 clusterSizeDistributionBlob,
               })
             }
             onClose={handleClose}
           >
-            <ClusterSizeDistribution />
+            <ClusterSizeDistribution
+              attribute={attribute}
+              clusterSizeDistributionBlob={clusterSizeDistributionBlob}
+            />
           </ChartCard>
         </div>
       </div>

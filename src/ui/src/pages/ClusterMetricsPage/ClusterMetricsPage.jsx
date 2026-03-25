@@ -6,34 +6,52 @@ import AttributeSelector from "../../components/AttributeSelector";
 import ChartCard from "../../components/ChartCard";
 import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import CustomisationDialog from "../../components/CustomisationDialog";
-import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
 import { handleDownload } from "../../utils/downloadHandlers";
 import styles from "./ClusterMetrics.module.scss";
+import useColumnDescriptions from "#hooks/useColumnDescriptions.js";
 import { useSearchParams } from "react-router-dom";
 
 const ClusterMetricsPage = ({
-  selectedAttributeTaxonset,
+  // selectedAttributeTaxonset: _selectedAttributeTaxonset,
   clusterMetricsColumnDescriptions: columnDescriptions,
+  attribute: propAttribute,
+  taxonset: propTaxonset,
+  setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const clusterMetricsDownloadLoading = useSelector(
-    (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics
+    (state) => state?.config?.uiState?.downloadLoading?.clusterMetrics,
   );
 
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState([]);
 
-  useEffect(() => {
-    dispatch(getColumnDescriptions());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const selectedFromStore = useSelector(
+    (state) => state?.config?.uiState?.selectedAttributeTaxonset,
+  );
+
+  const attribute = propAttribute ?? selectedFromStore?.attribute ?? "all";
+  const taxonset = propTaxonset ?? selectedFromStore?.taxonset ?? "all";
+
+  const setSelectedAttributeTaxonset =
+    propSetSelectedAttributeTaxonset ??
+    ((payload) =>
+      dispatch({ type: "uiState/setSelectedAttributeTaxonset", payload }));
+
+  // fetch column descriptions via RTK Query hook
+  const { data: fetchedColumnDescriptions = [] } = useColumnDescriptions();
+
+  const effectiveColumnDescriptions =
+    columnDescriptions && columnDescriptions.length
+      ? columnDescriptions
+      : fetchedColumnDescriptions;
 
   useEffect(() => {
     const codes = searchParams.has("CM_code")
       ? searchParams.getAll("CM_code")
-      : columnDescriptions
+      : effectiveColumnDescriptions
           .filter((col) => col.isDefault)
           .map((col) => col.code);
     if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
@@ -65,10 +83,16 @@ const ClusterMetricsPage = ({
     window.history.back();
   };
 
+  const selectedAttributeTaxonset = { attribute, taxonset };
+
   return (
     <AppLayout>
       <div className={styles.pageHeader}>
-        <AttributeSelector />
+        <AttributeSelector
+          attribute={attribute}
+          taxonset={taxonset}
+          setSelectedAttributeTaxonset={setSelectedAttributeTaxonset}
+        />
       </div>
       <div className={styles.page}>
         <div className={styles.chartsContainer}>
@@ -85,7 +109,11 @@ const ClusterMetricsPage = ({
             onCustomise={handleCustomisation}
             onClose={handleClose}
           >
-            <ClusterMetrics />
+            <ClusterMetrics
+              attribute={attribute}
+              taxonset={taxonset}
+              clusterMetricsColumnDescriptions={effectiveColumnDescriptions}
+            />
           </ChartCard>
         </div>
       </div>
@@ -95,7 +123,7 @@ const ClusterMetricsPage = ({
         onClose={handleCancel}
         onApply={handleApply}
         selectedCodes={selectedCodes}
-        columnDescriptions={columnDescriptions}
+        columnDescriptions={effectiveColumnDescriptions}
         title="Customise Cluster Metrics"
       />
     </AppLayout>

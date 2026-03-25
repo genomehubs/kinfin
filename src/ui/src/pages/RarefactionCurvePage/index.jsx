@@ -1,7 +1,6 @@
 import RarefactionCurvePage from "./RarefactionCurvePage";
-import RarefactionCurvePageContainer from "./RarefactionCurvePageContainer";
 import React from "react";
 
-export default RarefactionCurvePageContainer;
+export default RarefactionCurvePage;
 
-export { RarefactionCurvePage, RarefactionCurvePageContainer };
+export { RarefactionCurvePage };

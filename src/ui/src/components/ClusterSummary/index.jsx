@@ -14,14 +14,14 @@ const ClusterSummary = () => {
   };
 
   const clusterSummaryData = useSelector(
-    (state) => state?.analysis?.clusterSummary?.data
+    (state) => state?.analysis?.clusterSummary?.data,
   );
 
   const data = clusterSummaryData ? Object.values(clusterSummaryData) : [];
 
   const paginatedData = data.slice(
     (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
+    currentPage * rowsPerPage,
   );
 
   return (
@@ -40,17 +40,22 @@ const ClusterSummary = () => {
         </thead>
         <tbody>
           {paginatedData.map((cluster) => (
-            <React.Fragment key={cluster.cluster_id}>
+            <React.Fragment key={cluster.clusterId || cluster.cluster_id}>
               <tr>
-                <td>{cluster.cluster_id}</td>
+                <td>{cluster.clusterId || cluster.cluster_id}</td>
                 <td>{cluster.cluster_protein_count}</td>
                 <td>{cluster.protein_median_count}</td>
                 <td>{cluster.TAXON_count}</td>
                 <td>{cluster.attribute}</td>
                 <td>{cluster.attribute_cluster_type}</td>
                 <td>
-                  <button onClick={() => toggleRow(cluster.cluster_id)}>
-                    {expandedRow === cluster.cluster_id ? (
+                  <button
+                    onClick={() =>
+                      toggleRow(cluster.clusterId || cluster.cluster_id)
+                    }
+                  >
+                    {expandedRow ===
+                    (cluster.clusterId || cluster.cluster_id) ? (
                       <KeyboardArrowUpIcon />
                     ) : (
                       <KeyboardArrowDownIcon />
@@ -58,7 +63,7 @@ const ClusterSummary = () => {
                   </button>
                 </td>
               </tr>
-              {expandedRow === cluster.cluster_id && (
+              {expandedRow === (cluster.clusterId || cluster.cluster_id) && (
                 <tr className={styles.expandedRow}>
                   <td colSpan="7">
                     <div className={styles.details}>
@@ -93,7 +98,7 @@ const ClusterSummary = () => {
         <button
           onClick={() =>
             setCurrentPage((prev) =>
-              prev * rowsPerPage >= data.length ? prev : prev + 1
+              prev * rowsPerPage >= data.length ? prev : prev + 1,
             )
           }
           disabled={currentPage * rowsPerPage >= data.length}

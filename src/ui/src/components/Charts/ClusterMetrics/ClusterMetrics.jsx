@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import { DataGrid } from "@mui/x-data-grid";
-import { getClusterMetrics } from "../../../app/store/analysis/slices/clusterMetricsSlice";
 import styles from "./ClusterMetrics.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useGetClusterMetricsQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { toCamelCase } from "#utils/changeCase.js";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -17,7 +17,7 @@ const ClusterMetrics = ({
 }) => {
   const isCurrentPage = window.location.pathname.includes("cluster-metrics");
   const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
+    document.fullscreenElement != null,
   );
 
   useEffect(() => {
@@ -29,20 +29,15 @@ const ClusterMetrics = ({
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
-  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const clusterMetrics = useSelector(
-    (state) => state?.analysis?.clusterMetrics?.data || null
-  );
 
   const page = Math.max(
     parseInt(searchParams.get("CM_page") || "1", 10) - 1,
-    0
+    0,
   );
   const pageSize = Math.max(
     parseInt(searchParams.get("CM_pageSize") || "10", 10),
-    1
+    1,
   );
 
   const cmCodes = useMemo(() => {
@@ -54,31 +49,35 @@ const ClusterMetrics = ({
     return searchParams.getAll("CM_code");
   }, [searchParams, columnDescriptions]);
 
-  // Fetch cluster metrics
-  useEffect(() => {
-    if (!attribute || !taxonset) {
-      return;
-    }
+  const { data: clusterMetricsResp } = useGetClusterMetricsQuery(
+    {
+      attribute,
+      taxonSet: taxonset,
+      page: page + 1,
+      size: pageSize,
+      CM_code: cmCodes,
+    },
+    { skip: !attribute || !taxonset },
+  );
 
-    dispatch(
-      getClusterMetrics({
-        attribute,
-        taxonSet: taxonset,
-        page: page + 1,
-        size: pageSize,
-        CM_code: cmCodes,
-      })
-    );
-  }, [dispatch, attribute, taxonset, page, pageSize, cmCodes]);
+  const clusterMetrics = clusterMetricsResp?.data ?? clusterMetricsResp ?? null;
+
+  // fetching handled via RTK Query
 
   const rowsData = useMemo(() => {
-    if (!clusterMetrics?.data) {
+    const raw = clusterMetrics ?? {};
+    if (!raw || Object.keys(raw).length === 0) {
       return { rows: [], rowCount: 0 };
     }
 
-    const rows = Object.values(clusterMetrics.data).map((row) => ({
-      id: row.id || row.cluster_id || uuidv4(),
-      ...row,
+    const rows = Object.values(raw).map((row) => ({
+      id: row.id || row.clusterId || row.cluster_id || uuidv4(),
+      ...Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
+      ),
     }));
 
     const totalRows =
@@ -103,16 +102,16 @@ const ClusterMetrics = ({
     () =>
       columnDescriptions.reduce(
         (acc, col) => ({ ...acc, [col.code]: col.name }),
-        {}
+        {},
       ),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   const filteredColumns = useMemo(() => {
     if (!cmCodes || cmCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => c.name === col.field,
         );
         return originalCol?.isDefault;
       });
@@ -122,7 +121,12 @@ const ClusterMetrics = ({
       .map((code) => codeToFieldMap[code])
       .filter(Boolean);
 
-    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+    return defaultColumns
+      .filter((col) => allowedFields.includes(col.field))
+      .map((col) => ({
+        ...col,
+        field: toCamelCase(col.field),
+      }));
   }, [cmCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
 
   const handlePaginationModelChange = useCallback(
@@ -132,10 +136,10 @@ const ClusterMetrics = ({
         setSearchParams,
         "CM",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (

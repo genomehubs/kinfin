@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import csv
 import io
 import itertools
@@ -33,6 +34,7 @@ from api.utils import (
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    write_status,
 )
 from core.utils import check_file
 
@@ -66,6 +68,7 @@ class InputSchema(BaseModel):
     config: List[Dict[str, str]]
     clusterId: str
     isAdvanced: bool
+    name: Optional[str] = None
 
 
 class ResponseSchema(BaseModel):
@@ -268,6 +271,29 @@ async def initialize(input_data: InputSchema, request: Request):
         with open(config_f, "w") as file:
             json.dump(input_data.config, file)
 
+        # Persist session metadata (name, cluster info) in a separate meta.json
+        meta_f = os.path.join(result_dir, "meta.json")
+        meta = {
+            "clusterId": input_data.clusterId,
+            "clusterName": cluster_info.get("name") if cluster_info else None,
+        }
+        # Only set name if meta doesn't already exist (don't overwrite existing user-provided name)
+        if os.path.exists(meta_f):
+            try:
+                with open(meta_f, "r") as mf:
+                    existing = json.load(mf)
+            except Exception:
+                existing = {}
+            # preserve existing name if present
+            meta["name"] = existing.get("name") or input_data.name or f"Session {session_id}"
+            meta["clusterId"] = existing.get("clusterId") or meta["clusterId"]
+            meta["clusterName"] = existing.get("clusterName") or meta["clusterName"]
+        else:
+            meta["name"] = input_data.name or f"Session {session_id}"
+
+        with contextlib.suppress(Exception):
+            with open(meta_f, "w") as mf:
+                json.dump(meta, mf)
         command = [
             "python",
             "src/main.py",
@@ -294,6 +320,8 @@ async def initialize(input_data: InputSchema, request: Request):
             ])
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
+        # Create status file immediately with "pending" status so /status endpoint doesn't return 428
+        write_status(status_file, "pending")
         asyncio.create_task(run_cli_command(command, status_file))
 
         return JSONResponse(
@@ -319,14 +347,86 @@ async def initialize(input_data: InputSchema, request: Request):
 
 @router.get("/kinfin/status", response_model=ResponseSchema)
 @limiter.limit(LIMIT_STANDARD)
-@check_kinfin_session
 async def get_run_status(request: Request, session_id: str = Depends(header_scheme)):
     try:
+        # Build richer status response including stored config and session metadata
+        result_dir = query_manager.get_session_dir(session_id)
+
+        # Check if session exists
+        if not result_dir:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Kinfin analysis not initialized",
+                    error="session_not_initialized",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=428,
+            )
+
+        status_file = os.path.join(result_dir, f"{session_id}.status")
+        if not os.path.exists(status_file):
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Kinfin analysis not initialized",
+                    error="session_not_initialized",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=428,
+            )
+
+        # Read status file to get current status
+        run_status = read_status(status_file)
+        status = run_status.get("status")
+
+        config = None
+        name = None
+        if result_dir:
+            config_f = os.path.join(result_dir, "config.json")
+            if os.path.exists(config_f):
+                try:
+                    with open(config_f, "r") as cf:
+                        config = json.load(cf)
+                except Exception:
+                    # ignore read/parse errors and continue returning minimal info
+                    config = None
+            meta_f = os.path.join(result_dir, "meta.json")
+            # read stored metadata (name, clusterId, clusterName) if present
+            cluster_id = None
+            cluster_name = None
+            if os.path.exists(meta_f):
+                try:
+                    with open(meta_f, "r") as mf:
+                        meta = json.load(mf)
+                        name = meta.get("name")
+                        cluster_id = meta.get("clusterId") or meta.get("cluster_id")
+                        cluster_name = meta.get("clusterName") or meta.get("cluster_name")
+                except Exception:
+                    name = None
+
+        status_info = get_session_status(session_id)
+
+        # Determine if analysis is complete based on status
+        is_complete = status not in ["pending", "running"]
+        message = "Kinfin analysis is complete." if is_complete else "Kinfin analysis is still initializing."
+
         return JSONResponse(
             content=ResponseSchema(
                 status="success",
-                message="Kinfin analysis is complete.",
-                data={"is_complete": True},
+                message=message,
+                data={
+                    "is_complete": is_complete,
+                    "session_id": session_id,
+                    "status": status_info,
+                    "config": config,
+                    "name": name,
+                    # include cluster metadata where available (both snake_case and camelCase)
+                    "clusterId": cluster_id,
+                    "clusterName": cluster_name,
+                    "cluster_id": cluster_id,
+                    "cluster_name": cluster_name,
+                },
                 query=str(request.url),
             ).model_dump(),
             status_code=200,

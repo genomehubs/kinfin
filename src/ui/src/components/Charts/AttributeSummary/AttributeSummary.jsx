@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import { DataGrid } from "@mui/x-data-grid";
-import { getAttributeSummary } from "../../../app/store/analysis/slices/attributeSummarySlice";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useGetAttributeSummaryQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { toCamelCase } from "#utils/changeCase.js";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -15,7 +15,7 @@ const AttributeSummary = ({
 }) => {
   const isCurrentPage = window.location.pathname.includes("attribute-summary");
   const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
+    document.fullscreenElement != null,
   );
 
   useEffect(() => {
@@ -28,11 +28,16 @@ const AttributeSummary = ({
     };
   }, []);
 
-  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const attributeData = useSelector(
-    (state) => state?.analysis?.attributeSummary?.data || null
+  // Use RTK Query to fetch attribute summary for current session/attribute
+  const page = Math.max(
+    parseInt(searchParams.get("AS_page") || "1", 10) - 1,
+    0,
+  );
+  const pageSize = Math.max(
+    parseInt(searchParams.get("AS_pageSize") || "10", 10),
+    1,
   );
 
   const asCodes = useMemo(() => {
@@ -44,31 +49,19 @@ const AttributeSummary = ({
     return searchParams.getAll("AS_code");
   }, [searchParams, columnDescriptions]);
 
-  const page = Math.max(
-    parseInt(searchParams.get("AS_page") || "1", 10) - 1,
-    0
+  // Fetching is handled by RTK Query hook above
+
+  const { data: attributeResp } = useGetAttributeSummaryQuery(
+    {
+      attribute,
+      page: page + 1,
+      size: pageSize,
+      AS_code: asCodes.length > 0 ? asCodes : undefined,
+    },
+    { skip: !attribute },
   );
-  const pageSize = Math.max(
-    parseInt(searchParams.get("AS_pageSize") || "10", 10),
-    1
-  );
 
-  // Fetch attribute summary
-  useEffect(() => {
-    if (!attribute) {
-      return;
-    }
-
-    dispatch(
-      getAttributeSummary({
-        attribute,
-        page: page + 1,
-        size: pageSize,
-        AS_code: asCodes.length > 0 ? asCodes : undefined,
-      })
-    );
-  }, [attribute, page, pageSize, asCodes, dispatch, columnDescriptions]);
-
+  const attributeData = attributeResp?.data ?? attributeResp ?? null;
   // Map codes to field names
   const codeToFieldMap = useMemo(
     () =>
@@ -76,16 +69,16 @@ const AttributeSummary = ({
         acc[col.code] = col.name;
         return acc;
       }, {}),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   // Prepare rows
   const { rows, rowCount } = useMemo(() => {
-    const rawData = attributeData?.data ?? {};
+    const rawData = attributeData ?? {};
     const processedRows = Object.values(rawData).map((row) => ({
-      id: row.id || row.taxon_set || uuidv4(),
+      id: row.id || row.taxonSet || row.taxon_set || uuidv4(),
       ...Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, value ?? "-"])
+        Object.entries(row).map(([key, value]) => [key, value ?? "-"]),
       ),
     }));
     const totalRows =
@@ -109,7 +102,7 @@ const AttributeSummary = ({
     if (!asCodes || asCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => c.name === col.field,
         );
         return originalCol?.isDefault;
       });
@@ -119,9 +112,13 @@ const AttributeSummary = ({
       .map((code) => codeToFieldMap[code])
       .filter(Boolean);
 
-    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+    return defaultColumns
+      .filter((col) => allowedFields.includes(col.field))
+      .map((col) => ({
+        ...col,
+        field: toCamelCase(col.field),
+      }));
   }, [asCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
-
   // Pagination handler
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -130,10 +127,10 @@ const AttributeSummary = ({
         setSearchParams,
         "AS",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (

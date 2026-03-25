@@ -1,7 +1,6 @@
 import ClusterSetSelectionDropdown from "./ClusterSetSelectionDropdown";
-import ClusterSetSelectionDropdownContainer from "./ClusterSetSelectionDropdownContainer";
 import React from "react";
 
-export default ClusterSetSelectionDropdownContainer;
+export default ClusterSetSelectionDropdown;
 
-export { ClusterSetSelectionDropdown, ClusterSetSelectionDropdownContainer };
+export { ClusterSetSelectionDropdown };

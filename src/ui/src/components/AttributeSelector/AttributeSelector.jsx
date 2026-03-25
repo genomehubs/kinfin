@@ -8,23 +8,49 @@ import {
 } from "@mui/material";
 
 import styles from "./AttributeSelector.module.scss";
+import { useGetAvailableAttributesTaxonsetsQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const AttributeSelector = ({
   attribute: initialAttribute,
   taxonset: initialTaxonset,
   setSelectedAttributeTaxonset,
+  sessionId,
+  isLoading = false,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const responseData = useSelector(
-    (state) => state?.analysis?.availableAttributesTaxonsets?.data
-  );
+  const { data: responseData, refetch } =
+    useGetAvailableAttributesTaxonsetsQuery(sessionId, {
+      skip: !sessionId,
+      // Refetch when new data is available (e.g., analysis completes)
+      refetchOnMountOrArgChange: true,
+    });
 
-  const [attribute, setAttribute] = useState(initialAttribute);
-  const [taxon, setTaxon] = useState(initialTaxonset);
+  const prevIsLoadingRef = useRef(isLoading);
+
+  // Refetch attributes/taxonsets when analysis completes (isLoading becomes false)
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading && sessionId) {
+      refetch();
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, sessionId, refetch]);
+
+  // Unwrap the nested data structure from ResponseSchema
+  // API returns: { status, message, data: { attributes, taxon_set } }
+  // But ResponseSchema wraps it again, so we get: { data: { attributes, taxon_set } }
+  // Need to extract the actual attributes and taxon_set
+  const innerData =
+    responseData?.data &&
+    typeof responseData.data === "object" &&
+    "attributes" in responseData.data
+      ? responseData.data
+      : responseData?.data?.data || responseData;
+
+  const [attribute, setAttribute] = useState(initialAttribute ?? "all");
+  const [taxon, setTaxon] = useState(initialTaxonset ?? "all");
 
   const handleAttributeChange = (e) => {
     const newAttribute = e.target.value;
@@ -83,16 +109,31 @@ const AttributeSelector = ({
 
   return (
     <Box className={styles.container}>
+      {isLoading && (
+        <Box
+          sx={{
+            marginBottom: 2,
+            padding: 1,
+            backgroundColor: "#f5f5f5",
+            borderRadius: 1,
+          }}
+        >
+          <em>
+            Attributes and taxon sets will be available once analysis completes.
+          </em>
+        </Box>
+      )}
       <Box className={styles.selectors}>
         <FormControl fullWidth size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Attribute</InputLabel>
           <Select
-            value={responseData?.attributes ? attribute : ""}
+            value={attribute ?? ""}
             onChange={handleAttributeChange}
             label="Attribute"
+            disabled={!innerData?.attributes?.length}
           >
             <MenuItem value="">Select Attribute</MenuItem>
-            {responseData?.attributes?.map((attr) => (
+            {innerData?.attributes?.map((attr) => (
               <MenuItem key={attr} value={attr}>
                 {attr}
               </MenuItem>
@@ -108,13 +149,17 @@ const AttributeSelector = ({
         >
           <InputLabel>Taxon Set</InputLabel>
           <Select
-            value={responseData?.attributes ? taxon : ""}
+            value={taxon ?? ""}
             onChange={handleTaxonChange}
             label="Taxon Set"
           >
             <MenuItem value="">Select Taxon Set</MenuItem>
             {attribute &&
-              responseData?.taxon_set?.[attribute]?.map((tx) => (
+              (
+                innerData?.taxonSet?.[attribute] ??
+                innerData?.taxon_set?.[attribute] ??
+                []
+              ).map((tx) => (
                 <MenuItem key={tx} value={tx}>
                   {tx}
                 </MenuItem>
@@ -131,6 +176,7 @@ const AttributeSelector = ({
           variant="contained"
           color="primary"
           onClick={handleApply}
+          disabled={isLoading}
         >
           Apply
         </Button>
@@ -141,6 +187,7 @@ const AttributeSelector = ({
           variant="outlined"
           color="primary"
           onClick={handleClear}
+          disabled={isLoading}
         >
           Clear
         </Button>

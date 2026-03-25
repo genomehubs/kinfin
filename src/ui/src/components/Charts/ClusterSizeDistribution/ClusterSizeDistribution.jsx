@@ -1,31 +1,79 @@
 import React, { useEffect, useState } from "react";
 
-import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
 import styles from "./ClusterSizeDistribution.module.scss";
-import { useDispatch } from "react-redux";
+import { useGetPlotQuery } from "#store/api";
 
 const ClusterSizeDistribution = ({
   attribute,
   clusterSizeDistributionBlob,
 }) => {
-  const dispatch = useDispatch();
   const [blobUrl, setBlobUrl] = useState(null);
+  const [createdObjectUrl, setCreatedObjectUrl] = useState(false);
+
+  const {
+    data: plotBlob,
+    isFetching,
+    error,
+  } = useGetPlotQuery(
+    { attribute, plotType: "cluster-size-distribution" },
+    { skip: !attribute },
+  );
+
+  // The API layer converts blob responses into a serializable wrapper:
+  // { __isBlob: true, url, size, type }
+  // Consumers should accept that shape, raw Blob, or a pre-existing URL.
+  const effectivePlotBlob = plotBlob ?? clusterSizeDistributionBlob;
 
   useEffect(() => {
-    const payload = { attribute };
-    dispatch(getPlot(payload));
-  }, [dispatch, attribute]);
+    // Clean up any previously created object URL
+    return () => {
+      if (createdObjectUrl && blobUrl) {
+        try {
+          URL.revokeObjectURL(blobUrl);
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [createdObjectUrl, blobUrl]);
 
   useEffect(() => {
-    if (clusterSizeDistributionBlob instanceof Blob) {
-      const objectUrl = URL.createObjectURL(clusterSizeDistributionBlob);
-      setBlobUrl(objectUrl);
-
-      return () => {
-        URL.revokeObjectURL(objectUrl);
-      };
+    if (!effectivePlotBlob) {
+      setBlobUrl(null);
+      setCreatedObjectUrl(false);
+      return;
     }
-  }, [clusterSizeDistributionBlob]);
+
+    // If the wrapper produced by the base query is present, use its URL directly
+    if (
+      effectivePlotBlob.__isBlob &&
+      typeof effectivePlotBlob.url === "string"
+    ) {
+      // wrapper URL is managed by the browser; do not revoke it here
+      setBlobUrl(effectivePlotBlob.url);
+      setCreatedObjectUrl(false);
+      return;
+    }
+
+    // If we already have a string URL (fallback), use it directly
+    if (typeof effectivePlotBlob === "string") {
+      setBlobUrl(effectivePlotBlob);
+      setCreatedObjectUrl(false);
+      return;
+    }
+
+    // If it's a raw Blob, create an object URL and remember to revoke it
+    if (effectivePlotBlob instanceof Blob) {
+      const objectUrl = URL.createObjectURL(effectivePlotBlob);
+      setBlobUrl(objectUrl);
+      setCreatedObjectUrl(true);
+      return;
+    }
+
+    // Unknown shape: clear
+    setBlobUrl(null);
+    setCreatedObjectUrl(false);
+  }, [effectivePlotBlob]);
 
   return (
     <div className={styles.container}>

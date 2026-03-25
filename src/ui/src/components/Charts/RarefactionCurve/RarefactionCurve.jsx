@@ -1,45 +1,47 @@
 import React, { useEffect, useState } from "react";
 
-import { getPlot } from "../../../app/store/analysis/slices/plotSlice";
 import styles from "./RarefactionCurve.module.scss";
-import { useDispatch } from "react-redux";
+import usePlot from "#hooks/usePlot";
 
-const RarefactionCurve = ({ attribute, rarefactionCurveBlob }) => {
-  const dispatch = useDispatch();
+const RarefactionCurve = ({ attribute }) => {
+  const {
+    data: rarefactionCurveBlob,
+    isFetching,
+    error,
+  } = usePlot(
+    { attribute, plotType: "rarefaction-curve" },
+    { skip: !attribute },
+  );
 
   const [blobUrl, setBlobUrl] = useState(null);
 
-  useEffect(() => {
-    const payload = { attribute };
-    dispatch(getPlot(payload));
-  }, [dispatch, attribute]);
+  const effectiveRarefactionBlob =
+    rarefactionCurveBlob?.data ?? rarefactionCurveBlob;
 
   useEffect(() => {
-    if (rarefactionCurveBlob instanceof Blob) {
-      const objectUrl = URL.createObjectURL(rarefactionCurveBlob);
+    const blob = effectiveRarefactionBlob;
+    if (blob instanceof Blob) {
+      const objectUrl = URL.createObjectURL(blob);
       setBlobUrl(objectUrl);
-
-      return () => {
-        URL.revokeObjectURL(objectUrl);
-      };
-      // } else {
-      //   console.error(
-      //     "❌ rarefactionCurveBlob is not a Blob:",
-      //     rarefactionCurveBlob
-      //   );
+      return () => URL.revokeObjectURL(objectUrl);
+    } else if (blob && typeof blob.url === "string") {
+      // The plot hook returned an object wrapping a Blob-like resource
+      // which already contains a usable `url` (e.g. created elsewhere).
+      setBlobUrl(blob.url);
+    } else {
+      setBlobUrl(null);
     }
-  }, [rarefactionCurveBlob]);
+  }, [effectiveRarefactionBlob]);
+
+  if (isFetching) return <p>Loading image...</p>;
+  if (error) return <p style={{ color: "red" }}>Error loading image</p>;
 
   return (
     <div className={styles.container}>
       {blobUrl ? (
-        <img
-          src={blobUrl}
-          alt="Cluster Size Distribution"
-          className={styles.image}
-        />
+        <img src={blobUrl} alt="Rarefaction Curve" className={styles.image} />
       ) : (
-        <p>Loading image...</p>
+        <p>No image available</p>
       )}
     </div>
   );

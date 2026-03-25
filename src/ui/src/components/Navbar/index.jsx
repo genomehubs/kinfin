@@ -1,15 +1,14 @@
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
-import BreadcrumbsNav from "../BreadcrumbsNav";
+import BreadcrumbsNav from "#components/BreadcrumbsNav";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import React from "react";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { setSelectedClusterSet } from "../../app/store/config/slices/uiStateSlice";
-import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import useUIStateActions from "#hooks/useUIStateActions";
 
 const Navbar = ({
   onMenuClick,
@@ -17,11 +16,11 @@ const Navbar = ({
   variant = "analysis", // "landing" or "analysis"
 }) => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const { setSelectedClusterSet } = useUIStateActions();
 
   const handleNewAnalysis = () => {
     navigate("/define-node-labels");
-    dispatch(setSelectedClusterSet(null));
+    setSelectedClusterSet(null);
   };
 
   return (

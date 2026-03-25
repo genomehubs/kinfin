@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import styles from "./Home.module.scss";
-import { Button, Dialog, DialogContent, IconButton, Box } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, IconButton } from "@mui/material";
+import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "#utils/constants";
+import React, { useEffect, useState } from "react";
+
 import CloseIcon from "@mui/icons-material/Close";
+import Navbar from "#components/Navbar";
+import styles from "./Home.module.scss";
 import { useNavigate } from "react-router-dom";
-import { CAROUSEL_IMAGES, HOME_PAGE_CONFIG } from "../../utils/constants";
-import Navbar from "../../components/Navbar";
 
 const Home = () => {
   const navigate = useNavigate();

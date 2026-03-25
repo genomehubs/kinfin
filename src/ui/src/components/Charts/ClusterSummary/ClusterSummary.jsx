@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import { DataGrid } from "@mui/x-data-grid";
-import { getClusterSummary } from "../../../app/store/analysis/slices/clusterSummarySlice";
 import styles from "./ClusterSummary.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
+import { useGetClusterSummaryQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { toCamelCase } from "#utils/changeCase.js";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -16,7 +16,7 @@ const ClusterSummary = ({
 }) => {
   const isCurrentPage = window.location.pathname.includes("cluster-summary");
   const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
+    document.fullscreenElement != null,
   );
 
   useEffect(() => {
@@ -28,20 +28,15 @@ const ClusterSummary = ({
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
-  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const clusterSummaryData = useSelector(
-    (state) => state?.analysis?.clusterSummary?.data
-  );
 
   const page = Math.max(
     parseInt(searchParams.get("CS_page") || "1", 10) - 1,
-    0
+    0,
   );
   const pageSize = Math.max(
     parseInt(searchParams.get("CS_pageSize") || "5", 10),
-    1
+    1,
   );
 
   const csCodes = useMemo(() => {
@@ -53,29 +48,30 @@ const ClusterSummary = ({
     return searchParams.getAll("CS_code");
   }, [searchParams, columnDescriptions]);
 
-  useEffect(() => {
-    if (!attribute) {
-      return;
-    }
+  const { data: clusterSummaryResp } = useGetClusterSummaryQuery(
+    {
+      attribute,
+      page: page + 1,
+      size: pageSize,
+      CS_code: csCodes.length > 0 ? csCodes : undefined,
+    },
+    { skip: !attribute },
+  );
 
-    dispatch(
-      getClusterSummary({
-        attribute,
-        page: page + 1,
-        size: pageSize,
-        CS_code: csCodes.length > 0 ? csCodes : undefined,
-      })
-    );
-  }, [dispatch, attribute, page, pageSize, csCodes]);
+  const clusterSummaryData =
+    clusterSummaryResp?.data ?? clusterSummaryResp ?? null;
+
+  // fetching handled via RTK Query
 
   // Flatten rows
   const rowsData = useMemo(() => {
-    if (!clusterSummaryData?.data) {
+    const raw = clusterSummaryData ?? {};
+    if (!raw || Object.keys(raw).length === 0) {
       return { rows: [], rowCount: 0 };
     }
 
-    const rows = Object.values(clusterSummaryData.data).map((row) => ({
-      id: row.id || row.cluster_id || uuidv4(),
+    const rows = Object.values(raw).map((row) => ({
+      id: row.id || row.clusterId || row.cluster_id || uuidv4(),
       ...row,
     }));
 
@@ -125,14 +121,14 @@ const ClusterSummary = ({
         acc[col.code] = col.name;
         return acc;
       }, {}),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   const filteredColumns = useMemo(() => {
     if (!csCodes || csCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => c.name === col.field,
         );
         return originalCol?.isDefault;
       });
@@ -156,7 +152,12 @@ const ClusterSummary = ({
         : [];
     });
 
-    return defaultColumns.filter((col) => allowedFields.includes(col.field));
+    return defaultColumns
+      .filter((col) => allowedFields.includes(col.field))
+      .map((col) => ({
+        ...col,
+        field: toCamelCase(col.field),
+      }));
   }, [
     csCodes,
     codeToFieldMap,
@@ -172,10 +173,10 @@ const ClusterSummary = ({
         setSearchParams,
         "CS",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (

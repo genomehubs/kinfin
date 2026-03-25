@@ -1,32 +1,42 @@
-// MUI imports
 import {
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Button as MuiButton,
-  TextField,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 
-import AppLayout from "../../components/AppLayout";
-import ClusterSetSelectionDropdown from "../../components/ClusterSetSelectionDropdown";
-import FileUpload from "../../components/FileUpload";
-import RenameDialog from "../../components/UIElements/Sidebar/RenameDialog";
-import { initAnalysis } from "../../app/store/config/slices/analysisSlice";
+import AppLayout from "#components/AppLayout";
+import ClusterSetSelectionDropdown from "#components/ClusterSetSelectionDropdown";
+import FileUpload from "#components/FileUpload";
+import RenameDialog from "#components/UIElements/Sidebar/RenameDialog";
 import styles from "./DefineNodeLabels.module.scss";
-import { useDispatch } from "react-redux";
+import { useClusteringSets } from "#hooks/useClusteringSets";
+import { useInitAnalysis } from "#hooks/useInitAnalysis";
 import { useNavigate } from "react-router-dom";
 
-const DefineNodeLabels = ({
-  clusteringSets,
-  selectedClusterSet,
-  setSelectedClusterSet,
-  fetchClusteringSets,
-}) => {
-  const dispatch = useDispatch();
+// Direct imports of RTK Query hooks
+
+const DefineNodeLabelsPage = () => {
   const navigate = useNavigate();
 
+  // Fetch clustering sets
+  const {
+    data: clusteringSets = [],
+    isLoading,
+    error,
+  } = useClusteringSets({ page: 1, size: 50 });
+
+  // Initialize analysis mutation
+  const {
+    initAnalysis,
+    isLoading: isInitializing,
+    error: initError,
+  } = useInitAnalysis();
+
+  // Local UI state
+  const [selectedClusterSet, setSelectedClusterSet] = useState(null);
   const [parsedData, setParsedData] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
     headers: [],
@@ -40,17 +50,7 @@ const DefineNodeLabels = ({
   const [confirmClusterChangeOpen, setConfirmClusterChangeOpen] =
     useState(false);
 
-  useEffect(() => {
-    fetchClusteringSets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setSelectedClusterSet(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const openModal = () => {
+  const openModal = useCallback(() => {
     if (!parsedData) {
       alert("Please upload and validate your config file first.");
       return;
@@ -58,9 +58,9 @@ const DefineNodeLabels = ({
     setUserName("");
     setNameError("");
     setModalOpen(true);
-  };
+  }, [parsedData]);
 
-  const cancelAnalysis = () => {
+  const cancelAnalysis = useCallback(() => {
     setParsedData(null);
     setValidationErrors({ headers: [], rows: {} });
     setResetKey((prev) => prev + 1);
@@ -68,40 +68,53 @@ const DefineNodeLabels = ({
     setUserName("");
     setNameError("");
     setSelectedClusterSet(null);
-  };
+  }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(async () => {
     if (!userName.trim()) {
       setNameError("Name is required.");
       return;
     }
+    setNameError("");
+    setNameError("");
+    try {
+      const result = await initAnalysis({
+        config: parsedData,
+        clusterId: selectedClusterSet,
+        isAdvanced: false,
+        name: userName,
+      }).unwrap();
 
-    const selectedCluster = clusteringSets.find(
-      (set) => set.id === selectedClusterSet
-    );
+      // result may be the API response or an envelope { data: ... }
+      const sessionId = result?.sessionId ?? result?.data?.sessionId;
 
-    const payload = {
-      name: userName.trim(),
-      config: parsedData,
-      clusterId: selectedClusterSet,
-      clusterName: selectedCluster?.name || "",
-      navigate,
-    };
-
-    dispatch(initAnalysis(payload));
-    setModalOpen(false);
-  };
-
-  const handleClusterSetChange = (newClusterId) => {
-    if (parsedData) {
-      setPendingClusterId(newClusterId);
-      setConfirmClusterChangeOpen(true);
-    } else {
-      setSelectedClusterSet(newClusterId);
+      if (sessionId) {
+        navigate(`/${sessionId}/`);
+        setModalOpen(false);
+      } else {
+        setNameError("Initialization succeeded but no session id returned");
+      }
+    } catch (err) {
+      console.error("Init analysis error:", err);
+      setNameError(
+        err?.data?.message || err?.message || "Failed to initialize analysis",
+      );
     }
-  };
+  }, [userName, parsedData, selectedClusterSet, initAnalysis, navigate]);
 
-  const confirmClusterChange = () => {
+  const handleClusterSetChange = useCallback(
+    (newClusterId) => {
+      if (parsedData) {
+        setPendingClusterId(newClusterId);
+        setConfirmClusterChangeOpen(true);
+      } else {
+        setSelectedClusterSet(newClusterId);
+      }
+    },
+    [parsedData],
+  );
+
+  const confirmClusterChange = useCallback(() => {
     if (pendingClusterId) {
       setSelectedClusterSet(pendingClusterId);
       setParsedData(null);
@@ -110,12 +123,40 @@ const DefineNodeLabels = ({
       setPendingClusterId(null);
     }
     setConfirmClusterChangeOpen(false);
-  };
+  }, [pendingClusterId]);
 
-  const cancelClusterChange = () => {
+  const cancelClusterChange = useCallback(() => {
     setPendingClusterId(null);
     setConfirmClusterChangeOpen(false);
-  };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div>Loading clustering sets...</div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div style={{ color: "red" }}>
+          Error loading clustering sets: {JSON.stringify(error)}
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (initError) {
+    return (
+      <AppLayout>
+        <div style={{ color: "red" }}>
+          Error initializing analysis: {JSON.stringify(initError)}
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -127,7 +168,11 @@ const DefineNodeLabels = ({
             <h3>Select Clustering Dataset</h3>
           </div>
           <div className={styles.clusterSetParent}>
-            <ClusterSetSelectionDropdown onChange={handleClusterSetChange} />
+            <ClusterSetSelectionDropdown
+              onChange={handleClusterSetChange}
+              clusteringSets={clusteringSets}
+              selectedClusterSet={selectedClusterSet}
+            />
           </div>
         </div>
 
@@ -144,11 +189,14 @@ const DefineNodeLabels = ({
           <FileUpload
             key={resetKey}
             disabled={!selectedClusterSet}
+            clusterId={selectedClusterSet}
             setValidationErrors={setValidationErrors}
             validationErrors={validationErrors}
             onDataChange={setParsedData}
           />
         </div>
+
+        {/* Step 3 */}
         <div
           className={`${styles.workflowStep} ${
             selectedClusterSet ? "" : styles.disabled
@@ -165,6 +213,7 @@ const DefineNodeLabels = ({
             </button>
             <button
               disabled={
+                isInitializing ||
                 validationErrors.headers.length > 0 ||
                 Object.keys(validationErrors.rows).length > 0
               }
@@ -177,7 +226,9 @@ const DefineNodeLabels = ({
                   : ""
               }
             >
-              Initialize KinFin Analysis
+              {isInitializing
+                ? "Initializing..."
+                : "Initialize KinFin Analysis"}
             </button>
           </div>
         </div>
@@ -193,7 +244,6 @@ const DefineNodeLabels = ({
           title="Name Analysis"
         />
 
-        {/* Confirm Cluster Change */}
         <Dialog
           open={confirmClusterChangeOpen}
           onClose={cancelClusterChange}
@@ -220,4 +270,4 @@ const DefineNodeLabels = ({
   );
 };
 
-export default DefineNodeLabels;
+export default React.memo(DefineNodeLabelsPage);

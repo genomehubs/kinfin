@@ -1,6 +1,6 @@
 export { default as Home } from "./Home";
-export { default as Dashboard } from "./dashboardPage";
-export { default as DefineNodeLabels } from "./define-node-labels";
+export { default as DashboardPage } from "./DashboardPage";
+export { default as DefineNodeLabelsPage } from "./DefineNodeLabelsPage";
 export { default as ClusterSummaryPage } from "./ClusterSummaryPage";
 export { default as ClusterMetricsPage } from "./ClusterMetricsPage";
 export { default as AttributeSummaryPage } from "./AttributeSummaryPage";

@@ -5,8 +5,8 @@ import {
   ClusterMetricsPage,
   ClusterSizeDistributionPage,
   ClusterSummaryPage,
-  Dashboard,
-  DefineNodeLabels,
+  DashboardPage,
+  DefineNodeLabelsPage,
   Home,
   RarefactionCurvePage,
 } from "./pages";
@@ -18,8 +18,8 @@ import { PersistGate } from "redux-persist/integration/react";
 import { Provider } from "react-redux";
 import { SnackbarProvider } from "notistack";
 import { ThemeProvider } from "@mui/material/styles";
-import { store } from "./app/store/index";
-import { useTheme } from "./hooks/useTheme";
+import { store } from "#store/index";
+import { useTheme } from "#hooks/useTheme";
 
 function App() {
   const { theme } = useTheme();
@@ -45,7 +45,7 @@ function App() {
             <Router>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/:sessionId/" element={<Dashboard />} />
+                <Route path="/:sessionId/" element={<DashboardPage />} />
                 <Route
                   path="/:sessionId/attribute-summary"
                   element={<AttributeSummaryPage />}
@@ -69,7 +69,7 @@ function App() {
 
                 <Route
                   path="/define-node-labels"
-                  element={<DefineNodeLabels />}
+                  element={<DefineNodeLabelsPage />}
                 />
               </Routes>
             </Router>
