@@ -6,6 +6,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { updatePaginationParams } from "@/utils/urlPagination";
 import { useGetAttributeSummaryQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
+import usePageCustomisation from "#hooks/usePageCustomisation";
 import { v4 as uuidv4 } from "uuid";
 import { toCamelCase } from "#utils/changeCase.js";
 
@@ -30,14 +31,10 @@ const AttributeSummary = ({
     1,
   );
 
-  const asCodes = useMemo(() => {
-    if (!searchParams.has("AS_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("AS_code");
-  }, [searchParams, columnDescriptions]);
+  const { selectedCodes: asCodes, setSelectedCodes: setAsCodes } = usePageCustomisation({
+    searchParamKey: "AS_code",
+    columnDescriptions,
+  });
 
   // Fetching is handled by RTK Query hook above
 
@@ -68,7 +65,7 @@ const AttributeSummary = ({
     const processedRows = Object.values(rawData).map((row) => ({
       id: row.id || row.taxonSet || row.taxon_set || uuidv4(),
       ...Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, value ?? "-"]),
+        Object.entries(row).map(([key, value]) => [toCamelCase(key), value ?? "-"]),
       ),
     }));
     const totalRows =
@@ -82,7 +79,7 @@ const AttributeSummary = ({
   // Columns loaded dynamically
   const defaultColumns = useMemo(() => {
     return columnDescriptions.map((col) => ({
-      field: col.name,
+      field: toCamelCase(col.name),
       headerName: col.alias || col.name,
       minWidth: 120,
     }));
@@ -92,23 +89,27 @@ const AttributeSummary = ({
     if (!asCodes || asCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field,
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
     }
 
     const allowedFields = asCodes
-      .map((code) => codeToFieldMap[code])
+      .map((code) => toCamelCase(codeToFieldMap[code]))
       .filter(Boolean);
 
-    return defaultColumns
-      .filter((col) => allowedFields.includes(col.field))
-      .map((col) => ({
-        ...col,
-        field: toCamelCase(col.field),
-      }));
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
   }, [asCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
+
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    return filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+  }, [filteredColumns]);
   // Pagination handler
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -138,7 +139,7 @@ const AttributeSummary = ({
     >
       <DataGrid
         rows={rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

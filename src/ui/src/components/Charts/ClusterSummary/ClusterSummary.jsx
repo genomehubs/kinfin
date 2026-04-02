@@ -7,6 +7,7 @@ import styles from "./ClusterSummary.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
 import { useGetClusterSummaryQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
+import usePageCustomisation from "#hooks/usePageCustomisation";
 import { v4 as uuidv4 } from "uuid";
 import { toCamelCase } from "#utils/changeCase.js";
 
@@ -29,14 +30,10 @@ const ClusterSummary = ({
     1,
   );
 
-  const csCodes = useMemo(() => {
-    if (!searchParams.has("CS_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("CS_code");
-  }, [searchParams, columnDescriptions]);
+  const { selectedCodes: csCodes, setSelectedCodes: setCsCodes } = usePageCustomisation({
+    searchParamKey: "CS_code",
+    columnDescriptions,
+  });
 
   const { data: clusterSummaryResp } = useGetClusterSummaryQuery(
     {
@@ -62,7 +59,9 @@ const ClusterSummary = ({
 
     const rows = Object.values(raw).map((row) => ({
       id: row.id || row.clusterId || row.cluster_id || uuidv4(),
-      ...row,
+      ...Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [toCamelCase(key), value ?? "-"]),
+      ),
     }));
 
     const totalRows =
@@ -84,7 +83,7 @@ const ClusterSummary = ({
       .map((col) => {
         if (!col.name.includes("X")) {
           return {
-            field: col.name,
+            field: toCamelCase(col.name),
             headerName: col.alias || col.name,
             minWidth: 120,
           };
@@ -98,7 +97,7 @@ const ClusterSummary = ({
           .map((field) => {
             const match = field.match(regex);
             const headerName = col.alias?.replace("X", match?.[1]) || field;
-            return { field, headerName, minWidth: 120 };
+            return { field: toCamelCase(field), headerName, minWidth: 120 };
           });
       })
       .flat();
@@ -118,7 +117,7 @@ const ClusterSummary = ({
     if (!csCodes || csCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field,
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
@@ -132,22 +131,17 @@ const ClusterSummary = ({
 
       // If no "X" in the template, direct match
       if (!template.includes("X")) {
-        return [template];
+        return [toCamelCase(template)];
       }
 
       // Expand "X" using actual row keys
       const regex = new RegExp("^" + template.replace("X", "(.+)") + "$");
       return rowsData.rows.length > 0
-        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k))
+        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k)).map(toCamelCase)
         : [];
     });
 
-    return defaultColumns
-      .filter((col) => allowedFields.includes(col.field))
-      .map((col) => ({
-        ...col,
-        field: toCamelCase(col.field),
-      }));
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
   }, [
     csCodes,
     codeToFieldMap,
@@ -155,6 +149,16 @@ const ClusterSummary = ({
     columnDescriptions,
     rowsData.rows,
   ]);
+
+  // Ensure columns are unique by `field` to avoid duplicates from overlapping templates
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    return filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+  }, [filteredColumns]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -184,7 +188,7 @@ const ClusterSummary = ({
     >
       <DataGrid
         rows={rowsData.rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

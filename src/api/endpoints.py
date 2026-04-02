@@ -64,6 +64,30 @@ CODE_TO_COLUMN_NAME = {item["code"]: item["name"] for item in COLUMN_DESCRIPTION
 CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
 
 
+def _expand_concat_codes(codes: List[str]) -> List[str]:
+    """Expand concatenated 3-digit code strings into a list of 3-char tokens.
+
+    Examples:
+      ['001002'] -> ['001', '002']
+      ['001', '002'] -> ['001', '002']
+      ['001002', '003'] -> ['001', '002', '003']
+    Non-matching values are left as-is.
+    """
+    if not codes:
+        return codes
+    out: List[str] = []
+    for val in codes:
+        if isinstance(val, str) and re.fullmatch(r"(?:\d{3})+", val):
+            # split into 3-character chunks
+            for i in range(0, len(val), 3):
+                chunk = val[i : i + 3]
+                if chunk:
+                    out.append(chunk)
+        else:
+            out.append(val)
+    return out
+
+
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
     clusterId: str
@@ -684,7 +708,11 @@ async def get_cluster_summary(
 
         code_to_column = {item["code"]: item["name"] for item in column_descriptions}
         code_to_alias = {item["code"]: item.get("alias", item["name"]) for item in column_descriptions}
+        # CS_code is expected as concatenated 3-digit token strings (e.g. '001002')
+
         if CS_code:
+            # allow concatenated 3-digit tokens (e.g. CS_code=001002003) as a single value
+            CS_code = _expand_concat_codes(CS_code)
             # === OPTIMIZED: build the global key set ONCE ===
             all_keys_ordered: List[str] = []
             seen_keys = set()
@@ -1131,7 +1159,10 @@ async def get_attribute_summary(
         result = parse_attribute_summary_file(filepath=filepath)
 
         # ---- Apply AS_code filter ----
+        # AS_code is expected as concatenated 3-digit token strings (e.g. '005025')
         if AS_code:
+            # allow concatenated 3-digit tokens e.g. AS_code=005025
+            AS_code = _expand_concat_codes(AS_code)
             selected_columns = []
             for code in AS_code:
                 if code in code_to_column:
@@ -1293,7 +1324,10 @@ async def get_cluster_metrics(
         rows = list(result.values())
 
         # ---- Apply CM_code filter ----
+        # CM_code is expected as concatenated 3-digit token strings (e.g. '005025')
         if CM_code:
+            # allow concatenated 3-digit tokens e.g. CM_code=005025
+            CM_code = _expand_concat_codes(CM_code)
             selected_columns = [code_to_column[code] for code in CM_code if code in code_to_column]
 
             # Ensure cluster_id is always included

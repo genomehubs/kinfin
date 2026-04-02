@@ -7,6 +7,7 @@ import styles from "./ClusterMetrics.module.scss";
 import { updatePaginationParams } from "@/utils/urlPagination";
 import { useGetClusterMetricsQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
+import usePageCustomisation from "#hooks/usePageCustomisation";
 import { v4 as uuidv4 } from "uuid";
 import { toCamelCase } from "#utils/changeCase.js";
 
@@ -30,14 +31,10 @@ const ClusterMetrics = ({
     1,
   );
 
-  const cmCodes = useMemo(() => {
-    if (!searchParams.has("CM_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("CM_code");
-  }, [searchParams, columnDescriptions]);
+  const { selectedCodes: cmCodes, setSelectedCodes: setCmCodes } = usePageCustomisation({
+    searchParamKey: "CM_code",
+    columnDescriptions,
+  });
 
   const { data: clusterMetricsResp } = useGetClusterMetricsQuery(
     {
@@ -81,7 +78,7 @@ const ClusterMetrics = ({
 
   const defaultColumns = useMemo(() => {
     return columnDescriptions.map((col) => ({
-      field: col.name,
+      field: toCamelCase(col.name),
       headerName: col.alias || col.name,
       minWidth: 120,
     }));
@@ -101,23 +98,27 @@ const ClusterMetrics = ({
     if (!cmCodes || cmCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field,
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
     }
 
     const allowedFields = cmCodes
-      .map((code) => codeToFieldMap[code])
+      .map((code) => toCamelCase(codeToFieldMap[code]))
       .filter(Boolean);
 
-    return defaultColumns
-      .filter((col) => allowedFields.includes(col.field))
-      .map((col) => ({
-        ...col,
-        field: toCamelCase(col.field),
-      }));
+    return defaultColumns.filter((col) => allowedFields.includes(col.field));
   }, [cmCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
+
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    return filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+  }, [filteredColumns]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -147,7 +148,7 @@ const ClusterMetrics = ({
     >
       <DataGrid
         rows={rowsData.rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

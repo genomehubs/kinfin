@@ -3,7 +3,7 @@ export const updatePaginationParams = (
   setSearchParams,
   prefix,
   page,
-  pageSize
+  pageSize,
 ) => {
   const newParams = new URLSearchParams(searchParams);
   if (

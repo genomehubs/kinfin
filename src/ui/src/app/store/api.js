@@ -321,7 +321,9 @@ export const api = createApi({
           page,
           size,
           as_file: asFile,
-          CS_code,
+          // Serialize array of 3-digit codes into concatenated string to avoid axios
+          // encoding arrays as `CS_code[]` which some backends may not accept.
+          CS_code: Array.isArray(CS_code) ? CS_code.join("") : CS_code,
         },
         responseType: asFile ? "blob" : "json",
       }),
@@ -346,7 +348,7 @@ export const api = createApi({
           page,
           size,
           as_file: asFile,
-          AS_code,
+          AS_code: Array.isArray(AS_code) ? AS_code.join("") : AS_code,
         },
         responseType: asFile ? "blob" : "json",
       }),
@@ -372,7 +374,7 @@ export const api = createApi({
           page,
           size,
           as_file: asFile,
-          CM_code,
+          CM_code: Array.isArray(CM_code) ? CM_code.join("") : CM_code,
         },
         responseType: asFile ? "blob" : "json",
       }),

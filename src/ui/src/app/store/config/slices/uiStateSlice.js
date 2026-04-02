@@ -12,6 +12,7 @@ const initialState = {
   selectedClusterSet: null,
   pollingLoadingBySessionId: {}, // object keyed by sessionId
   downloadLoading: {}, // object keyed by type
+  columnSettings: {}, // object keyed by tableKey -> settings object/array
 };
 
 const uiStateSlice = createSlice({
@@ -32,6 +33,10 @@ const uiStateSlice = createSlice({
       const { type, loading } = action.payload;
       state.downloadLoading[type] = loading;
     },
+    setColumnSettings: (state, action) => {
+      const { tableKey, settings } = action.payload;
+      state.columnSettings[tableKey] = settings;
+    },
   },
 });
 
@@ -40,6 +45,7 @@ export const {
   setSelectedClusterSet,
   setPollingLoading,
   setDownloadLoading,
+  setColumnSettings,
 } = uiStateSlice.actions;
 
 export default uiStateSlice.reducer;

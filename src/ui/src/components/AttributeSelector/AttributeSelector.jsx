@@ -49,6 +49,13 @@ const AttributeSelector = ({
       ? responseData.data
       : responseData?.data?.data || responseData;
 
+  // Deduplicate attributes and normalize keys for display
+  const uniqueAttributes = Array.from(
+    new Set((innerData?.attributes && Array.isArray(innerData.attributes)
+      ? innerData.attributes
+      : [])),
+  );
+
   const [attribute, setAttribute] = useState(initialAttribute ?? "all");
   const [taxon, setTaxon] = useState(initialTaxonset ?? "all");
 
@@ -130,10 +137,10 @@ const AttributeSelector = ({
             value={attribute ?? ""}
             onChange={handleAttributeChange}
             label="Attribute"
-            disabled={!innerData?.attributes?.length}
+            disabled={!uniqueAttributes.length}
           >
             <MenuItem value="">Select Attribute</MenuItem>
-            {innerData?.attributes?.map((attr) => (
+            {uniqueAttributes.map((attr) => (
               <MenuItem key={attr} value={attr}>
                 {attr}
               </MenuItem>

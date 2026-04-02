@@ -1,77 +1,38 @@
-import { useDispatch, useSelector } from "react-redux";
-
-import AppLayout from "../../components/AppLayout";
-import AttributeSelector from "../../components/AttributeSelector";
-import ChartCard from "../../components/ChartCard";
-import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import React from "react";
-import { handleDownload } from "../../utils/downloadHandlers";
-import useNavigateBack from "#hooks/useNavigateBack";
-import { setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction } from "../../app/store/config/slices/uiStateSlice";
-import styles from "./ClusterSizeDistribution.module.scss";
+import { useSelector } from "react-redux";
+import ChartPageShell from "../../components/ChartPageShell";
+import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 
 const ClusterSizeDistributionPage = ({
-  selectedAttributeTaxonset: _selectedAttributeTaxonset,
   clusterSizeDistributionBlob,
   attribute: propAttribute,
   taxonset: propTaxonset,
   setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
-  const dispatch = useDispatch();
   const downloadLoading = useSelector(
     (state) => state?.config?.uiState?.downloadLoading,
   );
 
-  const goBack = useNavigateBack();
-  const handleClose = () => goBack();
-
-  const selectedFromStore = useSelector(
-    (state) => state?.config?.uiState?.selectedAttributeTaxonset,
-  );
-
-  const attribute = propAttribute ?? selectedFromStore?.attribute ?? "all";
-  const taxonset = propTaxonset ?? selectedFromStore?.taxonset ?? "all";
-
-  const setSelectedAttributeTaxonset =
-    propSetSelectedAttributeTaxonset ??
-    ((payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)));
-
-  const effectiveSelected = { attribute, taxonset };
+  const isDownloading =
+    downloadLoading?.downloadLoading?.ClusterSizeDistribution;
 
   return (
-    <AppLayout>
-      <div className={styles.pageHeader}>
-        <AttributeSelector
+    <ChartPageShell
+      title="Cluster Size Distribution"
+      chartKey="clusterSizeDistribution"
+      searchParamKey={null}
+      isDownloading={isDownloading}
+      initialAttribute={propAttribute}
+      initialTaxonset={propTaxonset}
+      setSelectedAttributeTaxonsetProp={propSetSelectedAttributeTaxonset}
+      blob={clusterSizeDistributionBlob}
+      renderChart={({ attribute }) => (
+        <ClusterSizeDistribution
           attribute={attribute}
-          taxonset={taxonset}
-          setSelectedAttributeTaxonset={setSelectedAttributeTaxonset}
+          clusterSizeDistributionBlob={clusterSizeDistributionBlob}
         />
-      </div>
-      <div className={styles.page}>
-        <div className={styles.chartsContainer}>
-          <ChartCard
-            title="Cluster Size Distribution"
-            isDownloading={
-              downloadLoading?.downloadLoading?.ClusterSizeDistribution
-            }
-            onDownload={() =>
-              handleDownload({
-                chartKey: "clusterSizeDistribution",
-                dispatch,
-                selectedAttributeTaxonset: effectiveSelected,
-                clusterSizeDistributionBlob,
-              })
-            }
-            onClose={handleClose}
-          >
-            <ClusterSizeDistribution
-              attribute={attribute}
-              clusterSizeDistributionBlob={clusterSizeDistributionBlob}
-            />
-          </ChartCard>
-        </div>
-      </div>
-    </AppLayout>
+      )}
+    />
   );
 };
 

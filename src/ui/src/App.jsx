@@ -41,38 +41,40 @@ function App() {
           preventDuplicate
         >
           <Provider store={store}>
-            <title>KinFin</title>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/:sessionId/" element={<DashboardPage />} />
-                <Route
-                  path="/:sessionId/attribute-summary"
-                  element={<AttributeSummaryPage />}
-                />
-                <Route
-                  path="/:sessionId/cluster-summary"
-                  element={<ClusterSummaryPage />}
-                />
-                <Route
-                  path="/:sessionId/cluster-metrics"
-                  element={<ClusterMetricsPage />}
-                />
-                <Route
-                  path="/:sessionId/rarefaction-curve"
-                  element={<RarefactionCurvePage />}
-                />
-                <Route
-                  path="/:sessionId/cluster-size-distribution"
-                  element={<ClusterSizeDistributionPage />}
-                />
+            <PersistGate persistor={persistor} loading={null}>
+              <title>KinFin</title>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/:sessionId/" element={<DashboardPage />} />
+                  <Route
+                    path="/:sessionId/attribute-summary"
+                    element={<AttributeSummaryPage />}
+                  />
+                  <Route
+                    path="/:sessionId/cluster-summary"
+                    element={<ClusterSummaryPage />}
+                  />
+                  <Route
+                    path="/:sessionId/cluster-metrics"
+                    element={<ClusterMetricsPage />}
+                  />
+                  <Route
+                    path="/:sessionId/rarefaction-curve"
+                    element={<RarefactionCurvePage />}
+                  />
+                  <Route
+                    path="/:sessionId/cluster-size-distribution"
+                    element={<ClusterSizeDistributionPage />}
+                  />
 
-                <Route
-                  path="/define-node-labels"
-                  element={<DefineNodeLabelsPage />}
-                />
-              </Routes>
-            </Router>
+                  <Route
+                    path="/define-node-labels"
+                    element={<DefineNodeLabelsPage />}
+                  />
+                </Routes>
+              </Router>
+            </PersistGate>
           </Provider>
         </SnackbarProvider>
       </ThemeProvider>
