@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
 import {
+  mergeRepeatedParams,
   parseConcatCodes,
   serializeCodes,
-  mergeRepeatedParams,
 } from "../utils/columnCodes";
+import { useCallback, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
 import { setColumnSettings } from "../store/config/slices/uiStateSlice";
+import { useSearchParams } from "react-router-dom";
 
 const LS_PREFIX = "kinfin.columnSettings.";
 
@@ -40,7 +41,8 @@ export default function useColumnSettings(tableKey, { searchParamKey } = {}) {
     const shouldSetFromUrl = initialFromUrl != null;
     if (
       shouldSetFromUrl ||
-      (storeSettings && JSON.stringify(storeSettings) !== JSON.stringify(initial))
+      (storeSettings &&
+        JSON.stringify(storeSettings) !== JSON.stringify(initial))
     ) {
       dispatch(setColumnSettings({ tableKey, settings: initial ?? [] }));
     }
@@ -56,11 +58,17 @@ export default function useColumnSettings(tableKey, { searchParamKey } = {}) {
     try {
       if (!searchParamKey) return;
       // detect navigation type using PerformanceNavigationTiming when available
-      const navEntries = (performance && performance.getEntriesByType)
-        ? performance.getEntriesByType("navigation")
-        : [];
+      const navEntries =
+        performance && performance.getEntriesByType
+          ? performance.getEntriesByType("navigation")
+          : [];
       const navType = navEntries && navEntries[0] && navEntries[0].type;
-      const isFullPageLoad = navType === "reload" || navType === "navigate" || (performance && performance.navigation && performance.navigation.type === 1);
+      const isFullPageLoad =
+        navType === "reload" ||
+        navType === "navigate" ||
+        (performance &&
+          performance.navigation &&
+          performance.navigation.type === 1);
 
       if (isFullPageLoad && !searchParams.has(searchParamKey)) {
         // Explicitly clear stored settings so URL (which has no param)
@@ -80,14 +88,26 @@ export default function useColumnSettings(tableKey, { searchParamKey } = {}) {
   useEffect(() => {
     try {
       if (!searchParamKey) return;
-      const navEntries = (performance && performance.getEntriesByType)
-        ? performance.getEntriesByType("navigation")
-        : [];
+      const navEntries =
+        performance && performance.getEntriesByType
+          ? performance.getEntriesByType("navigation")
+          : [];
       const navType = navEntries && navEntries[0] && navEntries[0].type;
-      const isFullPageLoad = navType === "reload" || navType === "navigate" || (performance && performance.navigation && performance.navigation.type === 1);
+      const isFullPageLoad =
+        navType === "reload" ||
+        navType === "navigate" ||
+        (performance &&
+          performance.navigation &&
+          performance.navigation.type === 1);
 
       // Only restore for SPA navigations
-      if (!isFullPageLoad && !searchParams.has(searchParamKey) && storeSettings && Array.isArray(storeSettings) && storeSettings.length > 0) {
+      if (
+        !isFullPageLoad &&
+        !searchParams.has(searchParamKey) &&
+        storeSettings &&
+        Array.isArray(storeSettings) &&
+        storeSettings.length > 0
+      ) {
         const newParams = new URLSearchParams(searchParams);
         const serialized = serializeCodes(storeSettings || []);
         if (serialized) newParams.append(searchParamKey, serialized);

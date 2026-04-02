@@ -1,5 +1,8 @@
+import { act, fireEvent, render } from "@testing-library/react";
+
+import ClusterSummary from "#components/Charts/ClusterSummary/ClusterSummary";
+import { MemoryRouter } from "react-router-dom";
 import React from "react";
-import { render, fireEvent, act } from "@testing-library/react";
 
 // Mock MUI DataGrid to avoid TextEncoder/environment issues in Jest
 jest.mock("@mui/x-data-grid", () => ({
@@ -14,20 +17,30 @@ jest.mock("#store/api", () => ({
   useGetClusterSummaryQuery: jest.fn(() => ({ data: null })),
 }));
 
-jest.mock("#hooks/usePageCustomisation", () => jest.fn(() => ({
-  selectedCodes: [],
-  setSelectedCodes: jest.fn(),
-})), { virtual: true });
+jest.mock(
+  "#hooks/usePageCustomisation",
+  () =>
+    jest.fn(() => ({
+      selectedCodes: [],
+      setSelectedCodes: jest.fn(),
+    })),
+  { virtual: true },
+);
 
 jest.mock("#hooks/useIsCurrentPage", () => jest.fn(() => true));
-jest.mock("#hooks/useFullscreen", () => jest.fn(() => ({ isFullScreen: false })));
+jest.mock("#hooks/useFullscreen", () =>
+  jest.fn(() => ({ isFullScreen: false })),
+);
 
-import ClusterSummary from "#components/Charts/ClusterSummary/ClusterSummary";
-import { MemoryRouter } from "react-router-dom";
 
 describe("ClusterSummary column duplication repro", () => {
   const sampleColumnDescriptions = [
-    { code: "C1", name: "pfam_X_count", alias: "Pfam X Count", isDefault: true },
+    {
+      code: "C1",
+      name: "pfam_X_count",
+      alias: "Pfam X Count",
+      isDefault: true,
+    },
     { code: "C2", name: "gene_count", alias: "Gene Count", isDefault: true },
   ];
 
@@ -41,29 +54,42 @@ describe("ClusterSummary column duplication repro", () => {
 
   test("no duplicate column headers after scroll/mouseout", async () => {
     const api = require("#store/api");
-    api.useGetClusterSummaryQuery.mockReturnValue({ data: { data: sampleData, total_entries: 1 } });
+    api.useGetClusterSummaryQuery.mockReturnValue({
+      data: { data: sampleData, total_entries: 1 },
+    });
 
     const usePageCustomisation = require("#hooks/usePageCustomisation");
-    usePageCustomisation.mockReturnValue({ selectedCodes: ["C1", "C2"], setSelectedCodes: jest.fn() });
+    usePageCustomisation.mockReturnValue({
+      selectedCodes: ["C1", "C2"],
+      setSelectedCodes: jest.fn(),
+    });
 
     const { container } = render(
       <MemoryRouter>
-        <ClusterSummary attribute={"attr1"} clusterSummaryColumnDescriptions={sampleColumnDescriptions} />
+        <ClusterSummary
+          attribute={"attr1"}
+          clusterSummaryColumnDescriptions={sampleColumnDescriptions}
+        />
       </MemoryRouter>,
     );
 
     // Wait for initial render
     await act(async () => {});
 
-    const headerNodes = container.querySelectorAll(".MuiDataGrid-columnHeaderTitle");
-    const headerTexts = Array.from(headerNodes).map((n) => n.textContent?.trim() || "");
+    const headerNodes = container.querySelectorAll(
+      ".MuiDataGrid-columnHeaderTitle",
+    );
+    const headerTexts = Array.from(headerNodes).map(
+      (n) => n.textContent?.trim() || "",
+    );
 
     // Ensure headers are unique initially
     const uniqueInitial = new Set(headerTexts);
     expect(uniqueInitial.size).toBe(headerTexts.length);
 
     // Simulate user scroll and mouseout which previously triggered duplication
-    const gridWrapper = container.querySelector(".MuiDataGrid-root") || container.firstChild;
+    const gridWrapper =
+      container.querySelector(".MuiDataGrid-root") || container.firstChild;
     act(() => {
       fireEvent.scroll(gridWrapper, { target: { scrollLeft: 50 } });
     });
@@ -77,8 +103,12 @@ describe("ClusterSummary column duplication repro", () => {
     }
 
     // Re-query headers
-    const headerNodesAfter = container.querySelectorAll(".MuiDataGrid-columnHeaderTitle");
-    const headerTextsAfter = Array.from(headerNodesAfter).map((n) => n.textContent?.trim() || "");
+    const headerNodesAfter = container.querySelectorAll(
+      ".MuiDataGrid-columnHeaderTitle",
+    );
+    const headerTextsAfter = Array.from(headerNodesAfter).map(
+      (n) => n.textContent?.trim() || "",
+    );
 
     const uniqueAfter = new Set(headerTextsAfter);
     expect(uniqueAfter.size).toBe(headerTextsAfter.length);

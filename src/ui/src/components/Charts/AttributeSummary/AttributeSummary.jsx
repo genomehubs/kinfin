@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo } from "react";
-import useFullscreen from "#hooks/useFullscreen";
-import useIsCurrentPage from "#hooks/useIsCurrentPage";
 
 import { DataGrid } from "@mui/x-data-grid";
-import { updatePaginationParams } from "@/utils/urlPagination";
-import { useGetAttributeSummaryQuery } from "#store/api";
-import { useSearchParams } from "react-router-dom";
-import usePageCustomisation from "#hooks/usePageCustomisation";
-import { v4 as uuidv4 } from "uuid";
 import { toCamelCase } from "#utils/changeCase.js";
+import { updatePaginationParams } from "@/utils/urlPagination";
+import useFullscreen from "#hooks/useFullscreen";
+import { useGetAttributeSummaryQuery } from "#store/api";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
+import usePageCustomisation from "#hooks/usePageCustomisation";
+import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
 
@@ -31,10 +31,11 @@ const AttributeSummary = ({
     1,
   );
 
-  const { selectedCodes: asCodes, setSelectedCodes: setAsCodes } = usePageCustomisation({
-    searchParamKey: "AS_code",
-    columnDescriptions,
-  });
+  const { selectedCodes: asCodes, setSelectedCodes: setAsCodes } =
+    usePageCustomisation({
+      searchParamKey: "AS_code",
+      columnDescriptions,
+    });
 
   // Fetching is handled by RTK Query hook above
 
@@ -65,7 +66,10 @@ const AttributeSummary = ({
     const processedRows = Object.values(rawData).map((row) => ({
       id: row.id || row.taxonSet || row.taxon_set || uuidv4(),
       ...Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [toCamelCase(key), value ?? "-"]),
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
       ),
     }));
     const totalRows =

@@ -1,10 +1,10 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
+import { getSessionId, setSessionId } from "../utils/session";
 
 import axios from "axios";
-import { storeConfig } from "./config/slices/configSlice";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { setPollingLoading } from "./config/slices/uiStateSlice";
+import { storeConfig } from "./config/slices/configSlice";
 import { toCamelCase } from "#utils/changeCase.js";
-import { getSessionId, setSessionId } from "../utils/session";
 
 const { VITE_KINFIN_API_HOST } = import.meta.env;
 

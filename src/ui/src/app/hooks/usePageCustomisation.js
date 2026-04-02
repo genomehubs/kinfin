@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+
 import useColumnSettings from "#hooks/useColumnSettings";
+import { useSearchParams } from "react-router-dom";
 
 // Hook to manage selected codes synced with URL search params and a customise dialog
 export default function usePageCustomisation({
@@ -26,11 +27,15 @@ export default function usePageCustomisation({
   // directly so URL-provided selections are respected. Only sanitize against
   // `columnDescriptions` when those descriptions are present.
   const selectedCodes = (() => {
-    const defaults = (columnDescriptions || []).filter((col) => col.isDefault).map((c) => c.code);
+    const defaults = (columnDescriptions || [])
+      .filter((col) => col.isDefault)
+      .map((c) => c.code);
     const fromStore = columnSettingsHook?.settings;
-    if (!fromStore || !Array.isArray(fromStore) || fromStore.length === 0) return defaults;
+    if (!fromStore || !Array.isArray(fromStore) || fromStore.length === 0)
+      return defaults;
     // If we don't have columnDescriptions yet, return stored settings as-is
-    if (!columnDescriptions || columnDescriptions.length === 0) return fromStore;
+    if (!columnDescriptions || columnDescriptions.length === 0)
+      return fromStore;
     const validCodes = (columnDescriptions || []).map((c) => c.code);
     const sanitized = fromStore.filter((c) => validCodes.includes(c));
     return sanitized.length > 0 ? sanitized : defaults;

@@ -6,11 +6,11 @@ import {
   MenuItem,
   Select,
 } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
 
 import styles from "./AttributeSelector.module.scss";
 import { useGetAvailableAttributesTaxonsetsQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
 
 const AttributeSelector = ({
   attribute: initialAttribute,
@@ -51,9 +51,11 @@ const AttributeSelector = ({
 
   // Deduplicate attributes and normalize keys for display
   const uniqueAttributes = Array.from(
-    new Set((innerData?.attributes && Array.isArray(innerData.attributes)
-      ? innerData.attributes
-      : [])),
+    new Set(
+      innerData?.attributes && Array.isArray(innerData.attributes)
+        ? innerData.attributes
+        : [],
+    ),
   );
 
   const [attribute, setAttribute] = useState(initialAttribute ?? "all");

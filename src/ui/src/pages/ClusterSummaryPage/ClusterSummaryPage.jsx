@@ -1,6 +1,6 @@
-import React from "react";
 import ChartPageShell from "../../components/ChartPageShell";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
+import React from "react";
 import useColumnDescriptionsSets from "#hooks/useColumnDescriptionsSets.js";
 
 const ClusterSummaryPage = ({

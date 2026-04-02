@@ -1,6 +1,6 @@
-import React from "react";
-import ChartPageShell from "../../components/ChartPageShell";
 import AttributeSummary from "../../components/Charts/AttributeSummary";
+import ChartPageShell from "../../components/ChartPageShell";
+import React from "react";
 import useColumnDescriptionsSets from "#hooks/useColumnDescriptionsSets.js";
 
 const AttributeSummaryPage = ({

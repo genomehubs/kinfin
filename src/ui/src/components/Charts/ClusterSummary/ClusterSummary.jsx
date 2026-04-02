@@ -1,15 +1,15 @@
 import React, { useCallback, useMemo } from "react";
-import useFullscreen from "#hooks/useFullscreen";
-import useIsCurrentPage from "#hooks/useIsCurrentPage";
 
 import { DataGrid } from "@mui/x-data-grid";
 import styles from "./ClusterSummary.module.scss";
-import { updatePaginationParams } from "@/utils/urlPagination";
-import { useGetClusterSummaryQuery } from "#store/api";
-import { useSearchParams } from "react-router-dom";
-import usePageCustomisation from "#hooks/usePageCustomisation";
-import { v4 as uuidv4 } from "uuid";
 import { toCamelCase } from "#utils/changeCase.js";
+import { updatePaginationParams } from "@/utils/urlPagination";
+import useFullscreen from "#hooks/useFullscreen";
+import { useGetClusterSummaryQuery } from "#store/api";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
+import usePageCustomisation from "#hooks/usePageCustomisation";
+import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
 
@@ -30,10 +30,11 @@ const ClusterSummary = ({
     1,
   );
 
-  const { selectedCodes: csCodes, setSelectedCodes: setCsCodes } = usePageCustomisation({
-    searchParamKey: "CS_code",
-    columnDescriptions,
-  });
+  const { selectedCodes: csCodes, setSelectedCodes: setCsCodes } =
+    usePageCustomisation({
+      searchParamKey: "CS_code",
+      columnDescriptions,
+    });
 
   const { data: clusterSummaryResp } = useGetClusterSummaryQuery(
     {
@@ -60,7 +61,10 @@ const ClusterSummary = ({
     const rows = Object.values(raw).map((row) => ({
       id: row.id || row.clusterId || row.cluster_id || uuidv4(),
       ...Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [toCamelCase(key), value ?? "-"]),
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
       ),
     }));
 
@@ -137,7 +141,9 @@ const ClusterSummary = ({
       // Expand "X" using actual row keys
       const regex = new RegExp("^" + template.replace("X", "(.+)") + "$");
       return rowsData.rows.length > 0
-        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k)).map(toCamelCase)
+        ? Object.keys(rowsData.rows[0])
+            .filter((k) => regex.test(k))
+            .map(toCamelCase)
         : [];
     });
 

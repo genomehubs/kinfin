@@ -1,6 +1,6 @@
-import React from "react";
-import ClusterMetrics from "../../components/Charts/ClusterMetrics";
 import ChartPageShell from "../../components/ChartPageShell";
+import ClusterMetrics from "../../components/Charts/ClusterMetrics";
+import React from "react";
 import useColumnDescriptionsSets from "#hooks/useColumnDescriptionsSets.js";
 
 const ClusterMetricsPage = ({
