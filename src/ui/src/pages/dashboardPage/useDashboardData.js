@@ -2,7 +2,7 @@ import {
   setPollingLoading,
   setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction,
 } from "../../app/store/config/slices/uiStateSlice";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useSearchParams } from "react-router-dom";
 
@@ -21,10 +21,14 @@ const useDashboardData = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Restore all column code params at once from Redux when they're missing from URL
+  // But skip this on initial session change to avoid restoring old session's params
   const columnSettings = useSelector(
     (s) => s?.config?.uiState?.columnSettings || {},
   );
   useEffect(() => {
+    // Skip restoration during session changes to avoid restoring old session's code params
+    if (sessionId !== prevSessionIdRef.current) return;
+
     const missing = CODE_PARAMS.filter(
       (k) => !searchParams.has(k) && columnSettings[k]?.length > 0,
     );
@@ -43,25 +47,47 @@ const useDashboardData = () => {
       { replace: true },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnSettings]);
+  }, [columnSettings, sessionId]);
 
   // ensure column descriptions are fetched
   const { data: _fetchedColumnDescriptions = [] } = useColumnDescriptions();
   const { attributeSummary, clusterSummary, clusterMetrics } =
     useColumnDescriptionsSets();
 
-  useEffect(() => {
-    if (sessionId) {
-      setSessionId(sessionId);
-    }
-  }, [sessionId]);
+  const prevSessionIdRef = useRef(sessionId);
 
-  // derive selected attribute/taxon
+  useEffect(() => {
+    if (sessionId && sessionId !== prevSessionIdRef.current) {
+      // Session changed to a different sessionId
+      setSessionId(sessionId);
+      // Reset Redux state when switching sessions (URL params stay scoped to session path)
+      dispatch(
+        setSelectedAttributeTaxonsetAction({
+          attribute: "all",
+          taxonset: "all",
+        }),
+      );
+      prevSessionIdRef.current = sessionId;
+    }
+  }, [sessionId, dispatch]);
+
+  // derive selected attribute/taxon from URL first (source of truth), then Redux, then defaults
+  // BUT: Skip Redux fallback if we're in a session transition (sessionId changed but effect hasn't updated ref yet)
   const selectedFromStore = useSelector(
     (state) => state?.config?.uiState?.selectedAttributeTaxonset,
   );
-  const attribute = selectedFromStore?.attribute ?? "all";
-  const taxonset = selectedFromStore?.taxonset ?? "all";
+  const urlAttribute = searchParams.get("attribute");
+  const urlTaxonset = searchParams.get("taxonset");
+  const isSessionTransition = sessionId !== prevSessionIdRef.current;
+  // During transition, don't use stale Redux values - only URL or defaults
+  const attribute =
+    urlAttribute ||
+    (isSessionTransition ? null : selectedFromStore?.attribute) ||
+    "all";
+  const taxonset =
+    urlTaxonset ||
+    (isSessionTransition ? null : selectedFromStore?.taxonset) ||
+    "all";
   const dispatchSetSelected = useCallback(
     (payload) => dispatch(setSelectedAttributeTaxonsetAction(payload)),
     [dispatch],

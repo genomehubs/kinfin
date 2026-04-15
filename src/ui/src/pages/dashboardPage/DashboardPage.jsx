@@ -158,6 +158,7 @@ const DashboardPage = () => {
 
           <div className={styles.pageHeader}>
             <AttributeSelector
+              key={sessionId}
               sessionId={sessionId}
               attribute={attribute}
               taxonset={taxonset}

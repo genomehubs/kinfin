@@ -30,6 +30,7 @@ const AttributeSelector = ({
     });
 
   const prevIsLoadingRef = useRef(isLoading);
+  const prevSessionIdRef = useRef(sessionId);
 
   // Refetch attributes/taxonsets when analysis completes (isLoading becomes false)
   useEffect(() => {
@@ -38,6 +39,15 @@ const AttributeSelector = ({
     }
     prevIsLoadingRef.current = isLoading;
   }, [isLoading, sessionId, refetch]);
+
+  // When sessionId changes, reset local state until new options load
+  useEffect(() => {
+    if (sessionId && sessionId !== prevSessionIdRef.current) {
+      setAttribute("");
+      setTaxon("");
+      prevSessionIdRef.current = sessionId;
+    }
+  }, [sessionId]);
 
   // Unwrap the nested data structure from ResponseSchema
   // API returns: { status, message, data: { attributes, taxon_set } }
@@ -66,14 +76,15 @@ const AttributeSelector = ({
   const [taxon, setTaxon] = useState("");
 
   // When options become available, update empty values to use initial values or "all"
+  // Also sync when initialAttribute/initialTaxonset props change (e.g. on session switch)
   useEffect(() => {
-    // Update attribute if currently empty and options are now available
-    if (attribute === "" && uniqueAttributes.length > 0) {
+    // Update attribute if options are available
+    if (uniqueAttributes.length > 0) {
       setAttribute(initialAttribute ?? "all");
     }
 
-    // Update taxon if currently empty and options are now available
-    if (taxon === "" && taxonsets.length > 0) {
+    // Update taxon if options are available
+    if (taxonsets.length > 0) {
       setTaxon(initialTaxonset ?? "all");
     }
   }, [
