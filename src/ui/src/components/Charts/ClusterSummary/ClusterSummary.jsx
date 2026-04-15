@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { DataGrid } from "@mui/x-data-grid";
+import { getSessionId } from "#app/utils/session";
 import styles from "./ClusterSummary.module.scss";
 import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
@@ -8,7 +10,6 @@ import useFullscreen from "#hooks/useFullscreen";
 import { useGetClusterSummaryQuery } from "#store/api";
 import useIsCurrentPage from "#hooks/useIsCurrentPage";
 import usePageCustomisation from "#hooks/usePageCustomisation";
-import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
@@ -17,6 +18,8 @@ const ClusterSummary = ({
   attribute,
   clusterSummaryColumnDescriptions: columnDescriptions,
 }) => {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
   const isCurrentPage = useIsCurrentPage("cluster-summary");
   const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,15 +33,15 @@ const ClusterSummary = ({
     1,
   );
 
-  const { selectedCodes: csCodes, setSelectedCodes: setCsCodes } =
-    usePageCustomisation({
-      searchParamKey: "CS_code",
-      columnDescriptions,
-    });
+  const { selectedCodes: csCodes } = usePageCustomisation({
+    searchParamKey: "CS_code",
+    columnDescriptions,
+  });
 
   const { data: clusterSummaryResp } = useGetClusterSummaryQuery(
     {
       attribute,
+      sessionId,
       page: page + 1,
       size: pageSize,
       CS_code: csCodes.length > 0 ? csCodes : undefined,

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+
+import { setPollingLoading } from "../store/config/slices/uiStateSlice";
+import { storeConfig } from "../store/config/slices/configSlice";
 import { useDispatch } from "react-redux";
 import { useGetRunStatusQuery } from "#store/api";
-import { storeConfig } from "../store/config/slices/configSlice";
-import { setPollingLoading } from "../store/config/slices/uiStateSlice";
 
 const mapServerStatusToUiStatus = (serverStatus) => {
   if (!serverStatus) return "inactive";
@@ -26,13 +27,14 @@ export default function useSessionPolling(sessionId) {
   const dispatch = useDispatch();
   const [shouldContinuePolling, setShouldContinuePolling] = useState(true);
 
-  const { data: sessionMeta, isLoading: sessionLoading } = useGetRunStatusQuery(
-    sessionId,
-    {
-      skip: !sessionId,
-      pollingInterval: shouldContinuePolling && sessionId ? 2000 : 0,
-    },
-  );
+  const {
+    data: sessionMeta,
+    isLoading: sessionLoading,
+    isFetching,
+  } = useGetRunStatusQuery(sessionId, {
+    skip: !sessionId,
+    pollingInterval: shouldContinuePolling && sessionId ? 2000 : 0,
+  });
 
   useEffect(() => {
     if (!sessionId) return;
@@ -42,56 +44,51 @@ export default function useSessionPolling(sessionId) {
   }, [sessionMeta, sessionId]);
 
   useEffect(() => {
-    if (sessionMeta && sessionId) {
-      try {
-        const effective = sessionMeta.data || sessionMeta;
+    if (!sessionMeta || !sessionId || isFetching) return;
+    try {
+      const effective = sessionMeta.data || sessionMeta;
 
-        let statusValue = null;
-        if (typeof effective.status === "string") {
-          statusValue = effective.status;
-        } else if (
-          effective.status &&
-          typeof effective.status === "object" &&
-          effective.status.status
-        ) {
-          statusValue = effective.status.status;
-        } else if (
-          sessionMeta.status &&
-          typeof sessionMeta.status === "string"
-        ) {
-          statusValue = sessionMeta.status;
-        }
-
-        const uiStatus = mapServerStatusToUiStatus(statusValue);
-
-        const payload = {
-          sessionId,
-          name: effective.name || `Session ${sessionId}`,
-          meta: {
-            status: uiStatus,
-            isComplete: effective.isComplete ?? sessionMeta.isComplete ?? null,
-            message: sessionMeta.message || null,
-          },
-        };
-
-        if (effective.config) payload.config = effective.config;
-        if (effective.clusterId) payload.clusterId = effective.clusterId;
-        if (effective.clusterName) payload.clusterName = effective.clusterName;
-
-        dispatch(storeConfig(payload));
-
-        // Manage loading overlay
-        const isLoadingSession =
-          !sessionMeta || effective?.isComplete === false;
-        dispatch(setPollingLoading({ sessionId, loading: isLoadingSession }));
-      } catch (err) {
-        console.error(
-          "Failed to process session meta in useSessionPolling:",
-          err,
-        );
+      let statusValue = null;
+      if (typeof effective.status === "string") {
+        statusValue = effective.status;
+      } else if (
+        effective.status &&
+        typeof effective.status === "object" &&
+        effective.status.status
+      ) {
+        statusValue = effective.status.status;
+      } else if (sessionMeta.status && typeof sessionMeta.status === "string") {
+        statusValue = sessionMeta.status;
       }
+
+      const uiStatus = mapServerStatusToUiStatus(statusValue);
+
+      const payload = {
+        sessionId,
+        name: effective.name || `Session ${sessionId}`,
+        meta: {
+          status: uiStatus,
+          isComplete: effective.isComplete ?? sessionMeta.isComplete ?? null,
+          message: sessionMeta.message || null,
+        },
+      };
+
+      if (effective.config) payload.config = effective.config;
+      if (effective.clusterId) payload.clusterId = effective.clusterId;
+      if (effective.clusterName) payload.clusterName = effective.clusterName;
+
+      dispatch(storeConfig(payload));
+
+      // Manage loading overlay
+      const isLoadingSession = !sessionMeta || effective?.isComplete === false;
+      dispatch(setPollingLoading({ sessionId, loading: isLoadingSession }));
+    } catch (err) {
+      console.error(
+        "Failed to process session meta in useSessionPolling:",
+        err,
+      );
     }
-  }, [sessionMeta, sessionId, dispatch]);
+  }, [sessionMeta, isFetching, sessionId, dispatch]);
 
   const isLoadingSession =
     !sessionMeta || sessionMeta?.data?.isComplete === false || sessionLoading;

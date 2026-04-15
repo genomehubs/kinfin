@@ -8,7 +8,6 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  TextField,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -18,23 +17,18 @@ import CircularProgress from "@mui/material/CircularProgress";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import MenuIcon from "@mui/icons-material/Menu";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
-import RenameDialog from "./RenameDialog";
 import Tooltip from "@mui/material/Tooltip";
-import { skipToken } from "@reduxjs/toolkit/query/react";
+import { downloadBlobFile } from "#utils/downloadBlobFile";
 import styles from "./Sidebar.module.scss";
 import { useBatchStatus } from "#hooks/useBatchStatus.js";
 import useConfigActions from "#hooks/useConfigActions";
-import { downloadBlobFile } from "#utils/downloadBlobFile";
 import { useSelector } from "react-redux";
 import { useTheme } from "#hooks/useTheme";
-import { useValidProteomeIds } from "#hooks/useValidProteomeIds.js";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -97,11 +91,8 @@ const getStatusInfo = (status) => {
 
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
-  const { renameConfig, deleteConfig } = useConfigActions();
+  const { deleteConfig } = useConfigActions();
   const { sessionId } = useParams();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [nameError, setNameError] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -112,16 +103,8 @@ const Sidebar = ({ open, setOpen }) => {
   const pollingLoadingBySessionId = useSelector(
     (state) => state?.config?.uiState?.pollingLoadingBySessionId || {},
   );
-  const selectedClusterSet = useSelector(
-    (state) => state?.config?.uiState?.selectedClusterSet,
-  );
-  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
-  const { data: validProteomeIds } = useValidProteomeIds(
-    selectedClusterSet
-      ? { clusterId: selectedClusterSet, page: 1, size: 50 }
-      : skipToken,
-  );
+  const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
   const hasFetchedStatusRef = useRef(false);
   const [getBatchStatus] = useBatchStatus();
@@ -146,26 +129,10 @@ const Sidebar = ({ open, setOpen }) => {
     return acc;
   }, {});
 
-  const handleSubmit = () => {
-    if (!userName.trim()) {
-      setNameError("Name is required.");
-      return;
-    }
-    const payload = {
-      newName: userName.trim(),
-      sessionId: selectedItem?.sessionId,
-    };
-    renameConfig(payload);
-    setNameError("");
-    setUserName("");
-    setModalOpen(false);
-  };
-
   const handleMenuOpen = (event, item) => {
     event.stopPropagation();
     setSelectedItem(item);
     setAnchorEl(event.currentTarget);
-    setUserName(item.name);
   };
 
   const handleMenuClose = () => {
@@ -238,7 +205,7 @@ const Sidebar = ({ open, setOpen }) => {
                           size="small"
                           onClick={(e) => handleMenuOpen(e, item)}
                         >
-                          <MoreHorizIcon fontSize="small" />
+                          <MenuIcon fontSize="small" />
                         </IconButton>
                       </div>
                     ))}
@@ -279,14 +246,6 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            setModalOpen(true);
-            handleMenuClose();
-          }}
-        >
-          <EditOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> Rename
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
             setDeleteDialogOpen(true);
             handleMenuClose();
           }}
@@ -295,15 +254,6 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
       </Menu>
 
-      <RenameDialog
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleSubmit}
-        value={userName}
-        setValue={setUserName}
-        error={nameError}
-        setError={setNameError}
-      />
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}

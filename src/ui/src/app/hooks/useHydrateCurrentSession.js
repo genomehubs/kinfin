@@ -1,10 +1,11 @@
 import { useDispatch, useSelector } from "react-redux";
 
+import { getSessionId } from "../utils/session";
+import { setCurrentSessionId } from "../store/config/slices/uiStateSlice";
 import { storeConfig } from "../store/config/slices/configSlice";
 import { useEffect } from "react";
 import { useGetRunStatusQuery } from "../store/api";
 import { useRef } from "react";
-import { getSessionId } from "../utils/session";
 
 /**
  * Map server status values to UI status values.
@@ -30,35 +31,60 @@ const mapServerStatusToUiStatus = (serverStatus) => {
   }
 };
 
-const useHydrateCurrentSession = () => {
+const useHydrateCurrentSession = (urlSessionId = null) => {
   const dispatch = useDispatch();
-  const configs = useSelector((state) => state?.config?.data || {});
-  const rehydrated = useSelector((state) => state?._persist?.rehydrated);
-  const sessionId = getSessionId();
+  const currentSessionId = useSelector(
+    (state) => state?.config?.uiState?.currentSessionId,
+  );
+  const rehydrated = useSelector(
+    (state) => state?._persist?.rehydrated ?? true,
+  );
 
-  // If we already have configs, nothing to do.
-  const haveAny = Object.keys(configs).length > 0;
+  // Determine the sessionId from URL first, fallback to localStorage
+  const effectiveSessionId = urlSessionId || getSessionId();
 
-  const { data: sessionMeta } = useGetRunStatusQuery(sessionId, {
-    skip: !sessionId || haveAny || !rehydrated,
-  });
+  // Always call the query - don't use skip, we'll manage refetching manually
+  const {
+    data: sessionMeta,
+    refetch,
+    isFetching,
+  } = useGetRunStatusQuery(effectiveSessionId);
 
-  // Ensure we only dispatch hydration once per sessionId to avoid loops
+  // Update currentSessionId when URL changes
+  useEffect(() => {
+    if (!effectiveSessionId || !rehydrated) return;
+    if (currentSessionId === effectiveSessionId) return;
+
+    dispatch(setCurrentSessionId(effectiveSessionId));
+  }, [effectiveSessionId, currentSessionId, rehydrated, dispatch]);
+
+  // When currentSessionId changes, refetch and hydrate
+  useEffect(() => {
+    if (!rehydrated) return;
+    if (!currentSessionId) return;
+
+    // Refetch to get fresh data for the new session
+    refetch();
+  }, [currentSessionId, rehydrated, refetch]);
+
+  // When data arrives, determine if we should update Redux
   const didHydrateRef = useRef(false);
 
   useEffect(() => {
-    // Wait for persist rehydration to finish to avoid overwriting persisted state.
+    didHydrateRef.current = false;
+  }, [currentSessionId]);
+
+  useEffect(() => {
     if (!rehydrated) return;
-    if (!sessionId || haveAny) return;
     if (!sessionMeta) return;
+    if (!currentSessionId) return;
+    if (isFetching) return; // wait for fresh data, don't process stale cache
     if (didHydrateRef.current) return;
 
     try {
       const effective = sessionMeta.data || sessionMeta;
 
       // Extract status string from nested object if needed
-      // GET /status returns: data.status = { session_id, status: "...", expiryDate }
-      // Extract the actual status value (could be string or nested in object)
       let statusValue = null;
       if (typeof effective.status === "string") {
         statusValue = effective.status;
@@ -75,11 +101,10 @@ const useHydrateCurrentSession = () => {
       // Map server status to UI status
       const uiStatus = mapServerStatusToUiStatus(statusValue);
 
-      // Only include config/clusterId/clusterName if they actually exist
-      // This preserves previously persisted values when /status doesn't return them
+      // Build payload with all available data
       const payload = {
-        sessionId,
-        name: effective.name || `Session ${sessionId}`,
+        sessionId: currentSessionId,
+        name: effective.name || `Session ${currentSessionId}`,
         meta: {
           status: uiStatus,
           isComplete: effective.isComplete ?? sessionMeta.isComplete ?? null,
@@ -91,12 +116,15 @@ const useHydrateCurrentSession = () => {
       if (effective.clusterId) payload.clusterId = effective.clusterId;
       if (effective.clusterName) payload.clusterName = effective.clusterName;
 
-      dispatch(storeConfig(payload));
-      didHydrateRef.current = true;
+      // Only dispatch if sessionId matches current (avoid stale updates)
+      if (currentSessionId === (effective.sessionId || currentSessionId)) {
+        dispatch(storeConfig(payload));
+        didHydrateRef.current = true;
+      }
     } catch (err) {
       console.error("Failed to hydrate session config:", err);
     }
-  }, [sessionMeta, sessionId, haveAny, dispatch, rehydrated]);
+  }, [sessionMeta, isFetching, currentSessionId, dispatch, rehydrated]);
 };
 
 export default useHydrateCurrentSession;

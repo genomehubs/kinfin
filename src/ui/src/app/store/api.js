@@ -228,12 +228,33 @@ export const api = createApi({
      * Supports polling during initialization.
      */
     getValidProteomeIds: builder.query({
-      // Note: server expects 1-based paging, default to page=1
-      query: ({ page = 1, size = 50, clusterId } = {}) => ({
-        url: "/valid-proteome-ids",
-        method: "GET",
-        params: { page, size, clusterId },
-      }),
+      // Supports fetching a single page via params or fetching all pages
+      // by passing `fetchAll: true` in the arg. Uses the shared
+      // `fetchAllPages` helper to collect pages.
+      async queryFn(
+        { page = 1, size = 50, clusterId, fetchAll = false } = {},
+        _queryApi,
+        _extraOptions,
+        baseQuery,
+      ) {
+        if (!fetchAll) {
+          return await baseQuery({
+            url: "/valid-proteome-ids",
+            method: "GET",
+            params: { page, size, clusterId },
+          });
+        }
+
+        // dynamic import of helper to keep top-level imports tidy
+        const { fetchAllPages } = await import("./pagination.js");
+
+        return await fetchAllPages(baseQuery, {
+          url: "/valid-proteome-ids",
+          params: { clusterId },
+          startPage: page,
+          size,
+        });
+      },
       providesTags: ["config"],
     }),
 
@@ -270,9 +291,10 @@ export const api = createApi({
      * GET /run-summary
      */
     getRunSummary: builder.query({
-      query: () => ({
+      query: (sessionId = getSessionId()) => ({
         url: "/run-summary",
         method: "GET",
+        headers: { "x-session-id": sessionId },
       }),
       providesTags: ["analysis"],
     }),
@@ -310,6 +332,7 @@ export const api = createApi({
     getClusterSummary: builder.query({
       query: ({
         attribute,
+        sessionId = getSessionId(),
         page = 1,
         size = 20,
         asFile = false,
@@ -325,6 +348,7 @@ export const api = createApi({
           // encoding arrays as `CS_code[]` which some backends may not accept.
           CS_code: Array.isArray(CS_code) ? CS_code.join("") : CS_code,
         },
+        headers: { "x-session-id": sessionId },
         responseType: asFile ? "blob" : "json",
       }),
       providesTags: ["analysis"],
@@ -337,6 +361,7 @@ export const api = createApi({
     getAttributeSummary: builder.query({
       query: ({
         attribute,
+        sessionId = getSessionId(),
         page = 1,
         size = 20,
         asFile = false,
@@ -350,6 +375,7 @@ export const api = createApi({
           as_file: asFile,
           AS_code: Array.isArray(AS_code) ? AS_code.join("") : AS_code,
         },
+        headers: { "x-session-id": sessionId },
         responseType: asFile ? "blob" : "json",
       }),
       providesTags: ["analysis"],
@@ -363,6 +389,7 @@ export const api = createApi({
       query: ({
         attribute,
         taxonSet,
+        sessionId = getSessionId(),
         page = 1,
         size = 20,
         asFile = false,
@@ -376,6 +403,7 @@ export const api = createApi({
           as_file: asFile,
           CM_code: Array.isArray(CM_code) ? CM_code.join("") : CM_code,
         },
+        headers: { "x-session-id": sessionId },
         responseType: asFile ? "blob" : "json",
       }),
       providesTags: ["analysis"],
@@ -386,9 +414,10 @@ export const api = createApi({
      * GET /pairwise-analysis/{attribute}
      */
     getPairwiseAnalysis: builder.query({
-      query: ({ attribute } = {}) => ({
+      query: ({ attribute, sessionId = getSessionId() } = {}) => ({
         url: `/pairwise-analysis/${attribute}`,
         method: "GET",
+        headers: { "x-session-id": sessionId },
       }),
       providesTags: ["analysis"],
     }),
@@ -399,9 +428,10 @@ export const api = createApi({
      * Returns a blob (image or data file).
      */
     getPlot: builder.query({
-      query: ({ attribute, plotType } = {}) => ({
+      query: ({ attribute, plotType, sessionId = getSessionId() } = {}) => ({
         url: `/plot/${attribute}/${plotType}`,
         method: "GET",
+        headers: { "x-session-id": sessionId },
         responseType: "blob",
       }),
       providesTags: ["analysis"],

@@ -20,7 +20,7 @@ const AppLayout = ({ children }) => {
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
   // Ensure we hydrate from localStorage/currentSessionId into redux if needed
-  useHydrateCurrentSession();
+  useHydrateCurrentSession(sessionId);
 
   const sessionMetaMap = {};
   analysisList?.forEach((item) => {

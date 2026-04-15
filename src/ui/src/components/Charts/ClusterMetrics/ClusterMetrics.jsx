@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { DataGrid } from "@mui/x-data-grid";
+import { getSessionId } from "#app/utils/session";
 import styles from "./ClusterMetrics.module.scss";
 import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
@@ -8,7 +10,6 @@ import useFullscreen from "#hooks/useFullscreen";
 import { useGetClusterMetricsQuery } from "#store/api";
 import useIsCurrentPage from "#hooks/useIsCurrentPage";
 import usePageCustomisation from "#hooks/usePageCustomisation";
-import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
@@ -18,6 +19,8 @@ const ClusterMetrics = ({
   taxonset,
   clusterMetricsColumnDescriptions: columnDescriptions,
 }) => {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
   const isCurrentPage = useIsCurrentPage("cluster-metrics");
   const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,16 +34,16 @@ const ClusterMetrics = ({
     1,
   );
 
-  const { selectedCodes: cmCodes, setSelectedCodes: setCmCodes } =
-    usePageCustomisation({
-      searchParamKey: "CM_code",
-      columnDescriptions,
-    });
+  const { selectedCodes: cmCodes } = usePageCustomisation({
+    searchParamKey: "CM_code",
+    columnDescriptions,
+  });
 
   const { data: clusterMetricsResp } = useGetClusterMetricsQuery(
     {
       attribute,
       taxonSet: taxonset,
+      sessionId,
       page: page + 1,
       size: pageSize,
       CM_code: cmCodes,

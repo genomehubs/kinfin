@@ -81,69 +81,40 @@ export default function useColumnSettings(tableKey, { searchParamKey } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If this is an SPA navigation (not a full page load) and the URL does
-  // not contain the `searchParamKey` but we have in-memory `storeSettings`,
-  // restore the param into the URL from Redux so navigating back to the
-  // chart/dashboard preserves the user's selections in the address bar.
-  useEffect(() => {
-    try {
-      if (!searchParamKey) return;
-      const navEntries =
-        performance && performance.getEntriesByType
-          ? performance.getEntriesByType("navigation")
-          : [];
-      const navType = navEntries && navEntries[0] && navEntries[0].type;
-      const isFullPageLoad =
-        navType === "reload" ||
-        navType === "navigate" ||
-        (performance &&
-          performance.navigation &&
-          performance.navigation.type === 1);
-
-      // Only restore for SPA navigations
-      if (
-        !isFullPageLoad &&
-        !searchParams.has(searchParamKey) &&
-        storeSettings &&
-        Array.isArray(storeSettings) &&
-        storeSettings.length > 0
-      ) {
-        const newParams = new URLSearchParams(searchParams);
-        const serialized = serializeCodes(storeSettings || []);
-        if (serialized) newParams.append(searchParamKey, serialized);
-        // update URL without adding a history entry
-        setSearchParams(newParams, { replace: true });
-      }
-    } catch (e) {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const setSettings = useCallback(
     (settings) => {
       // update redux
       dispatch(setColumnSettings({ tableKey, settings }));
       // update URL if searchParamKey provided
       if (searchParamKey) {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete(searchParamKey);
         const serialized = serializeCodes(settings || []);
-        if (serialized) newParams.append(searchParamKey, serialized);
-        setSearchParams(newParams, { replace: true });
+        setSearchParams(
+          (prev) => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete(searchParamKey);
+            if (serialized) newParams.append(searchParamKey, serialized);
+            return newParams;
+          },
+          { replace: true },
+        );
       }
     },
-    [dispatch, tableKey, searchParamKey, searchParams, setSearchParams],
+    [dispatch, tableKey, searchParamKey, setSearchParams],
   );
 
   const createPermalink = useCallback(() => {
     if (!searchParamKey) return;
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete(searchParamKey);
     const serialized = serializeCodes(storeSettings || initial || []);
-    if (serialized) newParams.append(searchParamKey, serialized);
-    setSearchParams(newParams, { replace: false });
-  }, [searchParamKey, searchParams, setSearchParams, storeSettings, initial]);
+    setSearchParams(
+      (prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete(searchParamKey);
+        if (serialized) newParams.append(searchParamKey, serialized);
+        return newParams;
+      },
+      { replace: false },
+    );
+  }, [searchParamKey, setSearchParams, storeSettings, initial]);
 
   return {
     settings: storeSettings ?? initial,

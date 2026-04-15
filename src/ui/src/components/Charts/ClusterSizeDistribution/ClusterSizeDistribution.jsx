@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 
+import { getSessionId } from "@/app/utils/session";
 import styles from "./ClusterSizeDistribution.module.scss";
 import { useGetPlotQuery } from "#store/api";
+import { useParams } from "react-router-dom";
 
 const ClusterSizeDistribution = ({
   attribute,
   clusterSizeDistributionBlob,
 }) => {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+
   const [blobUrl, setBlobUrl] = useState(null);
   const [createdObjectUrl, setCreatedObjectUrl] = useState(false);
 
@@ -15,8 +20,8 @@ const ClusterSizeDistribution = ({
     isFetching,
     error,
   } = useGetPlotQuery(
-    { attribute, plotType: "cluster-size-distribution" },
-    { skip: !attribute },
+    { attribute, plotType: "cluster-size-distribution", sessionId },
+    { skip: !attribute, refetchOnMountOrArgChange: true },
   );
 
   // The API layer converts blob responses into a serializable wrapper:

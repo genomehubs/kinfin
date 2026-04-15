@@ -1,6 +1,9 @@
+import configReducer, {
+  getInitialState as getConfigInitialState,
+} from "./config/slices/configSlice";
+
 import { api } from "./api";
 import { combineReducers } from "redux";
-import configReducer from "./config/slices/configSlice";
 // --- UI state slices (non-async Redux state) ---
 import uiStateReducer from "./config/slices/uiStateSlice";
 
@@ -11,11 +14,24 @@ import uiStateReducer from "./config/slices/uiStateSlice";
  * This keeps existing selectors that read `state.config.data[sessionId]`
  * working while allowing `uiState` to live under `state.config.uiState`.
  */
-const configWrapper = (state = {}, action) => {
-  const dataState = configReducer(state.data, action); // Pass just the data part
+const configWrapper = (state, action) => {
+  // If no state provided, use configReducer's initial state
+  if (!state) {
+    const defaultConfigState = getConfigInitialState();
+    const sliceState = configReducer(defaultConfigState, action);
+    const uiState = uiStateReducer(undefined, action);
+    return {
+      data: sliceState.data,
+      uiState,
+    };
+  }
+
+  // Only pass the data portion to the config reducer
+  const configState = { data: state.data };
+  const sliceState = configReducer(configState, action);
   const uiState = uiStateReducer(state.uiState, action);
   return {
-    data: dataState, // Re-wrap under 'data' key
+    data: sliceState.data,
     uiState,
   };
 };

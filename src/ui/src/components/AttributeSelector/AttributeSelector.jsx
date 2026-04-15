@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import styles from "./AttributeSelector.module.scss";
+import { toCamelCase } from "#utils/changeCase.js";
 import { useGetAvailableAttributesTaxonsetsQuery } from "#store/api";
 import { useSearchParams } from "react-router-dom";
 
@@ -58,8 +59,29 @@ const AttributeSelector = ({
     ),
   );
 
-  const [attribute, setAttribute] = useState(initialAttribute ?? "all");
-  const [taxon, setTaxon] = useState(initialTaxonset ?? "all");
+  const taxonsets = innerData?.taxon_set || [];
+
+  // Initialize with empty string - will be updated when data loads
+  const [attribute, setAttribute] = useState("");
+  const [taxon, setTaxon] = useState("");
+
+  // When options become available, update empty values to use initial values or "all"
+  useEffect(() => {
+    // Update attribute if currently empty and options are now available
+    if (attribute === "" && uniqueAttributes.length > 0) {
+      setAttribute(initialAttribute ?? "all");
+    }
+
+    // Update taxon if currently empty and options are now available
+    if (taxon === "" && taxonsets.length > 0) {
+      setTaxon(initialTaxonset ?? "all");
+    }
+  }, [
+    uniqueAttributes.length,
+    taxonsets.length,
+    initialAttribute,
+    initialTaxonset,
+  ]);
 
   const handleAttributeChange = (e) => {
     const newAttribute = e.target.value;
@@ -165,8 +187,9 @@ const AttributeSelector = ({
             <MenuItem value="">Select Taxon Set</MenuItem>
             {attribute &&
               (
-                innerData?.taxonSet?.[attribute] ??
+                innerData?.taxonSet?.[toCamelCase(attribute)] ??
                 innerData?.taxon_set?.[attribute] ??
+                innerData?.taxon_set?.[toCamelCase(attribute)] ??
                 []
               ).map((tx) => (
                 <MenuItem key={tx} value={tx}>

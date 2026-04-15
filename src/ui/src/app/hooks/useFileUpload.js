@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { read, utils } from "xlsx";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import Papa from "papaparse";
 import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useValidProteomeIds } from "#hooks/useValidProteomeIds.js";
@@ -29,9 +30,7 @@ export default function useFileUpload({
   const lastProcessedFileNameRef = useRef(null);
 
   const { data: validProteomeResponse, isError: validProteomeError } =
-    useValidProteomeIds(
-      clusterId ? { clusterId, page: 1, size: 100 } : skipToken,
-    );
+    useValidProteomeIds(clusterId ? { clusterId, fetchAll: true } : skipToken);
   const validProteomeIds =
     validProteomeResponse?.data ?? validProteomeResponse ?? {};
 

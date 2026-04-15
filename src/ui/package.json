@@ -38,8 +38,6 @@
     "react-router-dom": "^7.3.0",
     "react-table": "^7.8.0",
     "recompose": "^0.30.0",
-    "redux-persist": "^6.0.0",
-    "redux-persist-indexeddb-storage": "^1.0.4",
     "sass": "^1.85.1",
     "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
@@ -102,6 +100,10 @@
     "#store/*": {
       "storybook": "./src/app/store/*",
       "default": "./src/app/store/*"
+    },
+    "#app/utils/*": {
+      "storybook": "./src/app/utils/*",
+      "default": "./src/app/utils/*"
     },
     "#utils/*": {
       "storybook": "./src/utils/*",

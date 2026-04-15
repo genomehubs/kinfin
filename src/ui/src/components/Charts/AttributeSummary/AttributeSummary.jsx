@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { DataGrid } from "@mui/x-data-grid";
+import { getSessionId } from "#app/utils/session";
 import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
 import useFullscreen from "#hooks/useFullscreen";
 import { useGetAttributeSummaryQuery } from "#store/api";
 import useIsCurrentPage from "#hooks/useIsCurrentPage";
 import usePageCustomisation from "#hooks/usePageCustomisation";
-import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
@@ -16,6 +17,8 @@ const AttributeSummary = ({
   attribute,
   attributeSummaryColumnDescriptions: columnDescriptions,
 }) => {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
   const isCurrentPage = useIsCurrentPage("attribute-summary");
   const { isFullScreen } = useFullscreen();
 
@@ -31,17 +34,17 @@ const AttributeSummary = ({
     1,
   );
 
-  const { selectedCodes: asCodes, setSelectedCodes: setAsCodes } =
-    usePageCustomisation({
-      searchParamKey: "AS_code",
-      columnDescriptions,
-    });
+  const { selectedCodes: asCodes } = usePageCustomisation({
+    searchParamKey: "AS_code",
+    columnDescriptions,
+  });
 
   // Fetching is handled by RTK Query hook above
 
   const { data: attributeResp } = useGetAttributeSummaryQuery(
     {
       attribute,
+      sessionId,
       page: page + 1,
       size: pageSize,
       AS_code: asCodes.length > 0 ? asCodes : undefined,

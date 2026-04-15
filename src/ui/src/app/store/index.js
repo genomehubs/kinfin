@@ -1,31 +1,17 @@
-import { persistReducer, persistStore } from "redux-persist";
-
 import { api } from "./api";
 import { configureStore } from "@reduxjs/toolkit";
-import createIndexedDBStorage from "redux-persist-indexeddb-storage";
 import rootReducer from "./reducers";
 
-const storage = createIndexedDBStorage("myReduxDB");
 const { VITE_NODE_ENV } = import.meta.env;
 
-const persistConfig = {
-  key: "root",
-  storage,
-  // Exclude RTK Query API state from persistence
-  // (it manages its own cache)
-  blacklist: [api.reducerPath],
-};
-
-const persistedReducer = persistReducer(persistConfig, rootReducer);
-
 const store = configureStore({
-  reducer: persistedReducer,
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       thunk: true,
       serializableCheck: {
         // RTK Query needs to store functions and other non-serializable values
-        ignoredActions: ["persist/PERSIST", "persist/REHYDRATE"],
+        ignoredActions: [],
         ignoredPaths: [api.reducerPath],
       },
       immutableCheck: VITE_NODE_ENV !== "PRODUCTION",
@@ -48,7 +34,4 @@ const store = configureStore({
     traceLimit: 25,
   },
 });
-
-const persistor = persistStore(store);
-
-export { persistor, store };
+export { store };

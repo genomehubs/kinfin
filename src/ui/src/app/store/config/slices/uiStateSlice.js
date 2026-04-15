@@ -1,10 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
-
 import { getInitialUrlSearchParams } from "#utils/getInitialUrlSearchParams";
 
 const params = getInitialUrlSearchParams();
 
 const initialState = {
+  currentSessionId: null, // Explicitly track which session is being viewed
   selectedAttributeTaxonset: {
     attribute: params.get("attribute") || "all",
     taxonset: params.get("taxonset") || "all",
@@ -19,6 +19,9 @@ const uiStateSlice = createSlice({
   name: "uiState",
   initialState,
   reducers: {
+    setCurrentSessionId: (state, action) => {
+      state.currentSessionId = action.payload;
+    },
     setSelectedAttributeTaxonset: (state, action) => {
       state.selectedAttributeTaxonset = action.payload;
     },
@@ -41,6 +44,7 @@ const uiStateSlice = createSlice({
 });
 
 export const {
+  setCurrentSessionId,
   setSelectedAttributeTaxonset,
   setSelectedClusterSet,
   setPollingLoading,

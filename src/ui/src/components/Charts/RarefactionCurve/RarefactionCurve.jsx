@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from "react";
 
+import { getSessionId } from "@/app/utils/session";
 import styles from "./RarefactionCurve.module.scss";
+import { useParams } from "react-router-dom";
 import usePlot from "#hooks/usePlot";
 
 const RarefactionCurve = ({ attribute }) => {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+
   const {
     data: rarefactionCurveBlob,
     isFetching,
     error,
   } = usePlot(
-    { attribute, plotType: "rarefaction-curve" },
-    { skip: !attribute },
+    { attribute, plotType: "rarefaction-curve", sessionId },
+    { skip: !attribute, refetchOnMountOrArgChange: true },
   );
 
   const [blobUrl, setBlobUrl] = useState(null);

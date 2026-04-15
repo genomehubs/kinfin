@@ -1,10 +1,15 @@
 import React, { useMemo } from "react";
 
+import { getSessionId } from "#app/utils/session";
 import styles from "./RunSummary.module.scss";
 import { useGetRunSummaryQuery } from "#store/api";
+import { useParams } from "react-router-dom";
 
 const RunSummary = () => {
-  const { data: resp } = useGetRunSummaryQuery(undefined, {
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+
+  const { data: resp } = useGetRunSummaryQuery(sessionId, {
     skip: false,
   });
 

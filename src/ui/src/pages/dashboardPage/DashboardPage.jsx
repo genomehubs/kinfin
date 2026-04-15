@@ -1,32 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { mainCharts, rowCharts } from "./descriptors";
 
 import AppLayout from "#components/AppLayout";
 import AttributeSelector from "#components/AttributeSelector";
-import AttributeSummary from "#components/Charts/AttributeSummary";
 import Box from "@mui/material/Box";
 import ChartCard from "#components/ChartCard";
-import ClusterMetrics from "#components/Charts/ClusterMetrics";
-import ClusterSizeDistribution from "#components/Charts/ClusterSizeDistribution";
 import DashboardChartRenderer from "./DashboardChartRenderer";
-import ClusterSummary from "#components/Charts/ClusterSummary";
 import DataTable from "#components/FileUpload/DataTable";
-import Modal from "@mui/material/Modal";
-import RarefactionCurve from "#components/Charts/RarefactionCurve";
-import RunSummary from "#components/RunSummary";
 import EnlargedChartModal from "./EnlargedChartModal";
-import { mainCharts, rowCharts } from "./descriptors";
+import Modal from "@mui/material/Modal";
+import RunSummary from "#components/RunSummary";
 import { handleDownload } from "../../utils/downloadHandlers";
-import { mapChartName } from "../../utils/mappings";
-import {
-  setPollingLoading,
-  setSelectedAttributeTaxonset as setSelectedAttributeTaxonsetAction,
-} from "../../app/store/config/slices/uiStateSlice";
 import styles from "./Dashboard.module.scss";
 import useDashboardData from "./useDashboardData";
-import DashboardGrid from "./DashboardGrid";
 import { useInitAnalysis } from "#hooks/useInitAnalysis";
+import { useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 
 const DashboardPage = () => {
@@ -47,7 +35,6 @@ const DashboardPage = () => {
     selectedAttributeTaxonsetLocal,
     rarefactionCurveBlob,
     clusterSizeDistributionBlob,
-    sessionMeta,
     sessionLoading,
     isLoadingSession,
     effectiveMeta,

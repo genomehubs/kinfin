@@ -1,8 +1,12 @@
-import { useMemo } from "react";
+import { getSessionId } from "../utils/session";
 import { useGetPlotQuery } from "#store/api";
+import { useMemo } from "react";
 
-const usePlot = ({ attribute, plotType }, options = {}) => {
-  const query = useGetPlotQuery({ attribute, plotType }, options);
+const usePlot = (
+  { attribute, plotType, sessionId = getSessionId() } = {},
+  options = {},
+) => {
+  const query = useGetPlotQuery({ attribute, plotType, sessionId }, options);
 
   const normalized = useMemo(() => {
     const raw = query.data;

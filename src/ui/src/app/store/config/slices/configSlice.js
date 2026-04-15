@@ -1,5 +1,27 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const STORAGE_KEY = "__kinfin_sessions";
+
+// Load persistent sessions from localStorage
+const loadPersistedSessions = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    console.warn("Failed to load persisted sessions:", e);
+    return {};
+  }
+};
+
+// Save session configs to localStorage
+const persistSessions = (sessions) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.warn("Failed to persist sessions:", e);
+  }
+};
+
 const initialState = {
   data: {
     /*
@@ -13,6 +35,7 @@ const initialState = {
       expiryDate: "2025-06-12T20:00:00Z",
     }
     */
+    ...loadPersistedSessions(),
   },
 };
 
@@ -30,13 +53,13 @@ const configSlice = createSlice({
         meta = {},
       } = action.payload;
       if (!sessionId) return;
-      // state here is just the 'data' object (see configWrapper in reducers.js)
+      // state contains { data: {...} }
       if (!state || typeof state !== "object") {
         return;
       }
 
       // Get existing entry if it exists
-      const existing = state[sessionId];
+      const existing = state.data[sessionId];
 
       // Build the new entry: start with existing data, override with provided values, update meta
       // This preserves previously stored data when updates don't include all fields
@@ -70,25 +93,51 @@ const configSlice = createSlice({
       }
 
       // Store the merged entry
-      state[sessionId] = newEntry;
-    },
-    renameConfig: (state, action) => {
-      const { sessionId, newName } = action.payload;
-      if (!state || typeof state !== "object") return;
-      if (state[sessionId]) {
-        state[sessionId].name = newName;
+      state.data[sessionId] = newEntry;
+
+      // Persist lightweight metadata to localStorage (excluding config)
+      const lightweight = {
+        sessionId: newEntry.sessionId,
+        name: newEntry.name,
+        clusterId: newEntry.clusterId,
+        clusterName: newEntry.clusterName,
+        status: newEntry.status,
+        expiryDate: newEntry.expiryDate,
+      };
+
+      // Get all persisted sessions and update/add this one
+      try {
+        const allSessions = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "{}",
+        );
+        allSessions[sessionId] = lightweight;
+        persistSessions(allSessions);
+      } catch (e) {
+        console.warn("Failed to persist session metadata:", e);
       }
     },
     deleteConfig: (state, action) => {
       if (!state || typeof state !== "object") return;
-      delete state[action.payload];
+      const sessionId = action.payload;
+      delete state.data[sessionId];
+
+      // Remove from persisted sessions in localStorage
+      try {
+        const allSessions = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "{}",
+        );
+        delete allSessions[sessionId];
+        persistSessions(allSessions);
+      } catch (e) {
+        console.warn("Failed to update persisted sessions:", e);
+      }
     },
     updateSessionMeta: (state, action) => {
       const { sessionId, meta } = action.payload;
       if (!state || typeof state !== "object") return;
-      if (state[sessionId]) {
-        state[sessionId] = {
-          ...state[sessionId],
+      if (state.data[sessionId]) {
+        state.data[sessionId] = {
+          ...state.data[sessionId],
           ...meta, // status, expiryDate, etc.
         };
       }
@@ -99,10 +148,18 @@ const configSlice = createSlice({
 
 export const {
   storeConfig,
-  renameConfig,
   deleteConfig,
   updateSessionMeta,
   storeConfigReset,
 } = configSlice.actions;
+
+export const getInitialState = () => {
+  // Reload persisted sessions from localStorage each time initialState is needed
+  return {
+    data: {
+      ...loadPersistedSessions(),
+    },
+  };
+};
 
 export default configSlice.reducer;
