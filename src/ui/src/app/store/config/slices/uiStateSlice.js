@@ -1,8 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { getInitialUrlSearchParams } from "#utils/getInitialUrlSearchParams";
 
-const params = new URLSearchParams(window.location.search);
+const params = getInitialUrlSearchParams();
 
 const initialState = {
+  currentSessionId: null, // Explicitly track which session is being viewed
   selectedAttributeTaxonset: {
     attribute: params.get("attribute") || "all",
     taxonset: params.get("taxonset") || "all",
@@ -10,12 +12,16 @@ const initialState = {
   selectedClusterSet: null,
   pollingLoadingBySessionId: {}, // object keyed by sessionId
   downloadLoading: {}, // object keyed by type
+  columnSettings: {}, // object keyed by tableKey -> settings object/array
 };
 
 const uiStateSlice = createSlice({
   name: "uiState",
   initialState,
   reducers: {
+    setCurrentSessionId: (state, action) => {
+      state.currentSessionId = action.payload;
+    },
     setSelectedAttributeTaxonset: (state, action) => {
       state.selectedAttributeTaxonset = action.payload;
     },
@@ -30,14 +36,20 @@ const uiStateSlice = createSlice({
       const { type, loading } = action.payload;
       state.downloadLoading[type] = loading;
     },
+    setColumnSettings: (state, action) => {
+      const { tableKey, settings } = action.payload;
+      state.columnSettings[tableKey] = settings;
+    },
   },
 });
 
 export const {
+  setCurrentSessionId,
   setSelectedAttributeTaxonset,
   setSelectedClusterSet,
   setPollingLoading,
   setDownloadLoading,
+  setColumnSettings,
 } = uiStateSlice.actions;
 
 export default uiStateSlice.reducer;

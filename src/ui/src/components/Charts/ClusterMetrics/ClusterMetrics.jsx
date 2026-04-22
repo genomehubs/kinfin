@@ -1,11 +1,17 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
+import ClusterLinkColumn from "#components/Tables/ClusterLinkColumn";
 import { DataGrid } from "@mui/x-data-grid";
-import { getClusterMetrics } from "../../../app/store/analysis/slices/clusterMetricsSlice";
+import { getSessionId } from "#app/utils/session";
 import styles from "./ClusterMetrics.module.scss";
+import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
-import { useSearchParams } from "react-router-dom";
+import useFullscreen from "#hooks/useFullscreen";
+import { useGetClusterMetricsQuery } from "#store/api";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
+import usePageCustomisation from "#hooks/usePageCustomisation";
+import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
@@ -15,70 +21,61 @@ const ClusterMetrics = ({
   taxonset,
   clusterMetricsColumnDescriptions: columnDescriptions,
 }) => {
-  const isCurrentPage = window.location.pathname.includes("cluster-metrics");
-  const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
-  );
-
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(document.fullscreenElement != null);
-    };
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
-  const dispatch = useDispatch();
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+  const isCurrentPage = useIsCurrentPage("cluster-metrics");
+  const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const clusterMetrics = useSelector(
-    (state) => state?.analysis?.clusterMetrics?.data || null
+  // Get linkouts from Redux state for the current session
+  const linkouts = useSelector(
+    (state) => state?.config?.data?.[sessionId]?.linkouts || [],
   );
 
   const page = Math.max(
     parseInt(searchParams.get("CM_page") || "1", 10) - 1,
-    0
+    0,
   );
   const pageSize = Math.max(
     parseInt(searchParams.get("CM_pageSize") || "10", 10),
-    1
+    1,
   );
 
-  const cmCodes = useMemo(() => {
-    if (!searchParams.has("CM_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("CM_code");
-  }, [searchParams, columnDescriptions]);
+  const { selectedCodes: cmCodes } = usePageCustomisation({
+    searchParamKey: "CM_code",
+    columnDescriptions,
+  });
 
-  // Fetch cluster metrics
-  useEffect(() => {
-    if (!attribute || !taxonset) {
-      return;
-    }
+  const { data: clusterMetricsResp } = useGetClusterMetricsQuery(
+    {
+      attribute,
+      taxonSet: taxonset,
+      sessionId,
+      page: page + 1,
+      size: pageSize,
+      CM_code: cmCodes,
+    },
+    { skip: !attribute || !taxonset },
+  );
 
-    dispatch(
-      getClusterMetrics({
-        attribute,
-        taxonSet: taxonset,
-        page: page + 1,
-        size: pageSize,
-        CM_code: cmCodes,
-      })
-    );
-  }, [dispatch, attribute, taxonset, page, pageSize, cmCodes]);
+  const clusterMetrics = clusterMetricsResp?.data ?? clusterMetricsResp ?? null;
+
+  // fetching handled via RTK Query
 
   const rowsData = useMemo(() => {
-    if (!clusterMetrics?.data) {
+    const raw = clusterMetrics ?? {};
+    if (!raw || Object.keys(raw).length === 0) {
       return { rows: [], rowCount: 0 };
     }
 
-    const rows = Object.values(clusterMetrics.data).map((row) => ({
-      id: row.id || row.cluster_id || uuidv4(),
-      ...row,
+    const rows = Object.values(raw).map((row) => ({
+      id: row.id || row.clusterId || row.cluster_id || uuidv4(),
+      ...Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
+      ),
     }));
 
     const totalRows =
@@ -92,7 +89,7 @@ const ClusterMetrics = ({
 
   const defaultColumns = useMemo(() => {
     return columnDescriptions.map((col) => ({
-      field: col.name,
+      field: toCamelCase(col.name),
       headerName: col.alias || col.name,
       minWidth: 120,
     }));
@@ -103,27 +100,70 @@ const ClusterMetrics = ({
     () =>
       columnDescriptions.reduce(
         (acc, col) => ({ ...acc, [col.code]: col.name }),
-        {}
+        {},
       ),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   const filteredColumns = useMemo(() => {
     if (!cmCodes || cmCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
     }
 
     const allowedFields = cmCodes
-      .map((code) => codeToFieldMap[code])
+      .map((code) => toCamelCase(codeToFieldMap[code]))
       .filter(Boolean);
 
     return defaultColumns.filter((col) => allowedFields.includes(col.field));
   }, [cmCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
+
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    const uniqueColumns = filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+
+    // Add linkouts column if linkouts are configured
+    if (linkouts && linkouts.length > 0) {
+      // Calculate column width based on number of linkouts
+      // Layout strategy: 1-3 = full labels, 4+ = icon-only for first 3 + menu
+      let columnWidth = 200; // default
+
+      if (linkouts.length === 1) {
+        // Single full chip: estimate ~60px per 5 chars + padding
+        const nameLen = linkouts[0].name.length;
+        columnWidth = Math.min(200, 80 + nameLen * 8);
+      } else if (linkouts.length <= 3) {
+        // Multiple full chips: ~80px per chip + gaps
+        columnWidth = 80 + linkouts.length * 85;
+      } else {
+        // 4+ linkouts: 4 icon-only chips (36px each: 3 links + 1 menu) + gaps
+        columnWidth = 200; // 4×36 + gaps + padding
+      }
+
+      columnWidth = Math.max(columnWidth, 140); // minimum width
+
+      uniqueColumns.push({
+        field: "linkouts",
+        headerName: "Links",
+        sortable: false,
+        filterable: false,
+        width: columnWidth,
+        renderCell: (params) => (
+          <ClusterLinkColumn rowData={params.row} linkouts={linkouts} />
+        ),
+      });
+    }
+
+    return uniqueColumns;
+  }, [filteredColumns, linkouts]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -132,10 +172,10 @@ const ClusterMetrics = ({
         setSearchParams,
         "CM",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (
@@ -153,7 +193,7 @@ const ClusterMetrics = ({
     >
       <DataGrid
         rows={rowsData.rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

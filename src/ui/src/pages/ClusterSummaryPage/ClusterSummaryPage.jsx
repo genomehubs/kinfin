@@ -1,102 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-
-import AppLayout from "../../components/AppLayout";
-import AttributeSelector from "../../components/AttributeSelector";
-import ChartCard from "../../components/ChartCard";
+import ChartPageShell from "../../components/ChartPageShell";
 import ClusterSummary from "../../components/Charts/ClusterSummary";
-import CustomisationDialog from "../../components/CustomisationDialog";
-import { getColumnDescriptions } from "../../app/store/config/slices/columnDescriptionsSlice";
-import { handleDownload } from "../../utils/downloadHandlers";
-import styles from "./ClusterSummary.module.scss";
-import { useSearchParams } from "react-router-dom";
+import React from "react";
+import useColumnDescriptionsSets from "#hooks/useColumnDescriptionsSets.js";
 
 const ClusterSummaryPage = ({
-  selectedAttributeTaxonset,
-  clusterSummaryColumnDescriptions: columnDescriptions,
+  attribute: propAttribute,
+  taxonset: propTaxonset,
+  setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
-  const dispatch = useDispatch();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const clusterSummaryDownloadLoading = useSelector(
-    (state) => state?.config?.uiState?.downloadLoading?.clusterSummary
-  );
-
-  const [customiseOpen, setCustomiseOpen] = useState(false);
-  const [selectedCodes, setSelectedCodes] = useState([]);
-
-  useEffect(() => {
-    dispatch(getColumnDescriptions());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const codes = searchParams.has("CS_code")
-      ? searchParams.getAll("CS_code")
-      : columnDescriptions
-          .filter((col) => col.isDefault)
-          .map((col) => col.code);
-    if (JSON.stringify(codes) !== JSON.stringify(selectedCodes)) {
-      setSelectedCodes(codes);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, columnDescriptions]);
-
-  const handleCustomisation = () => {
-    setCustomiseOpen(true);
-  };
-
-  const handleApply = (newSelectedCodes) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete("CS_code");
-    newSelectedCodes.forEach((c) => newParams.append("CS_code", c));
-    setSearchParams(newParams);
-    setSelectedCodes(newSelectedCodes);
-    setCustomiseOpen(false);
-  };
-
-  const handleCancel = () => {
-    setCustomiseOpen(false);
-  };
-
-  const handleClose = () => {
-    window.history.back();
-  };
+  const { clusterSummary: clusterColumns } = useColumnDescriptionsSets();
 
   return (
-    <AppLayout>
-      <div className={styles.pageHeader}>
-        <AttributeSelector />
-      </div>
-      <div className={styles.page}>
-        <div className={styles.chartsContainer}>
-          <ChartCard
-            title="Cluster Summary"
-            isDownloading={clusterSummaryDownloadLoading}
-            onDownload={() =>
-              handleDownload({
-                chartKey: "clusterSummary",
-                dispatch,
-                selectedAttributeTaxonset,
-              })
-            }
-            onCustomise={handleCustomisation}
-            onClose={handleClose}
-          >
-            <ClusterSummary />
-          </ChartCard>
-        </div>
-      </div>
-
-      <CustomisationDialog
-        open={customiseOpen}
-        onClose={handleCancel}
-        onApply={handleApply}
-        selectedCodes={selectedCodes}
-        columnDescriptions={columnDescriptions}
-        title="Customise Cluster Summary"
-      />
-    </AppLayout>
+    <ChartPageShell
+      title="Cluster Summary"
+      chartKey="clusterSummary"
+      searchParamKey="CS_code"
+      columnDescriptions={clusterColumns}
+      initialAttribute={propAttribute}
+      initialTaxonset={propTaxonset}
+      setSelectedAttributeTaxonsetProp={propSetSelectedAttributeTaxonset}
+      renderChart={({ attribute, effectiveColumnDescriptions }) => (
+        <ClusterSummary
+          attribute={attribute}
+          clusterSummaryColumnDescriptions={effectiveColumnDescriptions}
+        />
+      )}
+    />
   );
 };
 

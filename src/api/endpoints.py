@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import csv
 import io
 import itertools
@@ -33,6 +34,7 @@ from api.utils import (
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    write_status,
 )
 from core.utils import check_file
 
@@ -62,10 +64,35 @@ CODE_TO_COLUMN_NAME = {item["code"]: item["name"] for item in COLUMN_DESCRIPTION
 CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
 
 
+def _expand_concat_codes(codes: List[str]) -> List[str]:
+    """Expand concatenated 3-digit code strings into a list of 3-char tokens.
+
+    Examples:
+      ['001002'] -> ['001', '002']
+      ['001', '002'] -> ['001', '002']
+      ['001002', '003'] -> ['001', '002', '003']
+    Non-matching values are left as-is.
+    """
+    if not codes:
+        return codes
+    out: List[str] = []
+    for val in codes:
+        if isinstance(val, str) and re.fullmatch(r"(?:\d{3})+", val):
+            # split into 3-character chunks
+            for i in range(0, len(val), 3):
+                chunk = val[i : i + 3]
+                if chunk:
+                    out.append(chunk)
+        else:
+            out.append(val)
+    return out
+
+
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
     clusterId: str
     isAdvanced: bool
+    name: Optional[str] = None
 
 
 class ResponseSchema(BaseModel):
@@ -268,6 +295,29 @@ async def initialize(input_data: InputSchema, request: Request):
         with open(config_f, "w") as file:
             json.dump(input_data.config, file)
 
+        # Persist session metadata (name, cluster info) in a separate meta.json
+        meta_f = os.path.join(result_dir, "meta.json")
+        meta = {
+            "clusterId": input_data.clusterId,
+            "clusterName": cluster_info.get("name") if cluster_info else None,
+        }
+        # Only set name if meta doesn't already exist (don't overwrite existing user-provided name)
+        if os.path.exists(meta_f):
+            try:
+                with open(meta_f, "r") as mf:
+                    existing = json.load(mf)
+            except Exception:
+                existing = {}
+            # preserve existing name if present
+            meta["name"] = existing.get("name") or input_data.name or f"Session {session_id}"
+            meta["clusterId"] = existing.get("clusterId") or meta["clusterId"]
+            meta["clusterName"] = existing.get("clusterName") or meta["clusterName"]
+        else:
+            meta["name"] = input_data.name or f"Session {session_id}"
+
+        with contextlib.suppress(Exception):
+            with open(meta_f, "w") as mf:
+                json.dump(meta, mf)
         command = [
             "python",
             "src/main.py",
@@ -294,13 +344,22 @@ async def initialize(input_data: InputSchema, request: Request):
             ])
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
+        # Create status file immediately with "pending" status so /status endpoint doesn't return 428
+        write_status(status_file, "pending")
         asyncio.create_task(run_cli_command(command, status_file))
+
+        # Include linkouts from clustering config in response
+        linkouts = cluster_info.get("linkouts", [])
 
         return JSONResponse(
             content=ResponseSchema(
                 status="success",
                 message="Analysis task has been queued.",
-                data={"session_id": session_id},
+                data={
+                    "session_id": session_id,
+                    "linkouts": linkouts,
+                    "cluster_name": cluster_info.get("name"),
+                },
                 query=str(request.url),
             ).model_dump(),
             status_code=202,
@@ -319,14 +378,86 @@ async def initialize(input_data: InputSchema, request: Request):
 
 @router.get("/kinfin/status", response_model=ResponseSchema)
 @limiter.limit(LIMIT_STANDARD)
-@check_kinfin_session
 async def get_run_status(request: Request, session_id: str = Depends(header_scheme)):
     try:
+        # Build richer status response including stored config and session metadata
+        result_dir = query_manager.get_session_dir(session_id)
+
+        # Check if session exists
+        if not result_dir:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Kinfin analysis not initialized",
+                    error="session_not_initialized",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=428,
+            )
+
+        status_file = os.path.join(result_dir, f"{session_id}.status")
+        if not os.path.exists(status_file):
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Kinfin analysis not initialized",
+                    error="session_not_initialized",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=428,
+            )
+
+        # Read status file to get current status
+        run_status = read_status(status_file)
+        status = run_status.get("status")
+
+        config = None
+        name = None
+        if result_dir:
+            config_f = os.path.join(result_dir, "config.json")
+            if os.path.exists(config_f):
+                try:
+                    with open(config_f, "r") as cf:
+                        config = json.load(cf)
+                except Exception:
+                    # ignore read/parse errors and continue returning minimal info
+                    config = None
+            meta_f = os.path.join(result_dir, "meta.json")
+            # read stored metadata (name, clusterId, clusterName) if present
+            cluster_id = None
+            cluster_name = None
+            if os.path.exists(meta_f):
+                try:
+                    with open(meta_f, "r") as mf:
+                        meta = json.load(mf)
+                        name = meta.get("name")
+                        cluster_id = meta.get("clusterId") or meta.get("cluster_id")
+                        cluster_name = meta.get("clusterName") or meta.get("cluster_name")
+                except Exception:
+                    name = None
+
+        status_info = get_session_status(session_id)
+
+        # Determine if analysis is complete based on status
+        is_complete = status not in ["pending", "running"]
+        message = "Kinfin analysis is complete." if is_complete else "Kinfin analysis is still initializing."
+
         return JSONResponse(
             content=ResponseSchema(
                 status="success",
-                message="Kinfin analysis is complete.",
-                data={"is_complete": True},
+                message=message,
+                data={
+                    "is_complete": is_complete,
+                    "session_id": session_id,
+                    "status": status_info,
+                    "config": config,
+                    "name": name,
+                    # include cluster metadata where available (both snake_case and camelCase)
+                    "clusterId": cluster_id,
+                    "clusterName": cluster_name,
+                    "cluster_id": cluster_id,
+                    "cluster_name": cluster_name,
+                },
                 query=str(request.url),
             ).model_dump(),
             status_code=200,
@@ -584,7 +715,11 @@ async def get_cluster_summary(
 
         code_to_column = {item["code"]: item["name"] for item in column_descriptions}
         code_to_alias = {item["code"]: item.get("alias", item["name"]) for item in column_descriptions}
+        # CS_code is expected as concatenated 3-digit token strings (e.g. '001002')
+
         if CS_code:
+            # allow concatenated 3-digit tokens (e.g. CS_code=001002003) as a single value
+            CS_code = _expand_concat_codes(CS_code)
             # === OPTIMIZED: build the global key set ONCE ===
             all_keys_ordered: List[str] = []
             seen_keys = set()
@@ -1031,7 +1166,10 @@ async def get_attribute_summary(
         result = parse_attribute_summary_file(filepath=filepath)
 
         # ---- Apply AS_code filter ----
+        # AS_code is expected as concatenated 3-digit token strings (e.g. '005025')
         if AS_code:
+            # allow concatenated 3-digit tokens e.g. AS_code=005025
+            AS_code = _expand_concat_codes(AS_code)
             selected_columns = []
             for code in AS_code:
                 if code in code_to_column:
@@ -1193,7 +1331,10 @@ async def get_cluster_metrics(
         rows = list(result.values())
 
         # ---- Apply CM_code filter ----
+        # CM_code is expected as concatenated 3-digit token strings (e.g. '005025')
         if CM_code:
+            # allow concatenated 3-digit tokens e.g. CM_code=005025
+            CM_code = _expand_concat_codes(CM_code)
             selected_columns = [code_to_column[code] for code in CM_code if code in code_to_column]
 
             # Ensure cluster_id is always included

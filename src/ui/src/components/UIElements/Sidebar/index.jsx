@@ -8,9 +8,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  TextField,
 } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -19,22 +17,18 @@ import CircularProgress from "@mui/material/CircularProgress";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LightModeIcon from "@mui/icons-material/LightMode";
-// MUI Icons
 import MenuIcon from "@mui/icons-material/Menu";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
-import RenameDialog from "./RenameDialog";
 import Tooltip from "@mui/material/Tooltip";
-import { deleteConfig } from "../../../app/store/config/slices/configSlice";
-import { getBatchStatus } from "../../../app/store/config/slices/batchStatusSlice";
-import { getValidProteomeIds } from "../../../app/store/config/slices/proteomeIdsSlice";
-import { renameConfig } from "../../../app/store/config/slices/configSlice";
+import { downloadBlobFile } from "#utils/downloadBlobFile";
 import styles from "./Sidebar.module.scss";
-import { useTheme } from "../../../hooks/useTheme";
+import { useBatchStatus } from "#hooks/useBatchStatus.js";
+import useConfigActions from "#hooks/useConfigActions";
+import { useSelector } from "react-redux";
+import { useTheme } from "#hooks/useTheme";
 
 const downloadAsTSV = (analysis) => {
   const { name, config, sessionId } = analysis;
@@ -46,19 +40,18 @@ const downloadAsTSV = (analysis) => {
   const tsvRows = [
     keys.join("\t"),
     ...config.map((row) =>
-      keys.map((k) => (row[k] !== undefined ? row[k] : "")).join("\t")
+      keys.map((k) => (row[k] !== undefined ? row[k] : "")).join("\t"),
     ),
   ];
   const blob = new Blob([tsvRows.join("\n")], {
     type: "text/tab-separated-values",
   });
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${name || sessionId}.tsv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadBlobFile(
+    blob,
+    `${name || sessionId}.tsv`,
+    "text/tab-separated-values",
+  );
 };
 
 const getStatusInfo = (status) => {
@@ -98,44 +91,33 @@ const getStatusInfo = (status) => {
 
 const Sidebar = ({ open, setOpen }) => {
   const { theme, toggleTheme } = useTheme();
-  const dispatch = useDispatch();
+  const { deleteConfig } = useConfigActions();
   const { sessionId } = useParams();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [nameError, setNameError] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const navigate = useNavigate();
 
-  const analysisConfigs = useSelector(
-    (state) => state?.config?.storeConfig?.data
-  );
+  const analysisConfigs = useSelector((state) => state?.config?.data);
   const pollingLoadingBySessionId = useSelector(
-    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {}
+    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {},
   );
-  const selectedClusterSet = useSelector(
-    (state) => state?.config?.uiState?.selectedClusterSet
-  );
+
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
 
-  useEffect(() => {
-    if (selectedClusterSet) {
-      dispatch(getValidProteomeIds({ clusterId: selectedClusterSet }));
-    }
-  }, [selectedClusterSet]);
-
   const hasFetchedStatusRef = useRef(false);
+  const [getBatchStatus] = useBatchStatus();
   useEffect(() => {
     if (!hasFetchedStatusRef.current && analysisList?.length) {
       const sessionIds = analysisList.map((item) => item.sessionId);
-      dispatch(getBatchStatus({ sessionIds }));
+      getBatchStatus(sessionIds);
       hasFetchedStatusRef.current = true;
     }
-  }, [analysisList]);
+  }, [analysisList, getBatchStatus]);
 
   const groupedAnalysis = analysisList?.reduce((acc, item) => {
+    if (!item || !item.sessionId) return acc;
     const clusterId = item.clusterId || "unassigned";
     if (!acc[clusterId]) {
       acc[clusterId] = {
@@ -147,26 +129,10 @@ const Sidebar = ({ open, setOpen }) => {
     return acc;
   }, {});
 
-  const handleSubmit = () => {
-    if (!userName.trim()) {
-      setNameError("Name is required.");
-      return;
-    }
-    const payload = {
-      newName: userName.trim(),
-      sessionId: selectedItem?.sessionId,
-    };
-    dispatch(renameConfig(payload));
-    setNameError("");
-    setUserName("");
-    setModalOpen(false);
-  };
-
   const handleMenuOpen = (event, item) => {
     event.stopPropagation();
     setSelectedItem(item);
     setAnchorEl(event.currentTarget);
-    setUserName(item.name);
   };
 
   const handleMenuClose = () => {
@@ -207,7 +173,7 @@ const Sidebar = ({ open, setOpen }) => {
                           ) : (
                             (() => {
                               const { color, icon, label } = getStatusInfo(
-                                item.status
+                                item.status,
                               );
                               return (
                                 <Tooltip title={label} arrow>
@@ -232,17 +198,19 @@ const Sidebar = ({ open, setOpen }) => {
                             })()
                           )}
                         </Box>
-                        <span className={styles.label}>{item.name}</span>
+                        <span className={styles.label}>
+                          {item.name || `Session ${item.sessionId}`}
+                        </span>
                         <IconButton
                           size="small"
                           onClick={(e) => handleMenuOpen(e, item)}
                         >
-                          <MoreHorizIcon fontSize="small" />
+                          <MenuIcon fontSize="small" />
                         </IconButton>
                       </div>
                     ))}
                   </div>
-                )
+                ),
               )
             ) : (
               <div className={styles.emptyState}>No saved analyses</div>
@@ -278,14 +246,6 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            setModalOpen(true);
-            handleMenuClose();
-          }}
-        >
-          <EditOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> Rename
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
             setDeleteDialogOpen(true);
             handleMenuClose();
           }}
@@ -294,15 +254,6 @@ const Sidebar = ({ open, setOpen }) => {
         </MenuItem>
       </Menu>
 
-      <RenameDialog
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleSubmit}
-        value={userName}
-        setValue={setUserName}
-        error={nameError}
-        setError={setNameError}
-      />
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -321,7 +272,7 @@ const Sidebar = ({ open, setOpen }) => {
             color="error"
             variant="contained"
             onClick={() => {
-              dispatch(deleteConfig(selectedItem?.sessionId));
+              deleteConfig(selectedItem?.sessionId);
               setDeleteDialogOpen(false);
             }}
           >

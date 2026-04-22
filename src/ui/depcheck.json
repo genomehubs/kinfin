@@ -1,0 +1,422 @@
+{
+  "dependencies": [
+    "@fontsource/roboto",
+    "dotenv",
+    "fast-is-equal",
+    "path",
+    "rc-tooltip",
+    "react-paginate",
+    "react-query",
+    "recompose"
+  ],
+  "devDependencies": [
+    "@chromatic-com/storybook",
+    "@storybook/addon-essentials",
+    "@storybook/addon-onboarding",
+    "@storybook/blocks",
+    "@storybook/react-vite",
+    "@testing-library/react",
+    "@testing-library/user-event",
+    "@types/react-dom",
+    "@vitest/coverage-v8",
+    "identity-obj-proxy",
+    "jest-environment-jsdom",
+    "playwright",
+    "prop-types",
+    "vite-tsconfig-paths"
+  ],
+  "missing": {
+    "@storybook/addon-actions": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/TableComponent.stories.jsx"
+    ],
+    "redux": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/reducers.js"
+    ],
+    "reselect": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/selectors/uiStateSelectors.js"
+    ]
+  },
+  "using": {
+    "@babel/preset-env": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/babel.config.cjs"
+    ],
+    "@babel/preset-react": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/babel.config.cjs"
+    ],
+    "@eslint/js": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/eslint.config.js"
+    ],
+    "globals": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/eslint.config.js"
+    ],
+    "eslint-plugin-react-hooks": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/eslint.config.js"
+    ],
+    "eslint-plugin-react-refresh": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/eslint.config.js"
+    ],
+    "eslint": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/eslint.config.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json"
+    ],
+    "babel-jest": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/jest.config.cjs"
+    ],
+    "@testing-library/jest-dom": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/jest.setup.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/setupTests.js"
+    ],
+    "husky": ["/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json"],
+    "jest": ["/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json"],
+    "storybook": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vitest.workspace.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/TableComponent.stories.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "vite": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vite.config.js"
+    ],
+    "sass": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vite.config.js"
+    ],
+    "eslint-plugin-storybook": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json"
+    ],
+    "react": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/package.json",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/main.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/toastNotifications.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/RarefactionCurvePage/RarefactionCurvePage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/RarefactionCurvePage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/ClusterSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSizeDistributionPage/ClusterSizeDistributionPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSizeDistributionPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/ClusterMetricsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/AttributeSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/TableComponent.stories.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/RunSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/ValidationErrors/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/JsonEditor/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/FileDropzone/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/TaxonCountPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/RarefactionCurve/RarefactionCurve.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/RarefactionCurve/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/CountsByTaxon/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSizeDistribution/ClusterSizeDistribution.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSizeDistribution/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAndProteinDistributionPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAbsenceAcrossTaxonSets/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/api.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/index.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/analysisSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/configSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/runStatusSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/uiStateSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/selectors/clusteringSelectors.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useClusteringSets.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useColumnDescriptions.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useColumnDescriptionsSets.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useConfigActions.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useHydrateCurrentSession.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useSelectedAttributeTaxonset.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useTheme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useUIStateActions.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "@vitejs/plugin-react-swc": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vite.config.js"
+    ],
+    "vitest": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vitest.workspace.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "@storybook/experimental-addon-test": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vitest.workspace.js"
+    ],
+    "@vitest/browser": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/vitest.workspace.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "react-router-dom": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/ClusterSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/ClusterMetricsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/AttributeSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx"
+    ],
+    "redux-persist": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/index.js"
+    ],
+    "react-redux": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/RarefactionCurvePage/RarefactionCurvePage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/ClusterSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSizeDistributionPage/ClusterSizeDistributionPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/ClusterMetricsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/AttributeSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/TaxonCountPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAndProteinDistributionPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAbsenceAcrossTaxonSets/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/api.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/index.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/analysisSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/configSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/runStatusSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/uiStateSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/selectors/clusteringSelectors.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useClusteringSets.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useConfigActions.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useHydrateCurrentSession.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useSelectedAttributeTaxonset.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useUIStateActions.js"
+    ],
+    "notistack": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/toastNotifications.js"
+    ],
+    "@mui/material": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/FileDropzone/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx"
+    ],
+    "react-dom": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/main.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/toastNotifications.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/ClusterSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/ClusterMetricsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/AttributeSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "@types/react": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/RarefactionCurvePage/RarefactionCurvePage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSummaryPage/ClusterSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterSizeDistributionPage/ClusterSizeDistributionPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/ClusterMetricsPage/ClusterMetricsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/AttributeSummaryPage/AttributeSummaryPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/FileDropzone/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/TaxonCountPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAndProteinDistributionPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAbsenceAcrossTaxonSets/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useClusteringSets.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useConfigActions.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useHydrateCurrentSession.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useSelectedAttributeTaxonset.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/hooks/useUIStateActions.js"
+    ],
+    "@emotion/react": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx"
+    ],
+    "@emotion/styled": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/App.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/utils/theme.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DefineNodeLabelsPage/DefineNodeLabelsPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/DashboardPage/DashboardPage.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/RenameDialog.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/DataTable/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/CustomisationDialog/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AttributeSelector/AttributeSelector.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/AppLayout/index.jsx"
+    ],
+    "@mui/icons-material": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/pages/Home/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Navbar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/FileDropzone/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSummary/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ClusterSetSelectionDropdown/ClusterSetSelectionDropdown.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/BreadcrumbsNav/index.jsx"
+    ],
+    "@storybook/addon-actions": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/TableComponent.stories.jsx"
+    ],
+    "react-table": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/TableComponent/index.jsx"
+    ],
+    "@reduxjs/toolkit": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/UIElements/Sidebar/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/api.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/index.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/analysisSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/configSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/runStatusSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/slices/uiStateSlice.js",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/selectors/clusteringSelectors.js"
+    ],
+    "xlsx": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx"
+    ],
+    "papaparse": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/FileUpload/index.jsx"
+    ],
+    "d3": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/TaxonCountPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/CountsByTaxon/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAndProteinDistributionPerTaxonSet/index.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterAbsenceAcrossTaxonSets/index.jsx"
+    ],
+    "@mui/x-data-grid": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx"
+    ],
+    "uuid": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterSummary/ClusterSummary.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/ClusterMetrics/ClusterMetrics.jsx",
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/Charts/AttributeSummary/AttributeSummary.jsx"
+    ],
+    "react-icons": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/components/ChartCard/index.jsx"
+    ],
+    "axios": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/api.js"
+    ],
+    "redux-persist-indexeddb-storage": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/index.js"
+    ],
+    "redux": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/reducers.js"
+    ],
+    "reselect": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/src/app/store/config/selectors/uiStateSelectors.js"
+    ],
+    "@storybook/react": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ],
+    "@storybook/test": [
+      "/Users/rchallis/projects/genomehubs/kinfin/src/ui/.storybook/vitest.setup.js"
+    ]
+  },
+  "invalidFiles": {},
+  "invalidDirs": {}
+}

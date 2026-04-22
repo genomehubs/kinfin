@@ -1,7 +1,6 @@
 import AttributeSummary from "./AttributeSummary";
-import AttributeSummaryContainer from "./AttributeSummaryContainer";
 import React from "react";
 
-export default AttributeSummaryContainer;
+export default AttributeSummary;
 
-export { AttributeSummary, AttributeSummaryContainer };
+export { AttributeSummary };

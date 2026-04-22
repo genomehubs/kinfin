@@ -1,30 +1,108 @@
 {
-  // Enable formatting and linting for Python
+  // ============================================================================
+  // KINFIN DEVELOPMENT WORKSPACE SETTINGS
+  // ============================================================================
+  // These settings apply to your workspace (both locally and in devcontainer).
+  // The devcontainer provides additional filesystem isolation from your host.
+  //
+  // IMPORTANT: For maximum safety with Copilot Chat, develop in the devcontainer.
+  // See .devcontainer/README.md for sandboxing details.
+  // ============================================================================
+
+  // ============================================================================
+  // PYTHON CONFIGURATION
+  // ============================================================================
   "[python]": {
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
-    }
+    },
+    "editor.rulers": [88],
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
   },
-
-  // Python specific
   "python.formatting.provider": "black",
   "python.formatting.blackArgs": ["--line-length", "88"],
   "python.linting.flake8Enabled": true,
   "python.linting.enabled": true,
   "python.linting.flake8Args": ["--max-line-length=88"],
   "python.sortImports.args": ["--profile", "black"],
-
-  // Enable error lens
-  "errorLens.enabled": true,
-
-  // iSort will respect Black style
   "isort.args": ["--profile", "black"],
 
-  // Enable auto save
+  // ============================================================================
+  // JAVASCRIPT/TYPESCRIPT/NODE CONFIGURATION
+  // ============================================================================
+  "[javascript]": {
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[typescript]": {
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.formatOnSave": true
+  },
+  "eslint.validate": ["javascript", "typescript"],
+  "eslint.format.enable": true,
+
+  // ============================================================================
+  // EDITOR & FILE PREFERENCES
+  // ============================================================================
+  "editor.detectIndentation": true,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
   "files.autoSave": "onFocusChange",
+  "errorLens.enabled": true,
+
+  // ============================================================================
+  // SECURITY & SANDBOXING SETTINGS
+  // ============================================================================
+  // These settings help protect your system when using Copilot Chat.
+  // The devcontainer provides filesystem isolation; these settings add
+  // additional guards within VS Code.
+  // ============================================================================
+  "security.workspace.trust.enabled": true,
+  "security.workspace.trust.untrustedFiles": "prompt",
+  "security.restrictInlineScriptExecution": true,
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+
+  // ============================================================================
+  // FILE EXCLUSIONS
+  // ============================================================================
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/.env": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.venv": true
+  },
+
+  // ============================================================================
+  // GIT CONFIGURATION
+  // ============================================================================
+  "git.ignoreLimitWarning": true,
+  "git.autofetch": false,
+
+  // ============================================================================
+  // PROJECT SPECIFIC
+  // ============================================================================
   "cSpell.words": ["Kinfin", "proteome"],
   "python-envs.defaultEnvManager": "ms-python.python:conda",
   "python-envs.defaultPackageManager": "ms-python.python:conda",

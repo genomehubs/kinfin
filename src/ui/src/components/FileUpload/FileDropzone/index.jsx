@@ -1,8 +1,14 @@
 import React, { useEffect } from "react";
+
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import styles from "./FileDropZone.module.scss";
 
-const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
+const FileDropZone = ({
+  selectedName,
+  inputRef,
+  onChange,
+  disabled = false,
+}) => {
   useEffect(() => {
     const preventDefaults = (e) => {
       e.preventDefault();
@@ -10,12 +16,12 @@ const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
     };
 
     ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) =>
-      window.addEventListener(eventName, preventDefaults)
+      window.addEventListener(eventName, preventDefaults),
     );
 
     return () => {
       ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) =>
-        window.removeEventListener(eventName, preventDefaults)
+        window.removeEventListener(eventName, preventDefaults),
       );
     };
   }, []);
@@ -23,7 +29,7 @@ const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-
+    if (disabled) return;
     const file = e.dataTransfer.files?.[0];
     if (file) {
       const simulatedEvent = { target: { files: [file] } };
@@ -34,7 +40,6 @@ const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
   return (
     <div
       className={styles.uploadBox}
-      onClick={onClick}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
@@ -48,7 +53,12 @@ const FileDropZone = ({ onClick, selectedName, inputRef, onChange }) => {
         ref={inputRef}
         accept=".csv,.tsv,.xls,.xlsx,.json"
         onChange={onChange}
-        hidden
+        onClick={(e) => {
+          if (disabled) return;
+          // Clear the input value so selecting the same file again fires onChange
+          e.target.value = null;
+        }}
+        disabled={disabled}
       />
     </div>
   );

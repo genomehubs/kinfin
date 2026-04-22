@@ -1,23 +1,26 @@
-import { useLocation, Link } from "react-router-dom";
-import { breadcrumbMap } from "../../utils/breadcrumbConfig";
-import Navbar from "../Navbar";
-import Sidebar from "../UIElements/Sidebar";
-import styles from "./AppLayout.module.scss";
-import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useSelector } from "react-redux";
+import Navbar from "#components/Navbar";
+import Sidebar from "#components/UIElements/Sidebar";
+import { breadcrumbMap } from "#utils/breadcrumbConfig";
+import styles from "./AppLayout.module.scss";
+import useHydrateCurrentSession from "#hooks/useHydrateCurrentSession";
 import { useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useState } from "react";
 
 const AppLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { sessionId } = useParams();
   const { pathname } = useLocation();
 
-  const analysisConfigs = useSelector(
-    (state) => state?.config?.storeConfig?.data
-  );
+  const analysisConfigs = useSelector((state) => state?.config?.data);
   const analysisList = analysisConfigs && Object?.values(analysisConfigs);
+
+  // Ensure we hydrate from localStorage/currentSessionId into redux if needed
+  useHydrateCurrentSession(sessionId);
 
   const sessionMetaMap = {};
   analysisList?.forEach((item) => {
@@ -44,7 +47,7 @@ const AppLayout = ({ children }) => {
   });
 
   const pollingLoadingBySessionId = useSelector(
-    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {}
+    (state) => state?.config?.uiState?.pollingLoadingBySessionId || {},
   );
   const isLoading = pollingLoadingBySessionId[sessionId];
 

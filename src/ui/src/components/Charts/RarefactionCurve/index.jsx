@@ -1,7 +1,6 @@
 import RarefactionCurve from "./RarefactionCurve";
-import RarefactionCurveContainer from "./RarefactionCurveContainer";
 import React from "react";
 
-export default RarefactionCurveContainer;
+export default RarefactionCurve;
 
-export { RarefactionCurve, RarefactionCurveContainer };
+export { RarefactionCurve };

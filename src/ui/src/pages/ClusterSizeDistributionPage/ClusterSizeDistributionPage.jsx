@@ -1,53 +1,38 @@
-import { useDispatch, useSelector } from "react-redux";
-
-import AppLayout from "../../components/AppLayout";
-import AttributeSelector from "../../components/AttributeSelector";
-import ChartCard from "../../components/ChartCard";
-import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 import React from "react";
-import { handleDownload } from "../../utils/downloadHandlers";
-import styles from "./ClusterSizeDistribution.module.scss";
+import { useSelector } from "react-redux";
+import ChartPageShell from "../../components/ChartPageShell";
+import ClusterSizeDistribution from "../../components/Charts/ClusterSizeDistribution";
 
 const ClusterSizeDistributionPage = ({
-  selectedAttributeTaxonset,
   clusterSizeDistributionBlob,
+  attribute: propAttribute,
+  taxonset: propTaxonset,
+  setSelectedAttributeTaxonset: propSetSelectedAttributeTaxonset,
 }) => {
-  const dispatch = useDispatch();
   const downloadLoading = useSelector(
-    (state) => state?.config?.uiState?.downloadLoading
+    (state) => state?.config?.uiState?.downloadLoading,
   );
 
-  const handleClose = () => {
-    window.history.back();
-  };
+  const isDownloading =
+    downloadLoading?.downloadLoading?.ClusterSizeDistribution;
 
   return (
-    <AppLayout>
-      <div className={styles.pageHeader}>
-        <AttributeSelector />
-      </div>
-      <div className={styles.page}>
-        <div className={styles.chartsContainer}>
-          <ChartCard
-            title="Cluster Size Distribution"
-            isDownloading={
-              downloadLoading?.downloadLoading?.ClusterSizeDistribution
-            }
-            onDownload={() =>
-              handleDownload({
-                chartKey: "clusterSizeDistribution",
-                dispatch,
-                selectedAttributeTaxonset,
-                clusterSizeDistributionBlob,
-              })
-            }
-            onClose={handleClose}
-          >
-            <ClusterSizeDistribution />
-          </ChartCard>
-        </div>
-      </div>
-    </AppLayout>
+    <ChartPageShell
+      title="Cluster Size Distribution"
+      chartKey="clusterSizeDistribution"
+      searchParamKey={null}
+      isDownloading={isDownloading}
+      initialAttribute={propAttribute}
+      initialTaxonset={propTaxonset}
+      setSelectedAttributeTaxonsetProp={propSetSelectedAttributeTaxonset}
+      blob={clusterSizeDistributionBlob}
+      renderChart={({ attribute }) => (
+        <ClusterSizeDistribution
+          attribute={attribute}
+          clusterSizeDistributionBlob={clusterSizeDistributionBlob}
+        />
+      )}
+    />
   );
 };
 

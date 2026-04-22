@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { DataGrid } from "@mui/x-data-grid";
-import { getAttributeSummary } from "../../../app/store/analysis/slices/attributeSummarySlice";
+import { getSessionId } from "#app/utils/session";
+import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
-import { useSearchParams } from "react-router-dom";
+import useFullscreen from "#hooks/useFullscreen";
+import { useGetAttributeSummaryQuery } from "#store/api";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
+import usePageCustomisation from "#hooks/usePageCustomisation";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
@@ -13,62 +17,42 @@ const AttributeSummary = ({
   attribute,
   attributeSummaryColumnDescriptions: columnDescriptions,
 }) => {
-  const isCurrentPage = window.location.pathname.includes("attribute-summary");
-  const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
-  );
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+  const isCurrentPage = useIsCurrentPage("attribute-summary");
+  const { isFullScreen } = useFullscreen();
 
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(document.fullscreenElement != null);
-    };
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
-
-  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const attributeData = useSelector(
-    (state) => state?.analysis?.attributeSummary?.data || null
-  );
-
-  const asCodes = useMemo(() => {
-    if (!searchParams.has("AS_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("AS_code");
-  }, [searchParams, columnDescriptions]);
-
+  // Use RTK Query to fetch attribute summary for current session/attribute
   const page = Math.max(
     parseInt(searchParams.get("AS_page") || "1", 10) - 1,
-    0
+    0,
   );
   const pageSize = Math.max(
     parseInt(searchParams.get("AS_pageSize") || "10", 10),
-    1
+    1,
   );
 
-  // Fetch attribute summary
-  useEffect(() => {
-    if (!attribute) {
-      return;
-    }
+  const { selectedCodes: asCodes } = usePageCustomisation({
+    searchParamKey: "AS_code",
+    columnDescriptions,
+  });
 
-    dispatch(
-      getAttributeSummary({
-        attribute,
-        page: page + 1,
-        size: pageSize,
-        AS_code: asCodes.length > 0 ? asCodes : undefined,
-      })
-    );
-  }, [attribute, page, pageSize, asCodes, dispatch, columnDescriptions]);
+  // Fetching is handled by RTK Query hook above
 
+  const { data: attributeResp } = useGetAttributeSummaryQuery(
+    {
+      attribute,
+      sessionId,
+      page: page + 1,
+      size: pageSize,
+      AS_code: asCodes.length > 0 ? asCodes : undefined,
+    },
+    { skip: !attribute },
+  );
+
+  const attributeData = attributeResp?.data ?? attributeResp ?? null;
   // Map codes to field names
   const codeToFieldMap = useMemo(
     () =>
@@ -76,16 +60,19 @@ const AttributeSummary = ({
         acc[col.code] = col.name;
         return acc;
       }, {}),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   // Prepare rows
   const { rows, rowCount } = useMemo(() => {
-    const rawData = attributeData?.data ?? {};
+    const rawData = attributeData ?? {};
     const processedRows = Object.values(rawData).map((row) => ({
-      id: row.id || row.taxon_set || uuidv4(),
+      id: row.id || row.taxonSet || row.taxon_set || uuidv4(),
       ...Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, value ?? "-"])
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
       ),
     }));
     const totalRows =
@@ -99,7 +86,7 @@ const AttributeSummary = ({
   // Columns loaded dynamically
   const defaultColumns = useMemo(() => {
     return columnDescriptions.map((col) => ({
-      field: col.name,
+      field: toCamelCase(col.name),
       headerName: col.alias || col.name,
       minWidth: 120,
     }));
@@ -109,19 +96,27 @@ const AttributeSummary = ({
     if (!asCodes || asCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
     }
 
     const allowedFields = asCodes
-      .map((code) => codeToFieldMap[code])
+      .map((code) => toCamelCase(codeToFieldMap[code]))
       .filter(Boolean);
 
     return defaultColumns.filter((col) => allowedFields.includes(col.field));
   }, [asCodes, codeToFieldMap, defaultColumns, columnDescriptions]);
 
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    return filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+  }, [filteredColumns]);
   // Pagination handler
   const handlePaginationModelChange = useCallback(
     (newModel) => {
@@ -130,10 +125,10 @@ const AttributeSummary = ({
         setSearchParams,
         "AS",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (
@@ -151,7 +146,7 @@ const AttributeSummary = ({
     >
       <DataGrid
         rows={rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

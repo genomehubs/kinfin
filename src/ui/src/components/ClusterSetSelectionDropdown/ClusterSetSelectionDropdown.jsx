@@ -9,10 +9,12 @@ export default function ClusterSetSelectionDropdown({
   selectedClusterSet,
 }) {
   const [anchorEl, setAnchorEl] = useState(null);
+  // support both shapes: array of sets or { data: [...] }
+  const sets = Array.isArray(clusteringSets)
+    ? clusteringSets
+    : (clusteringSets?.data ?? []);
 
-  const selected = clusteringSets.find(
-    (dataset) => dataset.id === selectedClusterSet
-  );
+  const selected = sets.find((dataset) => dataset.id === selectedClusterSet);
 
   const handleOpen = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -46,7 +48,7 @@ export default function ClusterSetSelectionDropdown({
         </Stack>
       </Button>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-        {clusteringSets.map((dataset) => (
+        {sets.map((dataset) => (
           <MenuItem
             key={dataset.id}
             onClick={() => handleSelect(dataset)}

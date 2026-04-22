@@ -1,7 +1,6 @@
 import ClusterSizeDistribution from "./ClusterSizeDistribution";
-import ClusterSizeDistributionContainer from "./ClusterSizeDistributionContainer";
 import React from "react";
 
-export default ClusterSizeDistributionContainer;
+export default ClusterSizeDistribution;
 
-export { ClusterSizeDistribution, ClusterSizeDistributionContainer };
+export { ClusterSizeDistribution };

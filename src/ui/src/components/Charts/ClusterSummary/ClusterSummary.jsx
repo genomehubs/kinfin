@@ -1,11 +1,17 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
+import ClusterLinkColumn from "#components/Tables/ClusterLinkColumn";
 import { DataGrid } from "@mui/x-data-grid";
-import { getClusterSummary } from "../../../app/store/analysis/slices/clusterSummarySlice";
+import { getSessionId } from "#app/utils/session";
 import styles from "./ClusterSummary.module.scss";
+import { toCamelCase } from "#utils/changeCase.js";
 import { updatePaginationParams } from "@/utils/urlPagination";
-import { useSearchParams } from "react-router-dom";
+import useFullscreen from "#hooks/useFullscreen";
+import { useGetClusterSummaryQuery } from "#store/api";
+import useIsCurrentPage from "#hooks/useIsCurrentPage";
+import usePageCustomisation from "#hooks/usePageCustomisation";
+import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [5, 10, 25];
@@ -14,69 +20,62 @@ const ClusterSummary = ({
   attribute,
   clusterSummaryColumnDescriptions: columnDescriptions,
 }) => {
-  const isCurrentPage = window.location.pathname.includes("cluster-summary");
-  const [isFullScreen, setIsFullScreen] = React.useState(
-    document.fullscreenElement != null
-  );
-
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(document.fullscreenElement != null);
-    };
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
-  const dispatch = useDispatch();
+  const { sessionId: sessionIdFromParams } = useParams();
+  const sessionId = sessionIdFromParams || getSessionId();
+  const isCurrentPage = useIsCurrentPage("cluster-summary");
+  const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const clusterSummaryData = useSelector(
-    (state) => state?.analysis?.clusterSummary?.data
+  // Get linkouts from Redux state for the current session
+  const linkouts = useSelector(
+    (state) => state?.config?.data?.[sessionId]?.linkouts || [],
   );
 
   const page = Math.max(
     parseInt(searchParams.get("CS_page") || "1", 10) - 1,
-    0
+    0,
   );
   const pageSize = Math.max(
     parseInt(searchParams.get("CS_pageSize") || "5", 10),
-    1
+    1,
   );
 
-  const csCodes = useMemo(() => {
-    if (!searchParams.has("CS_code")) {
-      return columnDescriptions
-        .filter((col) => col.isDefault)
-        .map((col) => col.code);
-    }
-    return searchParams.getAll("CS_code");
-  }, [searchParams, columnDescriptions]);
+  const { selectedCodes: csCodes } = usePageCustomisation({
+    searchParamKey: "CS_code",
+    columnDescriptions,
+  });
 
-  useEffect(() => {
-    if (!attribute) {
-      return;
-    }
+  const { data: clusterSummaryResp } = useGetClusterSummaryQuery(
+    {
+      attribute,
+      sessionId,
+      page: page + 1,
+      size: pageSize,
+      CS_code: csCodes.length > 0 ? csCodes : undefined,
+    },
+    { skip: !attribute },
+  );
 
-    dispatch(
-      getClusterSummary({
-        attribute,
-        page: page + 1,
-        size: pageSize,
-        CS_code: csCodes.length > 0 ? csCodes : undefined,
-      })
-    );
-  }, [dispatch, attribute, page, pageSize, csCodes]);
+  const clusterSummaryData =
+    clusterSummaryResp?.data ?? clusterSummaryResp ?? null;
+
+  // fetching handled via RTK Query
 
   // Flatten rows
   const rowsData = useMemo(() => {
-    if (!clusterSummaryData?.data) {
+    const raw = clusterSummaryData ?? {};
+    if (!raw || Object.keys(raw).length === 0) {
       return { rows: [], rowCount: 0 };
     }
 
-    const rows = Object.values(clusterSummaryData.data).map((row) => ({
-      id: row.id || row.cluster_id || uuidv4(),
-      ...row,
+    const rows = Object.values(raw).map((row) => ({
+      id: row.id || row.clusterId || row.cluster_id || uuidv4(),
+      ...Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [
+          toCamelCase(key),
+          value ?? "-",
+        ]),
+      ),
     }));
 
     const totalRows =
@@ -98,7 +97,7 @@ const ClusterSummary = ({
       .map((col) => {
         if (!col.name.includes("X")) {
           return {
-            field: col.name,
+            field: toCamelCase(col.name),
             headerName: col.alias || col.name,
             minWidth: 120,
           };
@@ -112,7 +111,7 @@ const ClusterSummary = ({
           .map((field) => {
             const match = field.match(regex);
             const headerName = col.alias?.replace("X", match?.[1]) || field;
-            return { field, headerName, minWidth: 120 };
+            return { field: toCamelCase(field), headerName, minWidth: 120 };
           });
       })
       .flat();
@@ -125,14 +124,14 @@ const ClusterSummary = ({
         acc[col.code] = col.name;
         return acc;
       }, {}),
-    [columnDescriptions]
+    [columnDescriptions],
   );
 
   const filteredColumns = useMemo(() => {
     if (!csCodes || csCodes.length === 0) {
       return defaultColumns.filter((col) => {
         const originalCol = columnDescriptions.find(
-          (c) => c.name === col.field
+          (c) => toCamelCase(c.name) === col.field,
         );
         return originalCol?.isDefault;
       });
@@ -146,13 +145,15 @@ const ClusterSummary = ({
 
       // If no "X" in the template, direct match
       if (!template.includes("X")) {
-        return [template];
+        return [toCamelCase(template)];
       }
 
       // Expand "X" using actual row keys
       const regex = new RegExp("^" + template.replace("X", "(.+)") + "$");
       return rowsData.rows.length > 0
-        ? Object.keys(rowsData.rows[0]).filter((k) => regex.test(k))
+        ? Object.keys(rowsData.rows[0])
+            .filter((k) => regex.test(k))
+            .map(toCamelCase)
         : [];
     });
 
@@ -165,6 +166,50 @@ const ClusterSummary = ({
     rowsData.rows,
   ]);
 
+  // Ensure columns are unique by `field` to avoid duplicates from overlapping templates
+  const finalColumns = useMemo(() => {
+    const seen = new Set();
+    const uniqueColumns = filteredColumns.filter((col) => {
+      if (seen.has(col.field)) return false;
+      seen.add(col.field);
+      return true;
+    });
+
+    // Add linkouts column if linkouts are configured
+    if (linkouts && linkouts.length > 0) {
+      // Calculate column width based on number of linkouts
+      // Layout strategy: 1-3 = full labels, 4+ = icon-only for first 3 + menu
+      let columnWidth = 200; // default
+
+      if (linkouts.length === 1) {
+        // Single full chip: estimate ~60px per 5 chars + padding
+        const nameLen = linkouts[0].name.length;
+        columnWidth = Math.min(200, 80 + nameLen * 8);
+      } else if (linkouts.length <= 3) {
+        // Multiple full chips: ~80px per chip + gaps
+        columnWidth = 80 + linkouts.length * 85;
+      } else {
+        // 4+ linkouts: 4 icon-only chips (36px each: 3 links + 1 menu) + gaps
+        columnWidth = 200; // 4×36 + gaps + padding
+      }
+
+      columnWidth = Math.max(columnWidth, 140); // minimum width
+
+      uniqueColumns.push({
+        field: "linkouts",
+        headerName: "Links",
+        sortable: false,
+        filterable: false,
+        width: columnWidth,
+        renderCell: (params) => (
+          <ClusterLinkColumn rowData={params.row} linkouts={linkouts} />
+        ),
+      });
+    }
+
+    return uniqueColumns;
+  }, [filteredColumns, linkouts]);
+
   const handlePaginationModelChange = useCallback(
     (newModel) => {
       updatePaginationParams(
@@ -172,10 +217,10 @@ const ClusterSummary = ({
         setSearchParams,
         "CS",
         newModel.page,
-        newModel.pageSize
+        newModel.pageSize,
       );
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return (
@@ -193,7 +238,7 @@ const ClusterSummary = ({
     >
       <DataGrid
         rows={rowsData.rows}
-        columns={filteredColumns}
+        columns={finalColumns}
         paginationMode="server"
         paginationModel={{ page, pageSize }}
         onPaginationModelChange={handlePaginationModelChange}

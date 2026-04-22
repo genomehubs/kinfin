@@ -1,36 +1,37 @@
-import { persistReducer, persistStore } from "redux-persist";
-
+import { api } from "./api";
 import { configureStore } from "@reduxjs/toolkit";
-import createIndexedDBStorage from "redux-persist-indexeddb-storage";
-import createSagaMiddleware from "redux-saga";
 import rootReducer from "./reducers";
-import rootSaga from "./sagas";
 
-const storage = createIndexedDBStorage("myReduxDB");
 const { VITE_NODE_ENV } = import.meta.env;
 
-const persistConfig = {
-  key: "root",
-  storage,
-};
-
-const persistedReducer = persistReducer(persistConfig, rootReducer);
-
-const sagaMiddleware = createSagaMiddleware();
-
 const store = configureStore({
-  reducer: persistedReducer,
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      thunk: false,
-      serializableCheck: false,
+      thunk: true,
+      serializableCheck: {
+        // RTK Query needs to store functions and other non-serializable values
+        ignoredActions: [],
+        ignoredPaths: [api.reducerPath],
+      },
       immutableCheck: VITE_NODE_ENV !== "PRODUCTION",
-    }).concat(sagaMiddleware),
-  devTools: VITE_NODE_ENV !== "PRODUCTION",
+    }).concat(
+      api.middleware,
+      // middleware to help debug non-plain actions (allow thunks/functions used by RTK Query)
+      () => (next) => (action) => {
+        const isPlainObject =
+          action !== null &&
+          typeof action === "object" &&
+          !Array.isArray(action);
+        if (!isPlainObject) {
+          console.error("Non-plain action dispatched:", action);
+        }
+        return next(action);
+      },
+    ),
+  devTools: {
+    trace: true,
+    traceLimit: 25,
+  },
 });
-
-const persistor = persistStore(store);
-
-sagaMiddleware.run(rootSaga);
-
-export { persistor, store };
+export { store };
