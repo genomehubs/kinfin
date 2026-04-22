@@ -127,7 +127,9 @@ export const api = createApi({
       }),
       async onQueryStarted(arg, { queryFulfilled, dispatch }) {
         try {
-          const { data } = await queryFulfilled;
+          const result = await queryFulfilled;
+          // The response has the actual data nested: result.data.data
+          const data = result?.data?.data;
           if (data?.sessionId) {
             setSessionId(data.sessionId);
             // prefer the name provided by the UI; fall back to server name or a default
@@ -141,6 +143,7 @@ export const api = createApi({
                 config: arg.config,
                 clusterId: arg.clusterId,
                 clusterName: data.clusterName || null,
+                linkouts: data.linkouts || [],
               }),
             );
             // Set loading state to show initialization is in progress

@@ -39,6 +39,10 @@ const useHydrateCurrentSession = (urlSessionId = null) => {
   const rehydrated = useSelector(
     (state) => state?._persist?.rehydrated ?? true,
   );
+  // Get existing linkouts to preserve them during hydration
+  const existingLinkouts = useSelector(
+    (state) => state?.config?.data?.[currentSessionId]?.linkouts,
+  );
 
   // Determine the sessionId from URL first, fallback to localStorage
   const effectiveSessionId = urlSessionId || getSessionId();
@@ -115,6 +119,8 @@ const useHydrateCurrentSession = (urlSessionId = null) => {
       if (effective.config) payload.config = effective.config;
       if (effective.clusterId) payload.clusterId = effective.clusterId;
       if (effective.clusterName) payload.clusterName = effective.clusterName;
+      // Preserve linkouts from Redux state during hydration
+      if (existingLinkouts) payload.linkouts = existingLinkouts;
 
       // Only dispatch if sessionId matches current (avoid stale updates)
       if (currentSessionId === (effective.sessionId || currentSessionId)) {

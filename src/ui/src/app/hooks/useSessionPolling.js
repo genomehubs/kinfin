@@ -1,8 +1,8 @@
+import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import { setPollingLoading } from "../store/config/slices/uiStateSlice";
 import { storeConfig } from "../store/config/slices/configSlice";
-import { useDispatch } from "react-redux";
 import { useGetRunStatusQuery } from "#store/api";
 
 const mapServerStatusToUiStatus = (serverStatus) => {
@@ -26,6 +26,11 @@ const mapServerStatusToUiStatus = (serverStatus) => {
 export default function useSessionPolling(sessionId) {
   const dispatch = useDispatch();
   const [shouldContinuePolling, setShouldContinuePolling] = useState(true);
+
+  // Get existing linkouts from Redux to preserve them during polling updates
+  const existingLinkouts = useSelector(
+    (state) => state?.config?.data?.[sessionId]?.linkouts,
+  );
 
   const {
     data: sessionMeta,
@@ -76,6 +81,8 @@ export default function useSessionPolling(sessionId) {
       if (effective.config) payload.config = effective.config;
       if (effective.clusterId) payload.clusterId = effective.clusterId;
       if (effective.clusterName) payload.clusterName = effective.clusterName;
+      // Preserve linkouts from Redux state during polling updates
+      if (existingLinkouts) payload.linkouts = existingLinkouts;
 
       dispatch(storeConfig(payload));
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
+import ClusterLinkColumn from "#components/Tables/ClusterLinkColumn";
 import { DataGrid } from "@mui/x-data-grid";
 import { getSessionId } from "#app/utils/session";
 import styles from "./ClusterMetrics.module.scss";
@@ -10,6 +11,7 @@ import useFullscreen from "#hooks/useFullscreen";
 import { useGetClusterMetricsQuery } from "#store/api";
 import useIsCurrentPage from "#hooks/useIsCurrentPage";
 import usePageCustomisation from "#hooks/usePageCustomisation";
+import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 const pageSizeOptions = [10, 25, 50];
@@ -24,6 +26,11 @@ const ClusterMetrics = ({
   const isCurrentPage = useIsCurrentPage("cluster-metrics");
   const { isFullScreen } = useFullscreen();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get linkouts from Redux state for the current session
+  const linkouts = useSelector(
+    (state) => state?.config?.data?.[sessionId]?.linkouts || [],
+  );
 
   const page = Math.max(
     parseInt(searchParams.get("CM_page") || "1", 10) - 1,
@@ -117,12 +124,46 @@ const ClusterMetrics = ({
 
   const finalColumns = useMemo(() => {
     const seen = new Set();
-    return filteredColumns.filter((col) => {
+    const uniqueColumns = filteredColumns.filter((col) => {
       if (seen.has(col.field)) return false;
       seen.add(col.field);
       return true;
     });
-  }, [filteredColumns]);
+
+    // Add linkouts column if linkouts are configured
+    if (linkouts && linkouts.length > 0) {
+      // Calculate column width based on number of linkouts
+      // Layout strategy: 1-3 = full labels, 4+ = icon-only for first 3 + menu
+      let columnWidth = 200; // default
+
+      if (linkouts.length === 1) {
+        // Single full chip: estimate ~60px per 5 chars + padding
+        const nameLen = linkouts[0].name.length;
+        columnWidth = Math.min(200, 80 + nameLen * 8);
+      } else if (linkouts.length <= 3) {
+        // Multiple full chips: ~80px per chip + gaps
+        columnWidth = 80 + linkouts.length * 85;
+      } else {
+        // 4+ linkouts: 4 icon-only chips (36px each: 3 links + 1 menu) + gaps
+        columnWidth = 200; // 4×36 + gaps + padding
+      }
+
+      columnWidth = Math.max(columnWidth, 140); // minimum width
+
+      uniqueColumns.push({
+        field: "linkouts",
+        headerName: "Links",
+        sortable: false,
+        filterable: false,
+        width: columnWidth,
+        renderCell: (params) => (
+          <ClusterLinkColumn rowData={params.row} linkouts={linkouts} />
+        ),
+      });
+    }
+
+    return uniqueColumns;
+  }, [filteredColumns, linkouts]);
 
   const handlePaginationModelChange = useCallback(
     (newModel) => {

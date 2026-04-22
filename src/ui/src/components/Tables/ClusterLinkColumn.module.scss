@@ -1,0 +1,45 @@
+.linkChip {
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    cursor: pointer;
+    opacity: 0.8;
+  }
+}
+
+.linkChipIconOnly {
+  // Icon-only chip: styled like regular chip but compact
+  // Matches the menu chip's flat top/bottom, rounded ends design
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; // Fixed width to match menu chip
+  height: 24px; // Match small Chip size
+  border-radius: 12px; // Rounded ends like a chip
+  background-color: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out;
+  vertical-align: middle; // Align with menu chip
+
+  // Ensure icon is exactly 18×18
+  img {
+    width: 18px;
+    height: 18px;
+    display: block;
+    margin: 0;
+  }
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.linkChipGroup {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  vertical-align: middle;
+}

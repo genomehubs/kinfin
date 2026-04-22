@@ -348,11 +348,18 @@ async def initialize(input_data: InputSchema, request: Request):
         write_status(status_file, "pending")
         asyncio.create_task(run_cli_command(command, status_file))
 
+        # Include linkouts from clustering config in response
+        linkouts = cluster_info.get("linkouts", [])
+
         return JSONResponse(
             content=ResponseSchema(
                 status="success",
                 message="Analysis task has been queued.",
-                data={"session_id": session_id},
+                data={
+                    "session_id": session_id,
+                    "linkouts": linkouts,
+                    "cluster_name": cluster_info.get("name"),
+                },
                 query=str(request.url),
             ).model_dump(),
             status_code=202,

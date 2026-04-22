@@ -5,7 +5,21 @@
     "version": "v1.0",
     "date": "2025-05-10",
     "description": "Clustering of all nematodes proteomes using standard parameters.",
-    "path": "nematodes"
+    "path": "nematodes",
+    "linkouts": [
+      {
+        "name": "Ensembl",
+        "url_template": "https://ensembl.example.com/search?q={clusterId}",
+        "icon": "ensembl.svg",
+        "description": "Link to EnsemblDB cluster entry"
+      },
+      {
+        "name": "OrthoDB",
+        "url_template": "https://www.orthodb.org/?query={clusterId}",
+        "icon": "orthodb.svg",
+        "description": "View in OrthoDB"
+      }
+    ]
   },
   {
     "id": "f259e2ec-9080-46ca-9f03-4f290cb8d39d",
@@ -13,6 +27,7 @@
     "version": "v1.1",
     "date": "2025-06-01",
     "description": "Subset of mollusc proteomes filtered by assembly metrics and clustered with adjusted inflation parameter.",
-    "path": "molluscdb"
+    "path": "molluscdb",
+    "linkouts": []
   }
 ]

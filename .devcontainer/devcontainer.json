@@ -1,0 +1,59 @@
+{
+  "name": "kinfin-full-stack",
+  "dockerFile": "Dockerfile",
+  "context": "..",
+  "remoteUser": "devuser",
+
+  // Mount only /workspace - strict isolation from host filesystem
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=consistent"
+  ],
+
+  // Post-create command: install Python and Node.js dependencies
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // Configure VS Code extensions for this container
+  "customizations": {
+    "vscode": {
+      // Required extensions for development
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.makefile-tools"
+      ]
+    }
+  },
+
+  // Features to install in the container (optional, for convenience)
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  // Forward ports from container to host (for development servers)
+  "forwardPorts": [
+    3000, // Vite dev server (React UI)
+    8000, // FastAPI backend
+    6006 // Storybook
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "FastAPI Backend",
+      "onAutoForward": "notify"
+    },
+    "6006": {
+      "label": "Storybook",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Set timezone
+  "remoteEnv": {
+    "TZ": "UTC"
+  }
+}

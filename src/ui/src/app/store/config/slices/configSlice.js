@@ -50,6 +50,7 @@ const configSlice = createSlice({
         config,
         clusterId,
         clusterName,
+        linkouts,
         meta = {},
       } = action.payload;
       if (!sessionId) return;
@@ -71,6 +72,7 @@ const configSlice = createSlice({
         ...(config !== undefined && { config }),
         ...(clusterId !== undefined && { clusterId }),
         ...(clusterName !== undefined && { clusterName }),
+        ...(linkouts !== undefined && { linkouts }),
         // Meta fields are always updated
         ...meta,
       };
@@ -101,6 +103,7 @@ const configSlice = createSlice({
         name: newEntry.name,
         clusterId: newEntry.clusterId,
         clusterName: newEntry.clusterName,
+        linkouts: newEntry.linkouts,
         status: newEntry.status,
         expiryDate: newEntry.expiryDate,
       };
