@@ -30,7 +30,7 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
             --plot_tree                         Plot PDF of annotated phylogenetic tree (requires -t, full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
-                                                    in rarefaction/representation-test computations [default: 2]
+                                                    in rarefaction/representation-test computations [default: 5]
             --test <STR>                        Test to be used in representation-test computations [default: mannwhitneyu]
                                                     - ttest: Two sided t-test
                                                     - welch: Welch's t-test

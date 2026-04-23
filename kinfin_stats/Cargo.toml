@@ -1,0 +1,22 @@
+[package]
+name = "kinfin_stats"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "kinfin_stats"
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "run_cluster_analysis"
+path = "src/bin/run_cluster_analysis.rs"
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+numpy = "0.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+statrs = "0.17"
+
+[profile.release]
+opt-level = 3

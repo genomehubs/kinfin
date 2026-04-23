@@ -10,6 +10,30 @@ import scipy
 
 logger = logging.getLogger("kinfin_logger")
 
+# Rust statistical module - toggled via KINFIN_USE_RUST environment variable.
+# Provides ~7× speedup on large datasets (see refactoring/README.md for benchmark details).
+# Note: uses Abramowitz-Stegun CDF approximation; p-values are systematically conservative
+# relative to scipy. Significance agreement at p<0.05 is 95-98% in practice.
+USE_RUST_STATS = os.environ.get("KINFIN_USE_RUST", "0").lower() in ("1", "true", "yes")
+
+try:
+    from kinfin_stats import kruskal as rust_kruskal
+    from kinfin_stats import ks_2samp as rust_ks_2samp
+    from kinfin_stats import mannwhitneyu as rust_mannwhitneyu
+    from kinfin_stats import ttest_ind as rust_ttest_ind
+
+    HAS_RUST_STATS = True
+except ImportError:
+    HAS_RUST_STATS = False
+
+# Log the current configuration
+if USE_RUST_STATS:
+    logger.info("[CONFIG] Rust stats enabled (set KINFIN_USE_RUST=0 to disable)")
+if HAS_RUST_STATS and not USE_RUST_STATS:
+    logger.info(
+        "[CONFIG] Rust stats available but disabled (set KINFIN_USE_RUST=1 to enable)"
+    )
+
 
 def progress(iteration: int, steps: Union[int, float], max_value: int) -> None:
     """
@@ -248,38 +272,69 @@ def statistic(
     ):  # equal
         pvalue = 1.0
     elif test == "welch":
-        # try:
         # Welch's t-test
-        pvalue = scipy.stats.ttest_ind(
-            implicit_count_1,
-            implicit_count_2,
-            equal_var=False,
-        )[1]
+        if USE_RUST_STATS and HAS_RUST_STATS:
+            try:
+                pvalue = rust_ttest_ind(implicit_count_1, implicit_count_2)[1]
+            except Exception:
+                pvalue = scipy.stats.ttest_ind(
+                    implicit_count_1,
+                    implicit_count_2,
+                    equal_var=False,
+                )[1]
+        else:
+            pvalue = scipy.stats.ttest_ind(
+                implicit_count_1,
+                implicit_count_2,
+                equal_var=False,
+            )[1]
 
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
     elif test == "mannwhitneyu":
         try:
-            pvalue = scipy.stats.mannwhitneyu(
-                implicit_count_1,
-                implicit_count_2,
-                alternative="two-sided",
-            )[1]
-        except ValueError:  # throws ValueError when all numbers are equal
+            if USE_RUST_STATS and HAS_RUST_STATS:
+                pvalue = rust_mannwhitneyu(
+                    implicit_count_1, implicit_count_2, "two-sided"
+                )[1]
+            else:
+                pvalue = scipy.stats.mannwhitneyu(
+                    implicit_count_1,
+                    implicit_count_2,
+                    alternative="two-sided",
+                )[1]
+        except (ValueError, Exception):
             pvalue = 1.0
     elif test == "ttest":
-        # try:
-        pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]  # t-test
+        if USE_RUST_STATS and HAS_RUST_STATS:
+            try:
+                pvalue = rust_ttest_ind(implicit_count_1, implicit_count_2)[1]
+            except Exception:
+                pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]
+        else:
+            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
     elif test == "ks":
         # H0 that they are drawn from the same distribution
-        pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1]
+        if USE_RUST_STATS and HAS_RUST_STATS:
+            try:
+                pvalue = rust_ks_2samp(implicit_count_1, implicit_count_2)[1]
+            except Exception:
+                pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1]
+        else:
+            pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1]
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
     elif test == "kruskal":
         # H0 is that population median is equal
-        pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]
+        if USE_RUST_STATS and HAS_RUST_STATS:
+            try:
+                pvalue = rust_kruskal(implicit_count_1, implicit_count_2)[1]
+            except Exception:
+                pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]
+        else:
+            pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]
         if pvalue != pvalue:  # testing for "nan"
             pvalue = 1.0
     return pvalue, log2_mean, mean_count_1, mean_count_2

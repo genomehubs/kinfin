@@ -99,8 +99,8 @@ def parse_args(
     )
     general_group.add_argument(
         "--min_proteomes",
-        help="Required number of proteomes in a taxon-set to be used in rarefaction/representation-test computations [default: 2]",
-        default=2,
+        help="Required number of proteomes in a taxon-set to be used in rarefaction/representation-test computations [default: 5]",
+        default=5,
         type=int,
     )
     general_group.add_argument(
