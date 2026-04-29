@@ -83,6 +83,42 @@ fn normal_cdf(x: f64) -> f64 {
     Normal::new(0.0, 1.0).unwrap().cdf(x)
 }
 
+/// Exact two-sided p-value for Mann-Whitney U via DP over rank sequences.
+/// Matches scipy.stats.mannwhitneyu method='exact' (no ties assumed).
+/// m = min(n1, n2), n = max(n1, n2), u_obs_min = min(U1, U2).
+fn mannwhitneyu_exact_pvalue(u_obs_min: usize, m: usize, n: usize) -> f64 {
+    let max_u = m * n;
+    let width = max_u + 1;
+    let mut prev = vec![0.0f64; (m + 1) * width];
+    let mut cur = vec![0.0f64; (m + 1) * width];
+    for i in 0..=m {
+        prev[i * width] = 1.0;
+    }
+    for _j in 1..=n {
+        for v in cur.iter_mut() {
+            *v = 0.0;
+        }
+        cur[0] = 1.0;
+        for i in 1..=m {
+            let base = i * width;
+            let base_im1 = (i - 1) * width;
+            for k in 0..=max_u {
+                let from_x = cur[base_im1 + k];
+                let from_y = if k >= i { prev[base + k - i] } else { 0.0 };
+                cur[base + k] = from_x + from_y;
+            }
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    let base_m = m * width;
+    let total: f64 = prev[base_m..base_m + width].iter().sum();
+    if total == 0.0 {
+        return 1.0;
+    }
+    let p_le: f64 = prev[base_m..base_m + u_obs_min + 1].iter().sum::<f64>() / total;
+    (2.0 * p_le).min(1.0)
+}
+
 fn mannwhitneyu(x: &[f64], y: &[f64]) -> f64 {
     let n1 = x.len();
     let n2 = y.len();
@@ -123,14 +159,45 @@ fn mannwhitneyu(x: &[f64], y: &[f64]) -> f64 {
     let n2f = n2 as f64;
     let u1 = rank_sum_x - n1f * (n1f + 1.0) / 2.0;
     let u2 = n1f * n2f - u1;
-    let u = u1.min(u2);
+    let u_min = u1.min(u2);
+
+    // Check for ties
+    let has_ties = combined.windows(2).any(|w| (w[0].0 - w[1].0).abs() < 1e-15);
+
+    // Exact method when min(n1, n2) <= 8 and no ties (matches scipy 'auto')
+    if !has_ties && (n1 <= 8 || n2 <= 8) {
+        let m = n1.min(n2);
+        let n = n1.max(n2);
+        return mannwhitneyu_exact_pvalue(u_min as usize, m, n);
+    }
+
+    // Asymptotic path with tie-corrected variance (matches scipy _get_mwu_z)
+    let n_total = (n1 + n2) as f64;
     let mean_u = n1f * n2f / 2.0;
-    let var_u = n1f * n2f * (n1f + n2f + 1.0) / 12.0;
-    if var_u == 0.0 {
+
+    // Tie correction: sum of (t^3 - t) over each tied run, where t = run length
+    let tie_term: f64 = {
+        let mut sum = 0.0f64;
+        let mut i = 0;
+        while i < combined.len() {
+            let mut j = i + 1;
+            while j < combined.len() && (combined[j].0 - combined[i].0).abs() < 1e-15 {
+                j += 1;
+            }
+            let t = (j - i) as f64;
+            sum += t * t * t - t;
+            i = j;
+        }
+        sum
+    };
+    let var_u = n1f * n2f / 12.0 * ((n_total + 1.0) - tie_term / (n_total * (n_total - 1.0)));
+    if var_u <= 0.0 {
         return 1.0;
     }
-    let z = (u + 0.5 - mean_u) / var_u.sqrt();
-    (2.0 * (1.0 - normal_cdf(z.abs()))).clamp(0.0, 1.0)
+    // scipy: z = (U_max - 0.5 - mean_u) / s, p = 2*sf(z).
+    // Equivalent with u_min: z = (u_min + 0.5 - mean_u) / s, p = 2*CDF(z) [z <= 0 typically].
+    let z = (u_min + 0.5 - mean_u) / var_u.sqrt();
+    (2.0 * normal_cdf(z)).clamp(0.0, 1.0)
 }
 
 // ---------------------------------------------------------------------------

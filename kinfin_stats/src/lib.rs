@@ -60,6 +60,54 @@ fn normal_cdf(x: f64) -> f64 {
     Normal::new(0.0, 1.0).unwrap().cdf(x)
 }
 
+/// Exact two-sided p-value for Mann-Whitney U via DP over rank sequences.
+///
+/// Matches scipy.stats.mannwhitneyu method='exact' (no ties assumed).
+/// m = min(n1, n2), n = max(n1, n2), u_obs_min = min(U1, U2).
+///
+/// Recurrence: f(k, i, j) = f(k, i-1, j) + f(k-i, i, j-1)
+///   where f(k, i, j) = number of interleavings of i X's and j Y's with U_X = k.
+/// Time: O(m^2 * n^2), Space: O(m * m*n).
+fn mannwhitneyu_exact_pvalue(u_obs_min: usize, m: usize, n: usize) -> f64 {
+    let max_u = m * n;
+    let width = max_u + 1;
+
+    // prev[i * width + k] = f(k, i, j-1),  cur[i * width + k] = f(k, i, j)
+    let mut prev = vec![0.0f64; (m + 1) * width];
+    let mut cur = vec![0.0f64; (m + 1) * width];
+
+    // Base case j=0: f(0, i, 0) = 1 for all i (only U=0 is possible with no Y's)
+    for i in 0..=m {
+        prev[i * width] = 1.0;
+    }
+
+    for _j in 1..=n {
+        for v in cur.iter_mut() {
+            *v = 0.0;
+        }
+        cur[0] = 1.0; // f(0, 0, j) = 1
+        for i in 1..=m {
+            let base = i * width;
+            let base_im1 = (i - 1) * width;
+            for k in 0..=max_u {
+                let from_x = cur[base_im1 + k]; // f(k, i-1, j)
+                let from_y = if k >= i { prev[base + k - i] } else { 0.0 }; // f(k-i, i, j-1)
+                cur[base + k] = from_x + from_y;
+            }
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+
+    // prev now holds f(k, *, n)
+    let base_m = m * width;
+    let total: f64 = prev[base_m..base_m + width].iter().sum();
+    if total == 0.0 {
+        return 1.0;
+    }
+    let p_le: f64 = prev[base_m..base_m + u_obs_min + 1].iter().sum::<f64>() / total;
+    (2.0 * p_le).min(1.0)
+}
+
 /// Calculate Mann-Whitney U test p-value
 ///
 /// Args:
@@ -83,27 +131,70 @@ fn mannwhitneyu(x: Vec<f64>, y: Vec<f64>, alternative: &str) -> PyResult<(f64, f
     // Calculate U statistic
     let (u1, _, _) = mannwhitneyu_statistic(&x, &y);
     let u2 = (n1 * n2) as f64 - u1;
-    let u = u1.min(u2); // Use smaller U for two-sided test
+    let u_min = u1.min(u2);
 
-    // Mean and variance of U distribution
-    let n1_f = n1 as f64;
-    let n2_f = n2 as f64;
-    let mean_u = (n1_f * n2_f) / 2.0;
-    let var_u = (n1_f * n2_f * (n1_f + n2_f + 1.0)) / 12.0;
+    // Check for ties (exact method requires no ties)
+    let has_ties = {
+        let mut all: Vec<u64> = x.iter().chain(y.iter()).map(|v| v.to_bits()).collect();
+        all.sort_unstable();
+        all.windows(2).any(|w| w[0] == w[1])
+    };
 
-    // Avoid division by zero
-    if var_u == 0.0 {
-        return Ok((u, 1.0)); // All values are equal
+    // Use exact method when min(n1, n2) <= 8 and no ties (matches scipy 'auto')
+    if !has_ties && n1 <= 8 || !has_ties && n2 <= 8 {
+        let m = n1.min(n2);
+        let n = n1.max(n2);
+        let u_obs_min = u_min as usize;
+        let p = mann_exact_for_alternative(u_obs_min, u_min as usize, m, n, alternative)?;
+        return Ok((u_min, p));
     }
 
-    // Z-score with continuity correction
-    let z = (u + 0.5 - mean_u) / var_u.sqrt();
+    // Asymptotic path with tie-corrected variance (matches scipy _get_mwu_z)
+    let n1_f = n1 as f64;
+    let n2_f = n2 as f64;
+    let n_total = (n1 + n2) as f64;
+    let mean_u = (n1_f * n2_f) / 2.0;
 
-    // Calculate p-value based on alternative
+    // Build combined sorted sequence to compute tie runs (needed for variance correction)
+    // We reuse the sorted order from mannwhitneyu_statistic indirectly via the rank computation;
+    // here we just need the tie run lengths.
+    let tie_term: f64 = {
+        let mut all: Vec<f64> = x.iter().chain(y.iter()).copied().collect();
+        all.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut sum = 0.0f64;
+        let mut i = 0;
+        while i < all.len() {
+            let mut j = i + 1;
+            while j < all.len() && (all[j] - all[i]).abs() < 1e-15 {
+                j += 1;
+            }
+            let t = (j - i) as f64;
+            sum += t * t * t - t;
+            i = j;
+        }
+        sum
+    };
+    let var_u = n1_f * n2_f / 12.0 * ((n_total + 1.0) - tie_term / (n_total * (n_total - 1.0)));
+
+    if var_u <= 0.0 {
+        return Ok((u_min, 1.0));
+    }
+
+    // scipy: z = (U_max - 0.5 - mean_u) / s, p = 2*sf(z).
+    // Equivalent with u_min: z = (u_min + 0.5 - mean_u) / s, p = 2*CDF(z).
     let p_value = match alternative {
-        "two-sided" => 2.0 * (1.0 - normal_cdf(z.abs())),
-        "less" => normal_cdf(z),
-        "greater" => 1.0 - normal_cdf(z),
+        "two-sided" => {
+            let z = (u_min + 0.5 - mean_u) / var_u.sqrt();
+            (2.0 * normal_cdf(z)).clamp(0.0, 1.0)
+        }
+        "less" => {
+            let z = (u1 + 0.5 - mean_u) / var_u.sqrt();
+            normal_cdf(z).clamp(0.0, 1.0)
+        }
+        "greater" => {
+            let z = (u1 - 0.5 - mean_u) / var_u.sqrt();
+            1.0 - normal_cdf(z)
+        }
         _ => {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                 "Unknown alternative: {}",
@@ -112,7 +203,28 @@ fn mannwhitneyu(x: Vec<f64>, y: Vec<f64>, alternative: &str) -> PyResult<(f64, f
         }
     };
 
-    Ok((u, p_value.clamp(0.0, 1.0)))
+    Ok((u_min, p_value.clamp(0.0, 1.0)))
+}
+
+fn mann_exact_for_alternative(
+    u_obs_min: usize,
+    u1_usize: usize,
+    m: usize,
+    n: usize,
+    alternative: &str,
+) -> PyResult<f64> {
+    match alternative {
+        "two-sided" => Ok(mannwhitneyu_exact_pvalue(u_obs_min, m, n)),
+        // For one-sided exact: P(U1 <= u1) or P(U1 >= u1)
+        // Reuse the two-sided DP: P(U <= u_obs_min) where u_obs_min = u1 for "less"
+        // and u_obs_min = m*n - u1 for "greater".
+        "less" => Ok(mannwhitneyu_exact_pvalue(u1_usize.min(m * n), m, n) / 2.0),
+        "greater" => Ok(mannwhitneyu_exact_pvalue((m * n).saturating_sub(u1_usize), m, n) / 2.0),
+        _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "Unknown alternative: {}",
+            alternative
+        ))),
+    }
 }
 
 /// Fast t-test implementation

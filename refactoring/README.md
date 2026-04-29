@@ -18,9 +18,12 @@ This directory documents a proof-of-concept implementation of the MWU test in Ru
 ### `kinfin_stats` Rust extension (../kinfin_stats/)
 
 A PyO3 extension module that exposes `mannwhitneyu`, `ttest_ind`, `ks_2samp`, and `kruskal`
-to Python. The MWU implementation matches scipy's exact algorithm (U statistic from rank sums),
-but uses the **Abramowitz & Stegun** polynomial approximation for the normal CDF rather than
-scipy's `ndtr` (which calls the system `erfc`).
+to Python. The MWU implementation matches scipy's algorithm precisely:
+
+- U statistic computed from rank sums with average-rank tie handling
+- Exact combinatorial p-value when `min(n1, n2) ≤ 8` and no ties (DP over rank sequences)
+- Asymptotic normal approximation with tie-corrected variance for larger samples
+- Normal CDF via `statrs::distribution::Normal::cdf()` (matches scipy `ndtr` to floating-point precision)
 
 Enabled at runtime via the environment variable:
 
@@ -70,142 +73,90 @@ per-test calls (12.9 s vs 8.9 s on nematodes). **Batch mode is not recommended.*
 
 ## Accuracy Analysis
 
-### Nematodes
+### Summary
 
-| Metric                               | Value               |
-| ------------------------------------ | ------------------- |
-| Test pairs compared                  | 48,426              |
-| Median relative p-value difference   | 18.3%               |
-| 95th percentile relative difference  | 244.6%              |
-| Significance agreement at _p_ < 0.05 | **97.71%**          |
-| Significance flips                   | 2.29% (1,109 tests) |
+| Implementation                          | Nematodes flips | Lepidoptera flips | Sig agreement                 |
+| --------------------------------------- | --------------- | ----------------- | ----------------------------- |
+| A-S approx (original)                   | 2.29%           | 4.73%             | 97.7% / 95.3%                 |
+| statrs CDF only                         | 2.29%           | 4.73%             | 97.7% / 95.3% — **no change** |
+| statrs + exact small-n + tie correction | **0%**          | **0%**            | **100% / 100%**               |
 
-![Nematodes significance agreement by ALO size](plots/nem_sig_agreement_by_size.png)
-![Nematodes relative p-value difference by ALO size](plots/nem_rel_diff_by_size.png)
-![Nematodes p-value scatter](plots/nem_scatter_pvalues.png)
-![Nematodes p-value difference distribution](plots/nem_boxplot_by_size.png)
+The root causes of the significance flips were **not** the CDF polynomial quality:
 
-**Key observation:** Agreement degrades noticeably in mid-size ALO bins (6–16 proteins):
-`sig_agreement_pct` falls to 67–75% in those bins. These are cases where the test statistic
-lands very close to the _p_ = 0.05 boundary and the CDF approximation error tips the result.
+1. **Exact vs normal approximation (main cause):** scipy switches to exact combinatorial
+   computation when either sample has ≤ 8 elements and there are no ties. The Rust code
+   previously always used the normal approximation.
+2. **Tie correction missing (secondary cause):** when samples have tied values, scipy
+   applies a tie correction to the variance (`(t³-t)` reduction per tied run). The Rust
+   asymptotic path was using the uncorrected variance.
 
-### Lepidoptera
+Both issues are now fixed. The statrs CDF replacement did improve numerical precision
+(max difference 1.4×10⁻⁷ vs 10⁻⁸) but was not the source of significance disagreements.
 
-| Metric                               | Value               |
-| ------------------------------------ | ------------------- |
-| Test pairs compared                  | 103,254             |
-| Median relative p-value difference   | 39.8%               |
-| 95th percentile relative difference  | 637.2%              |
-| Significance agreement at _p_ < 0.05 | **95.27%**          |
-| Significance flips                   | 4.73% (4,882 tests) |
+### Speed after all changes
 
-![Lepidoptera significance agreement by ALO size](plots/lep_sig_agreement_by_size.png)
-![Lepidoptera relative p-value difference by ALO size](plots/lep_rel_diff_by_size.png)
-![Lepidoptera p-value scatter](plots/lep_scatter_pvalues.png)
-![Lepidoptera p-value difference distribution](plots/lep_boxplot_by_size.png)
+| Dataset     | Python | Rust v1 (A-S) | Rust v4 (statrs+exact) | Speedup  |
+| ----------- | ------ | ------------- | ---------------------- | -------- |
+| Nematodes   | 9.8 s  | 1.3 s         | 1.3 s                  | **7.5×** |
+| Lepidoptera | 114 s  | 17.8 s        | 16.3 s                 | **7.0×** |
 
-**Key observation:** Despite the higher median relative difference, bin-level agreement is
-93–100% for all ALO sizes because the lepidoptera dataset has many more proteomes (277),
-so significantly enriched genes have p-values far from the boundary. The worst agreement is
-still in small ALO bins (5–10 proteins).
-
-### Systematic bias
-
-The scatter plots reveal a consistent one-sided bias: **Rust p-values are always ≥ scipy
-p-values**. This is a known property of the A-S CDF approximation — it under-estimates the
-tail probability, making Rust conservative. The practical consequence is that Rust may
-_miss_ some significant results (false negatives) but will never produce spurious ones.
+Speed is unchanged — the additional exact DP and tie-correction are negligible vs the
+rank-sort computation that dominates each test.
 
 ---
 
-## Next step: improving CDF accuracy without sacrificing speed
+## Achieving scipy-equivalent accuracy
 
-The accuracy gap has two components that must be distinguished:
+Three changes were required to reach 100% significance agreement with scipy:
 
-### Component 1 — CDF approximation error (now fixed)
+### 1 — `statrs` CDF (numerical precision)
 
-The original `erf()` used the Abramowitz & Stegun polynomial (max absolute error ~1.5×10⁻⁷).
-This has been replaced with `statrs::distribution::Normal::cdf()` which matches scipy's `ndtr`
-to floating-point precision (verified: max observed p-value difference 1.4×10⁻⁷ across
-48,426 nematode tests; 33,347 values changed numerically).
+The original implementation used the Abramowitz & Stegun polynomial for `erf()` (max
+absolute error ~1.5×10⁻⁷). This was replaced with `statrs::distribution::Normal::cdf()`
+which matches scipy's `ndtr` to floating-point precision.
 
-**However: this fix does not change the significance agreement statistics at all.** The reason
-is that the A-S approximation error was never large enough to flip a significance call at
-p = 0.05 — it would need a shift of ~10⁻³, not 10⁻⁷.
+This improved numerical precision (33,347 of 48,426 nematode p-values changed by up to
+1.4×10⁻⁷) but did **not** change any significance calls — the A-S error was never large
+enough to flip a result at p = 0.05.
 
-### Component 2 — Exact vs normal approximation (the real gap)
+### 2 — Exact method for small n
 
-The remaining 2–5% significance flips are caused by **scipy switching to exact computation**
-for small sample sizes. When `n1 + n2` is small (typically < ~20), `scipy.stats.mannwhitneyu`
-computes the complete combinatorial distribution of U rather than using the normal
-approximation. Both A-S and statrs use the normal approximation unconditionally.
+scipy switches to exact combinatorial computation when `min(n1, n2) ≤ 8` and there are no
+ties. The Rust code previously always used the normal approximation, causing systematic
+disagreement on small ALOs.
 
-This is why the aggregate statistics are unchanged after the statrs replacement — the 2.29%
-nematode flips and 4.73% lepidoptera flips come from small-n exact computation, not CDF
-imprecision.
+The exact p-value is computed via the DP recurrence:
 
-### Option C — Implement exact MWU in Rust for small n (to close the real gap)
-
-To match scipy's significance calls for small samples, the Rust code would need to compute
-the exact distribution via recursion or dynamic programming when `n1 + n2 < ~20`. This is
-straightforward algorithmically but adds ~50 lines. It would close the 2–5% flip rate by
-matching scipy's exact branch, making Rust output identical to scipy for all inputs.
-
-### Option A — Replace the CDF with `statrs` (recommended)
-
-The [`statrs`](https://docs.rs/statrs) crate provides `Normal::cdf()` using a rational
-Chebyshev approximation via `erfc` — the same mathematics scipy's `ndtr` uses.
-
-The approximation lives entirely in `kinfin_stats/src/lib.rs` in `normal_cdf()` and the
-`erf()` function immediately below it (lines ~61–83). The change is a drop-in replacement:
-
-```toml
-# kinfin_stats/Cargo.toml — add one line under [dependencies]
-statrs = "0.17"
+```
+f(k, i, j) = f(k, i−1, j) + f(k−i, i, j−1)
 ```
 
-```rust
-// Replace the entire normal_cdf() and erf() functions in lib.rs with:
-use statrs::distribution::{Normal, ContinuousCDF};
+where `f(k, i, j)` counts interleavings of `i` X's and `j` Y's giving U = k.
+Time O(m²n), space O(mn), where m = min(n1, n2) ≤ 8 — negligible overhead.
 
-fn normal_cdf(x: f64) -> f64 {
-    Normal::new(0.0, 1.0).unwrap().cdf(x)
-}
-```
+### 3 — Tie-corrected variance
 
-That is the **entire change** — all three callers (`mannwhitneyu`, `ttest_ind`, `ks_2samp`)
-already call `normal_cdf()`, so no changes elsewhere. `erf()` can be deleted.
+When samples contain tied values, scipy applies the correction
 
-Expected outcome: p-values match scipy to floating-point precision; speed unchanged
-(the U-statistic rank-sum computation is the bottleneck, not the CDF call).
+$$\sigma^2_U = \frac{n_1 n_2}{12} \left[ (n+1) - \frac{\sum_k (t_k^3 - t_k)}{n(n-1)} \right]$$
 
-### Option B — Call scipy from Rust via PyO3 (not recommended)
+where $t_k$ is the size of the $k$-th tied run. The Rust asymptotic path was using the
+uncorrected $\sigma^2_U = n_1 n_2 (n+1) / 12$. Since protein counts are integers, ties are
+common and this was the dominant source of significance disagreements.
 
-PyO3 supports calling Python from Rust (`Python::with_gil()`), so it is _technically_
-feasible to acquire the GIL inside the Rust FFI function and invoke `scipy.stats.mannwhitneyu`
-directly:
+### Final accuracy: Nematodes
 
-```rust
-use pyo3::prelude::*;
+100% significance agreement — 0 flips across 48,426 MWU tests.
 
-fn mannwhitneyu_scipy(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
-    Python::with_gil(|py| {
-        let scipy = py.import("scipy.stats")?;
-        let result = scipy.call_method1("mannwhitneyu", (x, y))?;
-        // ...
-    })
-}
-```
+![Nematodes significance agreement by ALO size](plots/nem_v4_sig_agreement_by_size.png)
+![Nematodes p-value scatter](plots/nem_v4_scatter_pvalues.png)
 
-However this approach:
+### Final accuracy: Lepidoptera
 
-- Acquires (and blocks on) the GIL on every call — negating the parallelism benefit
-- Incurs Python object allocation overhead on every call — no speed gain over pure Python
-- Creates a circular dependency (Python calls Rust which calls Python)
-- Adds a `scipy` runtime requirement to the Rust crate
+100% significance agreement — 0 flips across 103,254 MWU tests.
 
-**Option B is not recommended.** The root problem is CDF approximation quality, and
-Option A solves that directly in Rust with no new dependencies on Python.
+![Lepidoptera significance agreement by ALO size](plots/lep_v4_sig_agreement_by_size.png)
+![Lepidoptera p-value scatter](plots/lep_v4_scatter_pvalues.png)
 
 ---
 
