@@ -1,4 +1,6 @@
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
 use pyo3::types::PyModule;
 use statrs::distribution::{ContinuousCDF, Normal};
 
@@ -117,6 +119,7 @@ fn mannwhitneyu_exact_pvalue(u_obs_min: usize, m: usize, n: usize) -> f64 {
 ///
 /// Returns:
 ///     Tuple of (statistic, p-value)
+#[cfg(feature = "python")]
 #[pyfunction]
 #[pyo3(signature = (x, y, alternative = "two-sided"))]
 fn mannwhitneyu(x: Vec<f64>, y: Vec<f64>, alternative: &str) -> PyResult<(f64, f64)> {
@@ -206,6 +209,103 @@ fn mannwhitneyu(x: Vec<f64>, y: Vec<f64>, alternative: &str) -> PyResult<(f64, f
     Ok((u_min, p_value.clamp(0.0, 1.0)))
 }
 
+/// Public Rust API wrapper for Mann-Whitney U (returns (u, p)).
+/// Uses the same logic as the pyo3-exposed `mannwhitneyu`.
+pub fn mannwhitney_rust(x: &[f64], y: &[f64], alternative: &str) -> (f64, f64) {
+    let n1 = x.len();
+    let n2 = y.len();
+    if n1 == 0 || n2 == 0 {
+        return (f64::NAN, 1.0);
+    }
+
+    let (u1, _, _) = mannwhitneyu_statistic(x, y);
+    let u2 = (n1 * n2) as f64 - u1;
+    let u_min = u1.min(u2);
+
+    // Check for ties
+    let has_ties = {
+        let mut all: Vec<u64> = x.iter().chain(y.iter()).map(|v| v.to_bits()).collect();
+        all.sort_unstable();
+        all.windows(2).any(|w| w[0] == w[1])
+    };
+
+    // Exact when small and no ties
+    if (!has_ties && n1 <= 8) || (!has_ties && n2 <= 8) {
+        let m = n1.min(n2);
+        let n = n1.max(n2);
+        let u_obs_min = u_min as usize;
+        if let Ok(p) = mann_exact_for_alternative_rust(u_obs_min, u_min as usize, m, n, alternative)
+        {
+            return (u_min, p);
+        } else {
+            return (u_min, 1.0);
+        }
+    }
+
+    // Asymptotic with tie correction
+    let n1_f = n1 as f64;
+    let n2_f = n2 as f64;
+    let n_total = (n1 + n2) as f64;
+    let mean_u = (n1_f * n2_f) / 2.0;
+
+    let tie_term: f64 = {
+        let mut all: Vec<f64> = x.iter().chain(y.iter()).copied().collect();
+        all.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut sum = 0.0f64;
+        let mut i = 0;
+        while i < all.len() {
+            let mut j = i + 1;
+            while j < all.len() && (all[j] - all[i]).abs() < 1e-15 {
+                j += 1;
+            }
+            let t = (j - i) as f64;
+            sum += t * t * t - t;
+            i = j;
+        }
+        sum
+    };
+    let var_u = n1_f * n2_f / 12.0 * ((n_total + 1.0) - tie_term / (n_total * (n_total - 1.0)));
+    if var_u <= 0.0 {
+        return (u_min, 1.0);
+    }
+
+    let p_value = match alternative {
+        "two-sided" => {
+            let z = (u_min + 0.5 - mean_u) / var_u.sqrt();
+            (2.0 * normal_cdf(z)).clamp(0.0, 1.0)
+        }
+        "less" => {
+            let z = (u1 + 0.5 - mean_u) / var_u.sqrt();
+            normal_cdf(z).clamp(0.0, 1.0)
+        }
+        "greater" => {
+            let z = (u1 - 0.5 - mean_u) / var_u.sqrt();
+            1.0 - normal_cdf(z)
+        }
+        _ => 1.0,
+    };
+
+    (u_min, p_value.clamp(0.0, 1.0))
+}
+
+/// Pure-Rust exact p-value helper (no pyo3 types). Returns Err for unknown alternative.
+fn mann_exact_for_alternative_rust(
+    u_obs_min: usize,
+    u1_usize: usize,
+    m: usize,
+    n: usize,
+    alternative: &str,
+) -> Result<f64, &'static str> {
+    match alternative {
+        "two-sided" => Ok(mannwhitneyu_exact_pvalue(u_obs_min, m, n)),
+        "less" => Ok(mannwhitneyu_exact_pvalue(u1_usize.min(m * n), m, n) / 2.0),
+        "greater" => Ok(mannwhitneyu_exact_pvalue((m * n).saturating_sub(u1_usize), m, n) / 2.0),
+        _ => Err("Unknown alternative"),
+    }
+}
+
+// pyo3 wrapper for the exact helper, compiled only when the python feature is enabled.
+#[cfg(feature = "python")]
 fn mann_exact_for_alternative(
     u_obs_min: usize,
     u1_usize: usize,
@@ -213,16 +313,11 @@ fn mann_exact_for_alternative(
     n: usize,
     alternative: &str,
 ) -> PyResult<f64> {
-    match alternative {
-        "two-sided" => Ok(mannwhitneyu_exact_pvalue(u_obs_min, m, n)),
-        // For one-sided exact: P(U1 <= u1) or P(U1 >= u1)
-        // Reuse the two-sided DP: P(U <= u_obs_min) where u_obs_min = u1 for "less"
-        // and u_obs_min = m*n - u1 for "greater".
-        "less" => Ok(mannwhitneyu_exact_pvalue(u1_usize.min(m * n), m, n) / 2.0),
-        "greater" => Ok(mannwhitneyu_exact_pvalue((m * n).saturating_sub(u1_usize), m, n) / 2.0),
-        _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-            "Unknown alternative: {}",
-            alternative
+    match mann_exact_for_alternative_rust(u_obs_min, u1_usize, m, n, alternative) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "{}",
+            e
         ))),
     }
 }
@@ -235,6 +330,7 @@ fn mann_exact_for_alternative(
 ///
 /// Returns:
 ///     Tuple of (t_statistic, p_value)
+#[cfg(feature = "python")]
 #[pyfunction]
 fn ttest_ind(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
     if x.is_empty() || y.is_empty() {
@@ -275,6 +371,7 @@ fn ttest_ind(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
 }
 
 /// Kolmogorov-Smirnov test for two samples
+#[cfg(feature = "python")]
 #[pyfunction]
 fn ks_2samp(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
     if x.is_empty() || y.is_empty() {
@@ -328,6 +425,7 @@ fn ks_2samp(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
 }
 
 /// Kruskal-Wallis H-test for two samples
+#[cfg(feature = "python")]
 #[pyfunction]
 fn kruskal(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
     if x.is_empty() || y.is_empty() {
@@ -395,6 +493,7 @@ fn kruskal(x: Vec<f64>, y: Vec<f64>) -> PyResult<(f64, f64)> {
 ///
 /// Returns:
 ///     List of (u_statistic, p_value) tuples
+#[cfg(feature = "python")]
 #[pyfunction]
 #[pyo3(signature = (test_pairs, alternative = "two-sided"))]
 fn batch_mannwhitneyu(
@@ -414,6 +513,7 @@ fn batch_mannwhitneyu(
 ///
 /// Returns:
 ///     List of (t_statistic, p_value) tuples
+#[cfg(feature = "python")]
 #[pyfunction]
 fn batch_ttest_ind(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, f64)>> {
     Ok(test_pairs
@@ -429,6 +529,7 @@ fn batch_ttest_ind(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, 
 ///
 /// Returns:
 ///     List of (ks_statistic, p_value) tuples
+#[cfg(feature = "python")]
 #[pyfunction]
 fn batch_ks_2samp(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, f64)>> {
     Ok(test_pairs
@@ -444,6 +545,7 @@ fn batch_ks_2samp(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, f
 ///
 /// Returns:
 ///     List of (h_statistic, p_value) tuples
+#[cfg(feature = "python")]
 #[pyfunction]
 fn batch_kruskal(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, f64)>> {
     Ok(test_pairs
@@ -453,6 +555,7 @@ fn batch_kruskal(test_pairs: Vec<(Vec<f64>, Vec<f64>)>) -> PyResult<Vec<(f64, f6
 }
 
 /// Python module definition
+#[cfg(feature = "python")]
 #[pymodule]
 fn kinfin_stats(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(mannwhitneyu, m)?)?;
