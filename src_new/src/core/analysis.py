@@ -1230,7 +1230,7 @@ def get_tree(
     outgroup=[],
 ):
     """
-    - technically only checks for outgroups. A tree with additional tips should work. 
+    - technically only checks for outgroups. A tree with additional tips should work.
     """
     if fn is None:
         logger.info("no tree provided")
@@ -1293,14 +1293,18 @@ def get_df_nodes(
     def place_orthogroup(row):
         row_dict = row.to_dict()
         TNs = [k for k, v in row_dict.items() if v > 0]
+        EC = sum(row_dict.values())
         node = tree.common_ancestor(TNs)
         node_id = node.get_prop("name")
         OG_AT = "synapomorphy" if len(TNs) > 1 else "autapomorphy"
+        OG_OT = "specific" if EC > 1 else "singleton"
         OG_NP = len(TNs) / len([leaf_name for leaf_name in node.leaf_names() if leaf_name in row_dict])
         return (
             node_id,
             OG_AT,
+            OG_OT,
             OG_NP,
+            EC,
         )
 
     t_0 = time.monotonic()
@@ -1308,19 +1312,30 @@ def get_df_nodes(
         f"placing orthogroups along {core.utils.format_number(len(list(tree.root.edges())))} branches on tree"
     )
     df_nodes = df_counts.apply(place_orthogroup, axis=1, result_type="expand")
-    df_nodes.columns = ["node_id", "OG_TT", "OG_NP"]
-    df_nodes["EC"] = df_counts.sum(axis=1)
-    OG_TT = df_nodes["OG_TT"].value_counts()
+    df_nodes.columns = ["node_id", "OG_AT", "OG_OT", "OG_NP", "EC"]
+    OG_AT = df_nodes["OG_AT"].value_counts()
     logger.info(
-        f"{core.utils.format_number(OG_TT.get('synapomorphy', 0))} synapomorphic orthogroups"
+        f"{core.utils.format_number(OG_AT.get('synapomorphy', 0))} synapomorphic orthogroups"
     )
     logger.info(
-        f"{core.utils.format_number(OG_TT.get('autapomorphy', 0))} autapomorphic orthogroups"
+        f"{core.utils.format_number(OG_AT.get('autapomorphy', 0))} autapomorphic orthogroups"
     )
+    df_nodes = df_nodes.reset_index()
     core.utils.dump(
-        df_nodes.reset_index(),
+        df_nodes,
         fn=core.utils.format_fn(
             fn=f"tree.node_metrics.{output_fmt}",
+            prefix=core.utils.get_dir("TREE"),
+        ),
+        index=False,
+    )
+    df_nodes["OG_NT"] = "partial"
+    df_nodes["OG_NT"] = df_nodes['OG_NT'].where(df_nodes["OG_NP"] == 1, "complete")
+    df_summary = df_nodes.groupby(["node_id", "OG_AT", "OG_OT", "OG_NT"], as_index=False).agg(OC=("orthogroup_id", "count")).set_index("node_id")
+    core.utils.dump(
+        df_summary.reset_index(),
+        fn=core.utils.format_fn(
+            fn=f"tree.summary.{output_fmt}",
             prefix=core.utils.get_dir("TREE"),
         ),
         index=False,
