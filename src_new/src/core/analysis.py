@@ -1251,8 +1251,11 @@ def get_tree(
                 "no outgroup provided. No outgroup will be set. Verify tree topology"
             )
         zeros = len(str(len(list(tree.traverse()))))
-        for idx, node in enumerate(tree.traverse("levelorder")):  # rename nodes
-            node.add_prop("name", node.name if node.name else f"{str(idx).zfill(zeros)}")
+        idx = 0
+        for node in tree.traverse("levelorder"):  # rename nodes
+            if not node.name:
+                node.add_prop("name", f"{str(idx).zfill(zeros)}")
+                idx += 1
         tree.write(
             outfile=core.utils.format_fn(
                 fn=("tree.with_node_names.nwk"),
