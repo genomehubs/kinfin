@@ -14,7 +14,7 @@ venv
 result
 .DS_Store
 .env
-data
+data/*
 
 # Logs
 logs
