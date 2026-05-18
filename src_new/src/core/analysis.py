@@ -1229,6 +1229,9 @@ def get_tree(
     fn,
     outgroup=[],
 ):
+    """
+    - technically only checks for outgroups. A tree with additional tips should work. 
+    """
     if fn is None:
         logger.info("no tree provided")
         tree = None
@@ -1277,19 +1280,26 @@ def get_df_nodes(
     tree,
     output_fmt="tsv",
 ):
+    """
+    - agnostic about additional leafs
+    - OG_AT: ApomorphyType
+    - OG_NP: NodeProportion (based only on leaf_names in df_counts)
+    - EC: ElementCount
+    """
     if df_counts.empty or tree is None:
         return None
 
     def place_orthogroup(row):
-        TNs = [k for k, v in row.to_dict().items() if v > 0]
+        row_dict = row.to_dict()
+        TNs = [k for k, v in row_dict.items() if v > 0]
         node = tree.common_ancestor(TNs)
         node_id = node.get_prop("name")
-        OG_type = "synapomorphy" if len(TNs) > 1 else "autapomorphy"
-        OG_NODE_COV = len(TNs) / len(list(node.leaf_names()))
+        OG_AT = "synapomorphy" if len(TNs) > 1 else "autapomorphy"
+        OG_NP = len(TNs) / len([leaf_name for leaf_name in node.leaf_names() if leaf_name in row_dict])
         return (
             node_id,
-            OG_type,
-            OG_NODE_COV,
+            OG_AT,
+            OG_NP,
         )
 
     t_0 = time.monotonic()
@@ -1297,13 +1307,14 @@ def get_df_nodes(
         f"placing orthogroups along {core.utils.format_number(len(list(tree.root.edges())))} branches on tree"
     )
     df_nodes = df_counts.apply(place_orthogroup, axis=1, result_type="expand")
-    df_nodes.columns = ["node", "OG_type", "OG_N_COV"]
-    OG_type_counts = df_nodes["OG_type"].value_counts()
+    df_nodes.columns = ["node_id", "OG_TT", "OG_NP"]
+    df_nodes["EC"] = df_counts.sum(axis=1)
+    OG_TT = df_nodes["OG_TT"].value_counts()
     logger.info(
-        f"{core.utils.format_number(OG_type_counts.get('synapomorphy', 0))} synapomorphic orthogroups"
+        f"{core.utils.format_number(OG_TT.get('synapomorphy', 0))} synapomorphic orthogroups"
     )
     logger.info(
-        f"{core.utils.format_number(OG_type_counts.get('autapomorphy', 0))} autapomorphic orthogroups"
+        f"{core.utils.format_number(OG_TT.get('autapomorphy', 0))} autapomorphic orthogroups"
     )
     core.utils.dump(
         df_nodes.reset_index(),
