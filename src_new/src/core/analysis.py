@@ -1250,8 +1250,9 @@ def get_tree(
             logger.warning(
                 "no outgroup provided. No outgroup will be set. Verify tree topology"
             )
+        zeros = len(str(len(list(tree.traverse()))))
         for idx, node in enumerate(tree.traverse("levelorder")):  # rename nodes
-            node.add_prop("name", node.name if node.name else f"n{idx}")
+            node.add_prop("name", node.name if node.name else f"{str(idx).zfill(zeros)}")
         tree.write(
             outfile=core.utils.format_fn(
                 fn=("tree.with_node_names.nwk"),
@@ -1261,7 +1262,7 @@ def get_tree(
             parser=1,
         )
         tree_strings = tree.to_str(compact=True, props=["name"]).split("\n")
-        if len(tree["n0"]) <= definitions.TREE_NODES_MAX_FOR_LOG:
+        if len(tree[str(0).zfill(zeros)]) <= definitions.TREE_NODES_MAX_FOR_LOG:
             logger.debug("[Tree]")
             for tree_string in tree_strings:
                 logger.debug(tree_string)
