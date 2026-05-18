@@ -1230,6 +1230,7 @@ def get_tree(
     outgroup=[],
 ):
     """
+    # [done]
     - technically only checks for outgroups. A tree with additional tips should work.
     """
     if fn is None:
@@ -1285,8 +1286,10 @@ def get_df_nodes(
     output_fmt="tsv",
 ):
     """
+    # [done]
     - agnostic about additional leafs
     - OG_AT: ApomorphyType
+    - OG_OT: OrthogroupType
     - OG_NP: NodeProportion (based only on leaf_names in df_counts)
     - EC: ElementCount
     """
