@@ -161,15 +161,15 @@ def add_analysis_parser(subparsers):
         required=False,
         type=int_zero_or_positive,
         default=0,
-        help="Minimum count per Sample IDs outside of COG_COUNT_FRACTION (default: %(default)s)",
+        help="Minimum count per Sample IDs outside (!) of COG_COUNT_FRACTION (default: %(default)s)",
     )
     analysis_parser_parameters.add_argument(
         "-M",
         metavar="COG_COUNT_MAX",
         required=False,
         type=int_positive,
-        default=2,
-        help="Maximum count per Sample IDs outside of COG_COUNT_FRACTION (default: %(default)s)",
+        default=1,
+        help="Maximum count per Sample IDs outside (!) of COG_COUNT_FRACTION (default: %(default)s)",
     )
     analysis_parser_parameters.add_argument(
         "-d",
