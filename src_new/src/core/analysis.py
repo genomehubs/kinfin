@@ -774,19 +774,39 @@ def contrast(task):
         )
     )
     # timing["COG_TP_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
+    # FASTER NPSELECT
     df_partition_list.append(
-        df_counts_TG1.apply(
-            infer_cog_type,
-            axis=1,
-            raw=True,
-            args=(
-                task.count_target,
-                task.count_min,
-                task.count_max,
-                task.count_fraction,
+        pd.Series(
+            np.select(
+                condlist=[
+                    np.all(df_counts.eq(task.count_target), axis=1),
+                    np.mean((df_counts >= task.count_min) & (df_counts <= task.count_max), axis=1) >= task.count_fraction,
+                ],
+                choicelist=[
+                    "true_cog",
+                    "fuzzy_cog",
+                ],
+                default="no_cog",
             ),
-        ).rename("COG_type_TG1")
+            index=df_counts.index,
+        ).rename(
+            "COG_type_TG1"
+        )
     )
+    ## SLOWER apply
+    # df_partition_list.append(
+    #     df_counts_TG1.apply(
+    #         infer_cog_type,
+    #         axis=1,
+    #         raw=True,
+    #         args=(
+    #             task.count_target,
+    #             task.count_min,
+    #             task.count_max,
+    #             task.count_fraction,
+    #         ),
+    #     ).rename("COG_type_TG1")
+    # )
     # timing["COG_type_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts.mean(axis=1).rename("EC_mean"))
     # timing["EC_mean"], t_i = time.monotonic() - t_i, time.monotonic()
@@ -881,6 +901,7 @@ def contrast(task):
             index=False,
         )
     # timing["dumping"] = time.monotonic() - t_i
+    # import pprint
     # pprint.pp(timing)
     return True
 
