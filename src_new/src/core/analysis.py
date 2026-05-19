@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import tqdm
-
+import polars as pl
 import core.log
 import core.taxonomy
 import core.utils
@@ -708,6 +708,172 @@ def compare(task):
     return True
 
 
+def infer_OG_OT(x):
+    return np.select(
+        condlist=[
+            (x.struct.field("EC_TG1") == 0),
+            (x.struct.field("EC") == 1),
+            (x.struct.field("EC") >= 1) & (x.struct.field("EC_TG2") == 0),
+            (x.struct.field("EC_TG1") >= 1) & (x.struct.field("EC_TG2") >= 1),
+        ],
+        choicelist=[
+            "absent",
+            "singleton",
+            "specific",
+            "shared",
+        ],
+        default="None",
+    )
+
+
+def infer_pvalue(x, TG_1, TG_2):
+    #print(x.struct.fields)
+    #print(x.struct.unnest()[TG_1])
+    # print(x.struct.fields(*TG_2).unnest())
+    return scipy.stats.mannwhitneyu(
+        x.struct.unnest()[TG_1],
+        x.struct.unnest()[TG_2],
+        method="asymptotic",
+        alternative="two-sided",
+        nan_policy="omit",
+        axis=1,
+        keepdims=False,)[1]
+
+
+OG_OT_enum = pl.Enum(["absent", "singleton", "specific", "shared"])
+OG_CT_enum = pl.Enum(["true_cog", "fuzzy_cog", "no_cog"])
+
+
+def contrast_polars(task):
+    def infer_OG_CT(x):
+        array = x.struct.unnest().to_numpy()
+        return np.select(
+            condlist=[
+                np.all(array == task.count_target, axis=1),
+                np.mean((array >= task.count_min) & (array <= task.count_max), axis=1) >= task.count_fraction,
+            ],
+            choicelist=[
+                "true_cog",
+                "fuzzy_cog",
+            ],
+            default="no_cog",
+        )
+
+    t_i = time.monotonic()
+    TG_1, TG_2 = task.taxon_groups
+    TG = sum([TG_1, TG_2], ())
+    # print(f"{TG=}")
+    # print(f"{TG_1=}")
+    # print(f"{TG_2=}")
+    df_1 = pl.scan_parquet(source=task.df_counts_fn).select(
+        OG_ID=pl.col("orthogroup_id").cast(pl.String),
+        pvalue=pl.struct(pl.all()).map_batches(lambda x: infer_pvalue(x, TG_1, TG_2), returns_scalar=True, return_dtype=pl.Float64).fill_null(np.nan) if TG_2 else pl.lit(None),
+        SC=pl.sum_horizontal(pl.col(TG) > 1, ignore_nulls=True) if TG else pl.lit(0),
+        SC_TG1=pl.sum_horizontal(pl.col(TG_1) > 1, ignore_nulls=True) if TG_1 else pl.lit(0),
+        SC_TG2=pl.sum_horizontal(pl.col(TG_2) > 1, ignore_nulls=True) if TG_2 else pl.lit(0),
+        EC=pl.sum_horizontal(pl.col(TG), ignore_nulls=True) if TG else pl.lit(0),
+        EC_TG1=pl.sum_horizontal(pl.col(TG_1), ignore_nulls=True) if TG_1 else pl.lit(0),
+        EC_TG2=pl.sum_horizontal(pl.col(TG_2), ignore_nulls=True) if TG_2 else pl.lit(0),
+        OG_CP=pl.sum_horizontal(pl.col(TG) == task.count_target, ignore_nulls=True) / len(TG),
+        OG_CP_TG1=pl.sum_horizontal(pl.col(TG_1) == task.count_target, ignore_nulls=True) / len(TG_1),
+        COG_type_TG1=pl.struct(TG_1).map_batches(infer_OG_CT, is_elementwise=False, returns_scalar=True, return_dtype=OG_CT_enum),
+        EC_mean=pl.concat_list(TG).list.mean(),
+        EC_mean_TG1=pl.concat_list(TG_1).list.mean(),
+        EC_mean_TG2=pl.concat_list(TG_2).list.mean() if TG_2 else pl.lit(0.0),
+        EC_median=pl.concat_list(TG).list.median(),
+        EC_median_TG1=pl.concat_list(TG_1).list.median(),
+        EC_median_TG2=pl.concat_list(TG_2).list.median() if TG_2 else pl.lit(0.0),
+    ).collect()
+    df_2 = df_1.select(
+        SP_TG1=pl.sum_horizontal(pl.col("SC_TG1") / len(TG_1), ignore_nulls=True) if TG_1 else pl.lit(0),
+        SP_TG2=pl.sum_horizontal(pl.col("SC_TG2") / len(TG_2), ignore_nulls=True) if TG_2 else pl.lit(0),
+        OG_type_TG1=pl.struct("EC", "EC_TG1", "EC_TG2").map_batches(infer_OG_OT, is_elementwise=False, return_dtype=OG_OT_enum),
+        log2mean=((pl.col("EC_mean_TG1") / pl.col("EC_mean_TG2")).log(base=2)),
+    )
+
+    # df_3 = pl.scan_parquet(source=task.df_counts_fn).select(
+    #    pvalue=pl.struct(*TG_1, *TG_2).map_elements(lambda x: infer_pvalue(x[TG_1], x[TG_2]), return_dtype=pl.Float64)
+    # ).collect()
+    df_partition = pl.concat([df_1, df_2], how="horizontal").to_pandas()
+    # with pl.Config(tbl_rows=100, tbl_cols=10):
+    #     print(df)
+    # df_counts.select(TG_1)
+    # df_counts.select(TG_2)
+
+    # df_partition_list.append(
+    #     pd.Series(
+    #         scipy.stats.mannwhitneyu(
+    #             df_counts_TG1,
+    #             df_counts_TG2,
+    #             method="asymptotic",
+    #             alternative="two-sided",
+    #             nan_policy="omit",
+    #             axis=1,
+    #             keepdims=False,
+    #         )[1],
+    #         index=df_counts.index,
+    #     ).rename("pvalue")
+    # )
+    # # df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
+    # # df_partition_list.append(
+    # #     df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
+    # # )
+    # # df_partition_list.append(
+    # #     df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
+    # # )
+    # # concat
+    # df_partition = pl.concat(df_partition_list, how="horizontal")
+    # print("elapsed", time.monotonic() - t_i)
+    # df_partition = df_partition[
+    #     [
+    #         "OG_type_TG1",
+    #         "SC",
+    #         "SC_TG1",
+    #         "SP_TG1",
+    #         "SC_TG2",
+    #         "SP_TG2",
+    #         "EC",
+    #         "EC_TG1",
+    #         "EC_TG2",
+    #         "EC_mean",
+    #         "EC_mean_TG1",
+    #         "EC_mean_TG2",
+    #         "log2_mean(TG1/TG2)",
+    #         "pvalue",
+    #         # "EC_median",
+    #         # "EC_median_TG1",
+    #         # "EC_median_TG2",
+    #         "COG_type_TG1",
+    #         "COG_TP",
+    #         "COG_TP_TG1",
+    #     ]
+    # ]
+    for idx, label in enumerate(task.labels):
+        TG1_tag, TG2_tag = task.tags[idx]
+        fn = f"partition.{label}.{TG1_tag}_vs_{TG2_tag}"
+        # [SAMPLE IDS]
+        core.utils.dump(
+            pd.DataFrame.from_records(
+                [{"TG": "1", "sample_id": TN, "label": TG1_tag} for TN in TG_1]
+                + [{"TG": "2", "sample_id": TN, "label": TG2_tag} for TN in TG_2]
+            ),
+            fn=core.utils.format_fn(
+                fn=(f"{fn}.sample_ids.tsv"),
+                prefix=core.utils.get_dir("PARTITION") / label,
+            ),
+            index=False,
+        )
+        # [CONTRAST]
+        core.utils.dump(
+            df_partition.reset_index(),
+            fn=core.utils.format_fn(
+                fn=(f"{fn}.contrast.{task.output_fmt}"),
+                prefix=core.utils.get_dir("PARTITION") / label,
+            ),
+            index=False,
+        )
+    return True
+
 def contrast(task):
     """
     - np.nanmedian is not faster
@@ -804,30 +970,30 @@ def contrast(task):
     #    time.monotonic() - t_i,
     #    time.monotonic(),
     # )
-    df_partition_list.append(
-        pd.Series(
-            scipy.stats.mannwhitneyu(
-                df_counts_TG1,
-                df_counts_TG2,
-                method="asymptotic",
-                alternative="two-sided",
-                nan_policy="omit",
-                axis=1,
-                keepdims=False,
-            )[1],
-            index=df_counts.index,
-        ).rename("pvalue")
-    )
+    # df_partition_list.append(
+    #     pd.Series(
+    #         scipy.stats.mannwhitneyu(
+    #             df_counts_TG1,
+    #             df_counts_TG2,
+    #             method="asymptotic",
+    #             alternative="two-sided",
+    #             nan_policy="omit",
+    #             axis=1,
+    #             keepdims=False,
+    #         )[1],
+    #         index=df_counts.index,
+    #     ).rename("pvalue")
+    # )
     # timing["pvalue"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
+    df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
     # timing["EC_median"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(
-    #     df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
-    # )
+    df_partition_list.append(
+        df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
+    )
     # timing["EC_median_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(
-    #     df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
-    # )
+    df_partition_list.append(
+        df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
+    )
     # timing["EC_median_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     # concat
     df_partition = pd.concat(df_partition_list, axis=1)
@@ -847,10 +1013,10 @@ def contrast(task):
             "EC_mean_TG1",
             "EC_mean_TG2",
             "log2_mean(TG1/TG2)",
-            "pvalue",
-            # "EC_median",
-            # "EC_median_TG1",
-            # "EC_median_TG2",
+            # "pvalue",
+            "EC_median",
+            "EC_median_TG1",
+            "EC_median_TG2",
             "COG_type_TG1",
             "COG_TP",
             "COG_TP_TG1",
@@ -889,7 +1055,8 @@ def do_task(task):
     if task.type == "summary":
         compare(task)
     elif task.type == "comparison":
-        contrast(task)
+        contrast_polars(task)
+        # contrast(task)
     else:
         raise ValueError(f"unknown task type: {task}")
 
@@ -975,21 +1142,27 @@ def get_comparison_tasks(
         collector_key = (TG_1, TG_2)
         collector_value = (grouping, label_1, label_2)
         collector[collector_key].append(collector_value)
-    df_counts_fn = core.utils.dump(
-        # df_counts.replace(0, np.nan)
-        df_counts.apply(
-            pd.to_numeric,
-            downcast="float",  # float32
-        ).replace(
-            0,
-            np.nan,
-        ),
-        fn=core.utils.format_fn(
-            fn="orthogroups.counts.nan.feather",
-            prefix=core.utils.get_dir("TMP"),
-        ),
-        index=True,
+    pf_counts = pl.from_pandas(df_counts.replace(0, None).reset_index())
+    pf_counts_fn = core.utils.format_fn(
+        fn="orthogroups.counts.null.parquet",
+        prefix=core.utils.get_dir("TMP"),
     )
+    pf_counts.write_parquet(pf_counts_fn)
+    # df_counts_fn = core.utils.dump(
+    #     # df_counts.replace(0, np.nan)
+    #     df_counts.apply(
+    #         pd.to_numeric,
+    #         downcast="float",  # float32
+    #     ).replace(
+    #         0,
+    #         np.nan,
+    #     ),
+    #     fn=core.utils.format_fn(
+    #         fn="orthogroups.counts.nan.feather",
+    #         prefix=core.utils.get_dir("TMP"),
+    #     ),
+    #     index=True,
+    # )
     tasks = []
     for taxon_groups, v in collector.items():
         labels = [label[0] for label in v]
@@ -999,7 +1172,8 @@ def get_comparison_tasks(
             taxon_groups=taxon_groups,
             labels=labels,
             tags=tags,
-            df_counts_fn=df_counts_fn,
+            # df_counts_fn=df_counts_fn,
+            df_counts_fn=pf_counts_fn,
             count_target=count_target,
             count_min=count_min,
             count_max=count_max,
