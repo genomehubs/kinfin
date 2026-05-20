@@ -497,7 +497,6 @@ def get_df_table(fn, df_orthogroups):
 
 def get_df_interpro(
     fn,
-    df_orthogroups=None,
     output_fmt="tsv",
 ):
     t_0 = time.monotonic()
@@ -522,6 +521,7 @@ def get_df_interpro(
             "pathway_annotations",
         ],
     )
+    df_orthogroups = core.utils.load(fn=core.utils.get_dir("INPUT") / definitions.ORTHOGROUPS_FN)
     annotations_valid = df_interpro["element_id"].isin(df_orthogroups["element_id"])
     annotations_valid_count = annotations_valid.value_counts().get(True, 0)
     annotations_orphan_count = annotations_valid.value_counts().get(False, 0)
