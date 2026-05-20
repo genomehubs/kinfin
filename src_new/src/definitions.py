@@ -34,6 +34,7 @@ ORTHOGROUPS_FN = f"orthogroups.{STD_FORMAT}"
 COUNTS_FN = "orthogroups.counts"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
+SUPPORTED_INTERPRO_EXTENSION = ".tsv"
 
 CONFIG_MIN_SAMPLE_IDS = 2  # at least one group in comparisons needs to be of length 2
 

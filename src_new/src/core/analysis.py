@@ -495,6 +495,62 @@ def get_df_table(fn, df_orthogroups):
     return df_table[annotations_valid]
 
 
+# def get_interpro(
+#     directory=None,
+#     sample_ids=[],
+#     processes=1,
+#     output_fmt="feather",
+# ):
+#     t_0 = time.monotonic()
+#     payloads = []
+#     sample_ids_found = []
+#     for fn in glob.glob(f"{directory}/*{definitions.SUPPORTED_INTERPRO_EXTENSION}"):
+#         sample_id = pathlib.Path(fn).stem.split(".")[0]  # [ToDo] CHECK
+#         if sample_id in sample_ids:
+#             sample_ids_found.append(sample_id)
+#             payloads.append(
+#                 (
+#                     sample_id,
+#                     fn,
+#                 )
+#             )
+#     if len(payloads) < len(sample_ids):
+#         logger.warning(
+#             f"INTERPRO files for the following sample IDs could not be found: {', '.join([set(sample_ids) - set(sample_ids_found)])}"
+#         )
+#     logger.info(f"parsing {len(payloads)} INTERPRO files using {processes} process(es)")
+#     df_fns = []
+#     if processes > 1:
+#         with tqdm.tqdm(
+#             total=len(payloads),
+#             desc=definitions.PROGRESS_DESC_FASTA,
+#             ncols=definitions.PROGRESS_NCOLS,
+#         ) as t:
+#             with poolcontext(processes=processes) as pool:
+#                 for df_fn in pool.imap_unordered(get_df_interpro, payloads):
+#                     df_fns.append(df_fn)
+#                     t.update()
+#     else:
+#         for payload in tqdm.tqdm(
+#             payloads,
+#             total=len(payloads),
+#             desc=definitions.PROGRESS_DESC_FASTA,
+#             ncols=definitions.PROGRESS_NCOLS,
+#         ):
+#             df_fn = get_fasta_df(payload)
+#             df_fns.append(df_fn)
+#     core.utils.dump(
+#         pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
+#         fn=core.utils.format_fn(
+#             fn=definitions.ELEMENTS_FN,
+#             prefix=core.utils.get_dir("INPUT"),
+#         ),
+#         index=False,
+#     )
+#     logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+#     return True
+
+
 def get_df_interpro(
     fn,
     output_fmt="tsv",
