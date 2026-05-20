@@ -747,16 +747,17 @@ def contrast(task):
                 condlist=[
                     (df_partition_list[6] == 0),
                     (df_partition_list[5] == 1),
-                    (df_partition_list[6] >= 1) & (df_partition_list[7] == 0),
-                    (df_partition_list[6] >= 1) & (df_partition_list[7] >= 1),
+                    (df_partition_list[7] == 0),  # sufficient!
+                    # (df_partition_list[7] == 0) & (df_partition_list[6] >= 1),
+                    # (df_partition_list[6] >= 1) & (df_partition_list[7] >= 1),
                 ],
                 choicelist=[
                     "absent",
                     "singleton",
                     "specific",
-                    "shared",
+                    # "shared",
                 ],
-                default="None",
+                default="shared",
             ),
             index=df_counts.index,
         ).rename("OG_type_TG1")
@@ -839,15 +840,15 @@ def contrast(task):
         ).rename("pvalue")
     )
     # timing["pvalue"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
+    df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
     # timing["EC_median"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(
-    #     df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
-    # )
+    df_partition_list.append(
+        df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
+    )
     # timing["EC_median_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
-    # df_partition_list.append(
-    #     df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
-    # )
+    df_partition_list.append(
+        df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
+    )
     # timing["EC_median_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     # concat
     df_partition = pd.concat(df_partition_list, axis=1)
@@ -868,9 +869,9 @@ def contrast(task):
             "EC_mean_TG2",
             "log2_mean(TG1/TG2)",
             "pvalue",
-            # "EC_median",
-            # "EC_median_TG1",
-            # "EC_median_TG2",
+            "EC_median",
+            "EC_median_TG1",
+            "EC_median_TG2",
             "COG_type_TG1",
             "COG_TP",
             "COG_TP_TG1",
