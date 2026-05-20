@@ -5,4 +5,4 @@ import pandas as pd
 def run(args):
     pd.options.display.max_colwidth = None
     pd.options.display.max_rows = None
-    print(core.utils.load(args.t).head(n=args.n))
+    print(core.utils.load(args.t).tail(n=args.n))

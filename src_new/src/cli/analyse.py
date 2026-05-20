@@ -101,11 +101,12 @@ def run(args):
             output_fmt=args.F,
         )
     # [ANNOTATION]
-    # - [ToDo] bundle annotation stuff into one function
+    # [ToDo] 
+    # - bundle annotation stuff into one function
+    # - 
     if args.i:
         df_interpro = core.analysis.get_df_interpro(
             fn=args.i,
-            df_orthogroups=df_orthogroups,
             output_fmt=args.F,
         )
         _ = core.analysis.get_df_annotation(
@@ -122,7 +123,7 @@ def run(args):
         count_max=args.M,
         count_fraction=args.x,
         output_fmt=args.F,
-        ignore_sample_comparisons=args.I,
+        ignore_sample_comparisons=args.X,
     )
     core.analysis.do_tasks(
         tasks,
@@ -132,7 +133,7 @@ def run(args):
     tasks = core.analysis.get_summary_tasks(
         df_config=df_config,
         output_fmt=args.F,
-        ignore_sample_comparisons=args.I,
+        ignore_sample_comparisons=args.X,
     )
     core.analysis.do_tasks(
         tasks,

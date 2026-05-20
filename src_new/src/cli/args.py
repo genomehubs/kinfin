@@ -105,7 +105,14 @@ def add_analysis_parser(subparsers):
         metavar="INTERPRO_FN",
         required=False,
         type=existing_file,
-        help="Interproscan output in TSV format",
+        help="Interproscan output in a single file in TSV format",
+    )
+    analysis_parser_parameters.add_argument(
+        "-I",
+        metavar="INTERPRO_DIR",
+        required=False,
+        type=existing_dir,
+        help="Directoroy of Interproscan output in TSV format. Needs Sample-ID as filename prefix.",
     )
     analysis_parser_parameters.add_argument(
         "-a",
@@ -199,7 +206,7 @@ def add_analysis_parser(subparsers):
         help="Verbose log",
     )
     analysis_parser_parameters.add_argument(
-        "-I",
+        "-X",
         action="store_true",
         help="Ignore 'sample_id' column for comparisons",
     )
@@ -257,6 +264,11 @@ def add_convert_parser(subparsers):
         default="tsv",
         help="Output format (default: %(default)s)",
     )
+    convert_parser.add_argument(
+        "-i",
+        action="store_true",
+        help="Include index",
+    )
 
 
 def add_view_parser(subparsers):
@@ -265,9 +277,11 @@ def add_view_parser(subparsers):
         help="write KinFin output table to stdout",
     )
     view_parser.add_argument(
-        "TABLE_FN",
+        "-t",
+        metavar="TABLE_FN",
+        required=True,
         type=existing_file,
-        help="Table to display",
+        help="Table to convert",
     )
     view_parser.add_argument(
         "-i",
@@ -286,10 +300,12 @@ def add_view_parser(subparsers):
 def add_head_parser(subparsers):
     head_parser = subparsers.add_parser(
         "head",
-        help="display first lines of a KinFin output table",
+        help="display first rows of a KinFin output table",
     )
     head_parser.add_argument(
-        "TABLE_FN",
+        "-t",
+        metavar="TABLE_FN",
+        required=True,
         type=existing_file,
         help="Table to display",
     )
@@ -301,17 +317,27 @@ def add_head_parser(subparsers):
         type=int_positive,
         help="print COUNT lines of each of the specified file (default: %(default)s)",
     )
-    head_parser.add_argument(
-        "-F",
-        metavar="FMT",
-        choices=definitions.ARGS_SUPPORTED_OUTPUT_FORMATS,
-        default="tsv",
-        help="Output format (default: %(default)s)",
+
+
+def add_tail_parser(subparsers):
+    tail_parser = subparsers.add_parser(
+        "tail",
+        help="display last rows of a KinFin output table",
     )
-    head_parser.add_argument(
-        "-i",
-        action="store_true",
-        help="include index column",
+    tail_parser.add_argument(
+        "-t",
+        metavar="TABLE_FN",
+        required=True,
+        type=existing_file,
+        help="Table to display",
+    )
+    tail_parser.add_argument(
+        "-n",
+        metavar="COUNT",
+        required=False,
+        default=10,
+        type=int_positive,
+        help="print COUNT lines of each of the specified file (default: %(default)s)",
     )
 
 
@@ -374,6 +400,7 @@ def get_argparse():
     add_plot_parser(subparsers)
     add_view_parser(subparsers)
     add_head_parser(subparsers)
+    add_tail_parser(subparsers)
     add_convert_parser(subparsers)
     add_taxid_parser(subparsers)
     args = parser.parse_args()
