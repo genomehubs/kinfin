@@ -9,16 +9,16 @@ import pathlib
 import sys
 import time
 
+import core.log
+import core.taxonomy
+import definitions
 import ete4
 import numpy as np
 import pandas as pd
 import scipy
 import tqdm
 
-import core.log
-import core.taxonomy
 import core.utils
-import definitions
 
 logger = logging.getLogger(__name__)
 
@@ -577,7 +577,9 @@ def get_df_interpro(
             "pathway_annotations",
         ],
     )
-    df_orthogroups = core.utils.load(fn=core.utils.get_dir("INPUT") / definitions.ORTHOGROUPS_FN)
+    df_orthogroups = core.utils.load(
+        fn=core.utils.get_dir("INPUT") / definitions.ORTHOGROUPS_FN
+    )
     annotations_valid = df_interpro["element_id"].isin(df_orthogroups["element_id"])
     annotations_valid_count = annotations_valid.value_counts().get(True, 0)
     annotations_orphan_count = annotations_valid.value_counts().get(False, 0)
@@ -837,7 +839,11 @@ def contrast(task):
             np.select(
                 condlist=[
                     np.all(df_counts.eq(task.count_target), axis=1),
-                    np.mean((df_counts >= task.count_min) & (df_counts <= task.count_max), axis=1) >= task.count_fraction,
+                    np.mean(
+                        (df_counts >= task.count_min) & (df_counts <= task.count_max),
+                        axis=1,
+                    )
+                    >= task.count_fraction,
                 ],
                 choicelist=[
                     "true_cog",
@@ -846,9 +852,7 @@ def contrast(task):
                 default="no_cog",
             ),
             index=df_counts.index,
-        ).rename(
-            "COG_type_TG1"
-        )
+        ).rename("COG_type_TG1")
     )
     ## SLOWER apply
     # df_partition_list.append(
@@ -1382,7 +1386,9 @@ def get_df_nodes(
         node_id = node.get_prop("name")
         OG_AT = "synapomorphy" if len(TNs) > 1 else "autapomorphy"
         OG_OT = "specific" if EC > 1 else "singleton"
-        OG_NP = len(TNs) / len([leaf_name for leaf_name in node.leaf_names() if leaf_name in row_dict])
+        OG_NP = len(TNs) / len(
+            [leaf_name for leaf_name in node.leaf_names() if leaf_name in row_dict]
+        )
         return (
             node_id,
             OG_AT,
@@ -1414,8 +1420,12 @@ def get_df_nodes(
         index=False,
     )
     df_nodes["OG_NT"] = "partial"
-    df_nodes["OG_NT"] = df_nodes['OG_NT'].where(df_nodes["OG_NP"] == 1, "complete")
-    df_summary = df_nodes.groupby(["node_id", "OG_AT", "OG_OT", "OG_NT"], as_index=False).agg(OC=("orthogroup_id", "count")).set_index("node_id")
+    df_nodes["OG_NT"] = df_nodes["OG_NT"].where(df_nodes["OG_NP"] == 1, "complete")
+    df_summary = (
+        df_nodes.groupby(["node_id", "OG_AT", "OG_OT", "OG_NT"], as_index=False)
+        .agg(OC=("orthogroup_id", "count"))
+        .set_index("node_id")
+    )
     core.utils.dump(
         df_summary.reset_index(),
         fn=core.utils.format_fn(
