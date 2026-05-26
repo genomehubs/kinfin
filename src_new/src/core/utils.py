@@ -9,11 +9,10 @@ import signal
 import sys
 import traceback
 
+import definitions
 import pandas as pd
 import requests
 import tqdm
-
-import definitions
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +88,28 @@ def get_fn(fn, outdir=None, dir=None, suffix=""):
     pass
 
 
+def get_orthogroups_df(filters=None):
+    return load(fn=get_dir("INPUT") / definitions.ORTHOGROUPS_FN, filters=filters)
+
+
+def get_counts_df(columns=None, nan=False):
+    if nan:
+        return load(fn=get_dir("TMP") / definitions.COUNTS_NAN_FN, columns=columns)
+    return load(fn=get_dir("INPUT") / definitions.COUNTS_FN, columns=columns)
+
+
+def get_elements_df():
+    return load(fn=get_dir("INPUT") / definitions.ELEMENTS_FN)
+
+
+def get_interpro_df():
+    return load(fn=get_dir("INPUT") / definitions.INTERPRO_FN)
+
+
+def get_annotation_df():
+    return load(fn=get_dir("ANNOTATION") / definitions.ANNOTATION_FN)
+
+
 def set_dir(name, value):
     tmp_paths_dict = {}
     if not definitions.TMP_PATHS_FILE.exists():
@@ -159,7 +180,7 @@ def mkdir(name, subdirs=[], do_replace=False):
     return True
 
 
-def load(fn, columns=None, names=None):
+def load(fn, columns=None, names=None, filters=None):
     fn = fn if isinstance(fn, pathlib.Path) else pathlib.Path(fn)
     fmt = fn.suffix[1:]  # remove dot
     data = None
@@ -179,7 +200,7 @@ def load(fn, columns=None, names=None):
                 )
         elif fmt == "parquet":
             # https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html
-            data = pd.read_parquet(fn, columns=columns, engine="auto")
+            data = pd.read_parquet(fn, columns=columns, engine="auto", filters=filters)
         elif fmt == "feather":
             # print(f"{fn=}, columns={columns=}, names={names=}")
             # https://pandas.pydata.org/docs/reference/api/pandas.read_feather.html
