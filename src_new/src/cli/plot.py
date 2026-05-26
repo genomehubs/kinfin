@@ -1,3 +1,5 @@
+import glob
+
 import core.analysis
 import core.log
 import matplotlib as mat
@@ -13,7 +15,6 @@ LEGEND_FONTSIZE = 10
 AXES_TICKS_FONTSIZE = 8
 AXES_LABELS_FONTSIZE = 8
 
-MAX_LINES = 9
 # MATPLOTLIB PARAMS
 mat.rcParams["text.color"] = COLOR_AXES
 mat.rcParams["axes.edgecolor"] = COLOR_AXES
@@ -45,10 +46,11 @@ def plot_line(
     y=None,
     m=None,
     out_prefix=None,
+    max_lines=9,
 ):
     df_chunks, label_chunks = [], []
-    for i in range(0, len(dfs), MAX_LINES):
-        j = i + MAX_LINES
+    for i in range(0, len(dfs), max_lines):
+        j = i + max_lines
         df_chunks.append(dfs[i:j])
         label_chunks.append(labels[i:j])
     for idx_chunk, (label_chunk, df_chunk) in enumerate(zip(label_chunks, df_chunks)):
@@ -61,16 +63,24 @@ def plot_line(
                 lines += ax.plot(
                     _df[x],
                     _df[y],
-                    alpha=0.5,
-                    color=f"C{idx}",
+                    alpha=0.7,
+                    color=(
+                        plt.cm.gnuplot2(idx / max_lines)
+                        if len(dfs) > 20
+                        else plt.cm.tab20b(idx / max_lines)
+                        if len(dfs) > 10
+                        else f"C{idx}"
+                    ),
                     label=label,
                     lw=1.5,
                     linestyle=line_style[name],
                 )
-        ax.set_ylabel("OCn")
-        ax.set_xlabel("ECn")
-        ax.set_xlim([-0.05, 1.05])
-        ax.set_ylim([-0.05, 1.05])
+        ax.set_ylabel(y)
+        ax.set_xlabel(x)
+        if x.endswith("n"):
+            ax.set_xlim([-0.05, 1.05])
+        if y.endswith("n"):
+            ax.set_ylim([-0.05, 1.05])
         handles_1, labels_1 = plt.gca().get_legend_handles_labels()
         if len(handles_1) > 3:
             handles_1 = [
@@ -98,17 +108,35 @@ def plot_line(
         plt.tight_layout()
         if len(df_chunks) > 1:
             zeros = len(str(len(df_chunks)))
-            out_f = f"{out_prefix}.{str(idx_chunk + 1).zfill(zeros)}.sampling.ECn_vs_OCn.png"
+            out_f = f"{out_prefix}.{str(idx_chunk + 1).zfill(zeros)}.sampling.{x}_vs_{y}.png"
         else:
-            out_f = f"{out_prefix}.sampling.ECn_vs_OCn.png"
+            out_f = f"{out_prefix}.sampling.{x}_vs_{y}.png"
         fig.savefig(out_f)
         print("[+] Created %s" % out_f)
         plt.close(fig)
 
 
 def run(args):
-    tags = [f"{fn.split('.')[-4]}" for fn in args.f]
-    SC = [f"{fn.split('.')[-3]}" for fn in args.f]
-    labels = [f"{tag} ({SC})" if int(SC) > 1 else f"{tag}" for tag, SC in zip(tags, SC)]
-    dfs = [core.utils.load(fn) for fn in args.f]
-    plot_line(dfs, labels, x="ECn", y="OCn", m="OG_OT", out_prefix=args.p)
+    fns = []
+    if args.d:
+        fns += [fn for fn in glob.glob(f"{args.d}/*.curve.*")]
+    if args.f:
+        fns += args.f
+    if fns:
+        tags = [f"{fn.split('.')[-4]}" for fn in fns]
+        SC = [f"{fn.split('.')[-3]}" for fn in fns]
+        labels = [
+            f"{tag} ({SC})" if int(SC) > 1 else f"{tag}" for tag, SC in zip(tags, SC)
+        ]
+        dfs = [core.utils.load(fn) for fn in fns]
+        plot_line(
+            dfs,
+            labels,
+            x="ECn" if not args.X else "EC",
+            y="OCn" if not args.Y else "OC",
+            m="OG_OT",
+            out_prefix=args.p,
+            max_lines=args.M,
+        )
+    else:
+        print("[X] nothing to plot")

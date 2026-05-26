@@ -112,7 +112,7 @@ def add_analysis_parser(subparsers):
         metavar="INTERPRO_DIR",
         required=False,
         type=existing_dir,
-        help="Directoroy of Interproscan output in TSV format. Needs Sample-ID as filename prefix.",
+        help="Directory of Interproscan output in TSV format. Needs Sample-ID as filename prefix.",
     )
     analysis_parser_parameters.add_argument(
         "-a",
@@ -238,6 +238,7 @@ def add_plot_parser(subparsers):
     )
     plot_parser.add_argument(
         "-f",
+        metavar="FILE",
         nargs="*",
         help="files to plot",
     )
@@ -248,6 +249,29 @@ def add_plot_parser(subparsers):
         type=str,
         default="plot",
         help="prefix for output file.",
+    )
+    plot_parser.add_argument(
+        "-d",
+        metavar="DIR",
+        required=False,
+        type=existing_dir,
+        help="Directory in which to look for plottable files",
+    )
+    plot_parser.add_argument(
+        "-X",
+        action="store_true",
+        help="Do not normalize X-axis in line plots",
+    )
+    plot_parser.add_argument(
+        "-Y",
+        action="store_true",
+        help="Do not normalize Y-axis in line plots",
+    )
+    plot_parser.add_argument(
+        "-M",
+        type=int_positive,
+        default=9,
+        help="Maximum number of taxon groups per plot (default: %(default)s)",
     )
 
 
