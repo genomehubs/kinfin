@@ -938,7 +938,7 @@ def compare(task):
                     ]
                 ],
                 fn=core.utils.format_fn(
-                    fn=f"{label}.{tag}.curve.{task.output_fmt}",
+                    fn=f"{label}.{tag}.{SC_TG}.curve.{task.output_fmt}",
                     prefix=core.utils.get_dir("PARTITION") / label,
                 ),
                 index=False,
