@@ -398,15 +398,6 @@ def process_interpro(
     df_annotation["TN_AP"] = (
         df_annotation["TG_AC"].ge(1).sum(axis=1).div(df_counts.ge(1).sum(axis=1))
     )
-    df_annotation[
-        [
-            "EC",
-            "EC_AC",
-            "EC_AP",
-            "TN_AP",
-            "TG_AC",
-        ]
-    ]
     # df_annotation["TG_AP"] = (
     #     df_annotation["TG_AP"]
     #     .div(
@@ -417,11 +408,23 @@ def process_interpro(
     df_annotation.columns = [
         (f"{x}_{y}" if y else f"{x}") for x, y in df_annotation.columns.to_flat_index()
     ]
+    front_cols = [
+        "orthogroup_id",
+        "EC",
+        "EC_AC",
+        "EC_AP",
+        "TN_AP",
+    ]
+    df_annotation = df_annotation.reset_index()
+    column_order = front_cols + [
+        col for col in df_annotation.columns if col not in front_cols
+    ]
     core.utils.dump(
-        df_annotation.reset_index(),
+        df_annotation[column_order],
         fn=core.utils.format_fn(
             definitions.ANNOTATION_FN,
             prefix=core.utils.get_dir("ANNOTATION"),
+            suffix=f".{output_fmt}",
         ),
         index=False,
     )
