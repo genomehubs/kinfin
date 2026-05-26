@@ -1064,9 +1064,10 @@ def contrast(task):
         pd.Series(
             np.select(
                 condlist=[
-                    np.all(df_counts.eq(task.count_target), axis=1),
+                    np.all(df_counts_TG1.eq(task.count_target), axis=1),
                     np.mean(
-                        (df_counts >= task.count_min) & (df_counts <= task.count_max),
+                        (df_counts_TG1 >= task.count_min)
+                        & (df_counts_TG1 <= task.count_max),
                         axis=1,
                     )
                     >= task.count_fraction,
