@@ -28,13 +28,17 @@ DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "logs"
 LOG_CONFIG = CONFIG_DIR / "logging.json"
 
-STD_FORMAT = "feather"
+STD_FORMAT = "parquet"
 ELEMENTS_FN = f"orthogroups.elements.{STD_FORMAT}"
 ORTHOGROUPS_FN = f"orthogroups.{STD_FORMAT}"
-COUNTS_FN = "orthogroups.counts"
+COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
+COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
+ANNOTATION_FN = f"orthogroups.interpro.{STD_FORMAT}"
+INTERPRO_FN = f"interpro.{STD_FORMAT}"
+ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
-SUPPORTED_INTERPRO_EXTENSION = ".tsv"
+SUPPORTED_INTERPRO_EXTENSIONS = [".tsv"]
 
 CONFIG_MIN_SAMPLE_IDS = 2  # at least one group in comparisons needs to be of length 2
 
@@ -43,7 +47,25 @@ PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
-
+PROGRESS_DESC_INTERPRO = f"[{'INTERPRO'.center(23, '.')}]"
+PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
+INTERPRO_TSV_COLUMNS = [
+    "element_id",
+    "sequence_md5",
+    "sequence_length",
+    "analysis",
+    "signature_id",
+    "signature_desc",
+    "signature_start",
+    "signature_stop",
+    "signature_score",
+    "signature_status",
+    "date",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+    "pathway_annotations",
+]
 TAXDUMP_FN = DATA_DIR / "taxdump.tar.gz"
 TAXDUMP_URL = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz"
 TAXDUMP_URL_NEW = (
