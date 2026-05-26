@@ -232,15 +232,22 @@ def add_api_parser(subparsers):
 
 
 def add_plot_parser(subparsers):
-    api_parser = subparsers.add_parser(
+    plot_parser = subparsers.add_parser(
         "plot",
         help="make plots based on output tables ",
     )
-    api_parser.add_argument(
-        "-F",
-        choices=definitions.ARGS_SUPPORTED_PLOT_FORMATS,
-        default="png",
-        help="format of plot (default: %(default)s)",
+    plot_parser.add_argument(
+        "-f",
+        nargs="*",
+        help="files to plot",
+    )
+    plot_parser.add_argument(
+        "-p",
+        metavar="PREFIX",
+        required=True,
+        type=str,
+        default="plot",
+        help="prefix for output file.",
     )
 
 
