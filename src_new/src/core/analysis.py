@@ -719,11 +719,11 @@ def get_df_entropy(output_fmt="tsv"):
                             aggfunc="count",
                         ),
                         "interpro_entropy": pd.NamedAgg(
-                            column="signature_id",
+                            column="interpro_id",
                             aggfunc=infer_entropy,
                         ),
                         "interpro_ids": pd.NamedAgg(
-                            column="signature_id",
+                            column="interpro_id",
                             aggfunc=glue_strings,
                         ),
                         "go_entropy": pd.NamedAgg(
