@@ -53,6 +53,8 @@ def plot_line(
         j = i + max_lines
         df_chunks.append(dfs[i:j])
         label_chunks.append(labels[i:j])
+    prop_cycle = plt.rcParams["axes.prop_cycle"]
+    default_colors = prop_cycle.by_key()["color"]
     for idx_chunk, (label_chunk, df_chunk) in enumerate(zip(label_chunks, df_chunks)):
         lines = []
         fig = plt.figure(figsize=(6, 8), dpi=200, frameon=True)
@@ -63,13 +65,13 @@ def plot_line(
                 lines += ax.plot(
                     _df[x],
                     _df[y],
-                    alpha=0.7,
+                    alpha=0.9,
                     color=(
                         plt.cm.gnuplot2(idx / max_lines)
-                        if len(dfs) > 20
-                        else plt.cm.tab20b(idx / max_lines)
+                        if len(dfs) >= 20
+                        else plt.cm.tab20(idx / 20)
                         if len(dfs) > 10
-                        else f"C{idx}"
+                        else default_colors[idx]
                     ),
                     label=label,
                     lw=1.5,
