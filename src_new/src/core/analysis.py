@@ -664,6 +664,32 @@ def partition_lengths(df_orthogroups, lengths, TGs={}):
 
 
 def get_df_entropy(output_fmt="tsv"):
+    """
+    Entropy is correct. Previous KinFin implementation was off.
+    """
+
+    # def entropy2(values, base=2):
+    #    return True  # 3.08
+    #    values = [str(v) for v in values]
+    #    n_labels = len(values)
+
+    #    if n_labels <= 1:
+    #        return 0
+    #    value, counts = np.unique(values, return_counts=True)
+    #    probs = counts / n_labels
+    #    n_classes = np.count_nonzero(probs)
+
+    #    if n_classes <= 1:
+    #        return 0
+
+    #    ent = 0.0
+
+    #    # Compute entropy
+    #    base = math.e if base is None else base
+    #    for i in probs:
+    #        ent -= i * math.log(i, base)
+    #    return ent
+
     def infer_entropy(values):
         signature_counter = collections.Counter([v for k, v in values.items()])
         return -sum(
@@ -722,6 +748,10 @@ def get_df_entropy(output_fmt="tsv"):
                             column="interpro_id",
                             aggfunc=infer_entropy,
                         ),
+                        # "interpro_entropy2": pd.NamedAgg(
+                        #     column="interpro_id",
+                        #     aggfunc=entropy2,
+                        # ),
                         "interpro_ids": pd.NamedAgg(
                             column="interpro_id",
                             aggfunc=glue_strings,
@@ -749,6 +779,7 @@ def get_df_entropy(output_fmt="tsv"):
                         f"{analysis}_entropy",
                         f"{analysis}_ids",
                         "interpro_entropy",
+                        # "interpro_entropy2",
                         "interpro_ids",
                         "go_entropy",
                         "go_ids",
