@@ -4,6 +4,7 @@ import core.analysis
 import core.log
 import matplotlib as mat
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.lines import Line2D
 
 mat.use("agg")
@@ -104,7 +105,12 @@ def plot_line(
             Line2D([0], [0], label="specific", color="grey", linestyle=":"),
             Line2D([0], [0], label="singleton", color="grey", linestyle="--"),
         ]
-        legend_2 = ax.legend(title="OG type", handles=handles, loc="lower right")
+        legend_2 = ax.legend(
+            title="OG type",
+            handles=handles,
+            frameon=False,
+            loc="upper center",
+        )
         ax.add_artist(legend_1)
         ax.add_artist(legend_2)
         plt.tight_layout()
@@ -125,12 +131,17 @@ def run(args):
     if args.f:
         fns += args.f
     if fns:
+        SC = [int(fn.split(".")[-3]) for fn in fns]
+        indices = np.argsort(SC)
         tags = [f"{fn.split('.')[-4]}" for fn in fns]
-        SC = [f"{fn.split('.')[-3]}" for fn in fns]
+        tags_sorted = [tags[idx] for idx in indices]
+
         labels = [
-            f"{tag} ({SC})" if int(SC) > 1 else f"{tag}" for tag, SC in zip(tags, SC)
+            f"{tag} ({SC})" if int(SC) > 1 else f"{tag}"
+            for tag, SC in zip(tags_sorted, sorted(SC))
         ]
-        dfs = [core.utils.load(fn) for fn in fns]
+        fns_sorted = [fns[idx] for idx in indices]
+        dfs = [core.utils.load(fn) for fn in fns_sorted]
         plot_line(
             dfs,
             labels,

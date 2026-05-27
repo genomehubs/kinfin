@@ -13,6 +13,12 @@ def existing_file(infile):
     return infile
 
 
+def existing_files(infiles):
+    for infile in infiles:
+        existing_file(infile)
+    return infiles
+
+
 def existing_dir(directory):
     if not os.path.isdir(directory):
         raise argparse.ArgumentTypeError(f"directory '{directory}' does not exist")
@@ -239,6 +245,7 @@ def add_plot_parser(subparsers):
     plot_parser.add_argument(
         "-f",
         metavar="FILE",
+        type=existing_files,
         nargs="*",
         help="files to plot",
     )
