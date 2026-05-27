@@ -185,7 +185,7 @@ def load(fn, columns=None, names=None, filters=None):
     fmt = fn.suffix[1:]  # remove dot
     data = None
     try:
-        if fmt == "tsv" or fmt == "csv":
+        if fmt in ["tsv", "csv"]:
             if names is not None:
                 data = pd.read_csv(
                     fn,
