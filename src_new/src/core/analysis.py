@@ -1533,6 +1533,7 @@ def get_combinations(taxon_groups, key):
 
 def get_tree(
     fn,
+    sample_ids=[],
     outgroup=[],
 ):
     """
@@ -1543,6 +1544,7 @@ def get_tree(
         logger.info("no tree provided")
         tree = None
     else:
+        logger.info(f"parsing tree in {fn}")
         tree = ete4.Tree(fn)
         if outgroup:
             logger.info(f"setting outgroup to {outgroup}")
@@ -1559,10 +1561,23 @@ def get_tree(
             )
         zeros = len(str(len(list(tree.traverse()))))
         idx = 0
+        sample_ids_found = []
         for node in tree.traverse("levelorder"):  # rename nodes
             if not node.name:
                 node.add_prop("name", f"{str(idx).zfill(zeros)}")
                 idx += 1
+            else:
+                sample_ids_found.append(node.name)
+        logger.info(f"tree has {core.utils.format_number(len(sample_ids_found))} taxa")
+        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
+        if sample_ids_missing:
+            logger.error(
+                f"{core.utils.format_number(len(sample_ids_missing))} sample IDs not in tree: {' '.join(sample_ids_missing)}"
+            )
+            sys.exit(1)
+        if sample_ids_found > sample_ids:
+            sample_ids_surplus = set(sample_ids_found) - set(sample_ids)
+            logger.warning(f"tree has additional taxa: {' '.join(sample_ids_surplus)}")
         tree.write(
             outfile=core.utils.format_fn(
                 fn=("tree.with_node_names.nwk"),
@@ -1589,6 +1604,7 @@ def get_tree(
 def process_tree(
     tree_fn="",
     outgroup=[],
+    sample_ids=[],
     output_fmt="tsv",
 ):
     """
@@ -1602,6 +1618,7 @@ def process_tree(
     t_0 = time.monotonic()
     tree = get_tree(
         fn=tree_fn,
+        sample_ids=sample_ids,
         outgroup=outgroup,
     )
 

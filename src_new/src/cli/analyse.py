@@ -87,6 +87,7 @@ def run(args):
         core.analysis.process_tree(
             tree_fn=args.t,
             outgroup=args.o,
+            sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
         )
 
