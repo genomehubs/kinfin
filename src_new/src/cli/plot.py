@@ -1,13 +1,14 @@
 import glob
 
-import core.analysis
-import core.log
 import matplotlib as mat
+
+mat.use("agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 
-mat.use("agg")
+import core.utils
 
 COLOR_HISTOGRAM = "orange"
 COLORS = ["deeppink", "dodgerblue"]

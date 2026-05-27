@@ -260,7 +260,6 @@ def do_interpro_task(task):
                 ),
                 index=True,
             )
-            print(df_orthogroups)
     except Exception as exc:
         problem = f"problem reading {task.fn} - {exc}"
     return ParseResult(
@@ -350,6 +349,7 @@ def get_interpro(
             [
                 core.utils.load(interpro_result.fn_out)
                 for interpro_result in interpro_results
+                if interpro_result.fn_out is not None
             ]
         ),
         fn=core.utils.format_fn(
@@ -1575,8 +1575,8 @@ def get_tree(
                 f"{core.utils.format_number(len(sample_ids_missing))} sample IDs not in tree: {' '.join(sample_ids_missing)}"
             )
             sys.exit(1)
-        if sample_ids_found > sample_ids:
-            sample_ids_surplus = set(sample_ids_found) - set(sample_ids)
+        sample_ids_surplus = set(sample_ids_found) - set(sample_ids)
+        if sample_ids_surplus:
             logger.warning(f"tree has additional taxa: {' '.join(sample_ids_surplus)}")
         tree.write(
             outfile=core.utils.format_fn(
