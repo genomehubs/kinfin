@@ -22,6 +22,9 @@ import core.utils
 
 logger = logging.getLogger(__name__)
 
+# pd.options.display.max_colwidth = None
+# pd.options.display.max_rows = None
+
 INDEX_ANNOTATION = [
     "orthogroup_id",
     "analysis",
@@ -41,7 +44,6 @@ ComparisonTask = collections.namedtuple(
         "labels",
         "tags",
         "taxon_groups",
-        "df_counts_fn",
         "count_target",
         "count_min",
         "count_max",
@@ -58,6 +60,26 @@ SummaryTask = collections.namedtuple(
         "tags",
         "taxon_groups",
         "output_fmt",
+    ],
+)
+
+ParseTask = collections.namedtuple(
+    "ParseTask",
+    [
+        "type",
+        "sample_id",
+        "fn",
+    ],
+)
+
+ParseResult = collections.namedtuple(
+    "ParseResult",
+    [
+        "type",
+        "fn_in",
+        "fn_out",
+        "sample_id",
+        "problem",
     ],
 )
 
@@ -79,42 +101,340 @@ def poolcontext(*args, **kwargs):
 - filename-strings are better for being passed to processes
 
 [###] Parquet/Feather:
-- just needs a script for converting to TSV on demand for CLI ninjas
 - storage_options: data can be accessed via storeage connection (host, port, username, password, etc)
 - parquet smaller files, feather faster read/write (both smaller/faster than CSV)
 """
 
 
-def get_fasta_df(payload):
-    sample_id, fn = payload
+# [DONE]
+def get_parse_tasks(
+    directory=None,
+    type="",
+    sample_ids=[],
+    extensions=[],
+):
+    _SAMPLE_IDS = set(sample_ids)
+    tasks = []
+    for extension in extensions:
+        for fn in glob.glob(f"{directory}/*{extension}"):
+            sample_id = pathlib.Path(fn).stem.split(".")[0]
+            if sample_id in _SAMPLE_IDS:
+                tasks.append(
+                    ParseTask(
+                        type=type,
+                        sample_id=sample_id,
+                        fn=fn,
+                    )
+                )
+    return tasks
+
+
+# [DONE]
+def do_fasta_task(task):
     try:
         data = []
-        for header, length in core.utils.iter_seq_length(fn):
-            data.append((header, sample_id, length))
+        for header, length in core.utils.iter_seq_length(task.fn):
+            data.append((header, task.sample_id, length))
         df_fasta = pd.DataFrame().from_records(
             data, columns=["element_id", "sample_id", "length"]
         )
-        if not df_fasta.empty:
+        if df_fasta.empty:
+            logger.warning(f"no sequences found in {task.fn}")
+        else:
             return core.utils.dump(
                 df_fasta,
                 fn=core.utils.format_fn(
-                    f"{sample_id}.elements.{definitions.STD_FORMAT}",
+                    f"{task.sample_id}.elements.{definitions.STD_FORMAT}",
                     prefix=core.utils.get_dir("TMP"),
                 ),
                 index=False,
             )
-        else:
-            logger.warning(f"no sequences found in {fn}")
     except Exception as exc:
-        logger.error(f"problem reading {fn} - {exc}")
-        return False
+        logger.error(f"problem reading {task.fn} - {exc}")
+    return None
+
+
+# [DONE]
+def get_interpro_tasks(
+    fn=None,
+    directory=None,
+    sample_ids=[],
+):
+    if fn is not None:
+        tasks = [
+            ParseTask(
+                type="interpro",
+                sample_id=sample_ids,
+                fn=fn,
+            )
+        ]
+    else:
+        tasks = get_parse_tasks(
+            directory=directory,
+            type="interpro",
+            sample_ids=sample_ids,
+            extensions=definitions.SUPPORTED_INTERPRO_EXTENSIONS,
+        )
+        sample_ids_found = [task.sample_id for task in tasks]
+        if len(sample_ids_found) < len(sample_ids):
+            sample_ids_missing = set(sample_ids) - set(sample_ids_found)
+            logger.warning(
+                f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
+            )
+            for sample_id in sample_ids_missing:
+                tasks.append(
+                    ParseTask(
+                        type="interpro",
+                        sample_id=sample_id,
+                        fn=None,
+                    )
+                )
+    return tasks
+
+
+# [DONE]
+def do_interpro_task(task):
+    problem = None
+    fn_out = None
+    sample_ids = [task.sample_id] if isinstance(task.sample_id, str) else task.sample_id
+    try:
+        if task.fn is not None:
+            df_interpro = core.utils.load(
+                task.fn,
+                names=definitions.INTERPRO_TSV_COLUMNS,
+            ).set_index("element_id")
+            df_orthogroups = core.utils.get_orthogroups_df(
+                filters=[
+                    (
+                        "sample_id",
+                        "in",
+                        sample_ids,
+                    )
+                ]
+            ).set_index("element_id")
+            df_annotation = df_interpro.join(df_orthogroups, how="outer")
+            # remove annotations of E's not in OG's
+            is_orphan = df_annotation["orthogroup_id"].isnull()
+            df_annotation = df_annotation[~is_orphan]
+            if not df_annotation.empty:
+                fn_out = core.utils.dump(
+                    df_annotation,
+                    fn=core.utils.format_fn(
+                        f"{'all' if len(sample_ids) > 1 else f'{task.sample_id}'}.interpro.{definitions.STD_FORMAT}",
+                        prefix=core.utils.get_dir("TMP"),
+                    ),
+                    index=True,
+                )
+            else:
+                if df_annotation["analysis"].isnull().values.any():
+                    problem = f"inconsistent tabs in file {task.fn}"
+        else:
+            # fake df_annotation for sample_ids without interpro file
+            df_annotation = (
+                core.utils.get_orthogroups_df(
+                    filters=[
+                        (
+                            "sample_id",
+                            "in",
+                            sample_ids,
+                        )
+                    ]
+                )
+                .assign(
+                    **{
+                        col: np.nan
+                        for col in [
+                            col
+                            for col in definitions.INTERPRO_TSV_COLUMNS
+                            if col != "element_id"
+                        ]
+                    }
+                )
+                .set_index("element_id")
+            )
+            fn_out = core.utils.dump(
+                df_annotation,
+                fn=core.utils.format_fn(
+                    f"{task.sample_id}.interpro.{definitions.STD_FORMAT}",
+                    prefix=core.utils.get_dir("TMP"),
+                ),
+                index=True,
+            )
+            print(df_orthogroups)
+    except Exception as exc:
+        problem = f"problem reading {task.fn} - {exc}"
+    return ParseResult(
+        type="interpro",
+        fn_in=task.fn,
+        sample_id=task.sample_id,
+        fn_out=fn_out,
+        problem=problem,
+    )
+
+
+def get_interpro_summary_table(
+    interpro_results,
+    sample_ids=[],
+    output_fmt="tsv",
+):
+    interpro_summary = {}
+    for interpro_result in interpro_results:
+        interpro_sample_ids = (
+            interpro_result.sample_id
+            if isinstance(interpro_result.sample_id, list)
+            else [interpro_result.sample_id]
+        )
+        df_annotation = core.utils.load(fn=interpro_result.fn_out)
+        for interpro_sample_id in interpro_sample_ids:
+            interpro_summary[interpro_sample_id] = {
+                "EC": df_annotation[df_annotation["sample_id"] == interpro_sample_id][
+                    "sample_id"
+                ].count(),
+                "EC_AC": df_annotation[
+                    df_annotation["sample_id"] == interpro_sample_id
+                ]["analysis"].count(),
+            }
+            interpro_summary[interpro_sample_id]["EC_AP"] = (
+                interpro_summary[interpro_sample_id]["EC_AC"]
+                / interpro_summary[interpro_sample_id]["EC"]
+            )
+    interpro_summary_rows = []
+    for sample_id in sample_ids:
+        interpro_summary_rows.append(
+            {
+                "sample_id": sample_id,
+                **interpro_summary[sample_id],
+            }
+        )
+    core.utils.dump(
+        pd.DataFrame().from_records(interpro_summary_rows),
+        fn=core.utils.format_fn(
+            f"interpro.summary.{output_fmt}",
+            prefix=core.utils.get_dir("ANNOTATION"),
+        ),
+        index=False,
+    )
+
+
+def get_interpro(
+    fn=None,
+    directory=None,
+    sample_ids=[],
+    output_fmt="tsv",
+    processes=1,
+):
+    t_0 = time.monotonic()
+    logger.info(f"parsing INTERPRO data in {fn or directory}")
+    tasks = get_interpro_tasks(
+        fn=fn,
+        directory=directory,
+        sample_ids=sample_ids,
+    )
+    if len(tasks) == 1:
+        processes = 1
+    logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
+    interpro_results = do_tasks(
+        tasks=tasks,
+        desc=definitions.PROGRESS_DESC_INTERPRO,
+        processes=processes,
+        collect_results=True,
+    )
+    logger.info("generating summary table")
+    get_interpro_summary_table(
+        interpro_results,
+        sample_ids=sample_ids,
+        output_fmt=output_fmt,
+    )
+    core.utils.dump(
+        pd.concat(
+            [
+                core.utils.load(interpro_result.fn_out)
+                for interpro_result in interpro_results
+            ]
+        ),
+        fn=core.utils.format_fn(
+            fn=definitions.INTERPRO_FN,
+            prefix=core.utils.get_dir("INPUT"),
+        ),
+        index=False,
+    )
+    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+    return None
+
+
+def process_interpro(
+    fn=None,
+    directory=None,
+    sample_ids=[],
+    output_fmt="tsv",
+    processes=1,
+):
+    t_0 = time.monotonic()
+    get_interpro(
+        fn=fn,
+        directory=directory,
+        sample_ids=sample_ids,
+        output_fmt=output_fmt,
+        processes=processes,
+    )
+    df_annotation = (
+        core.utils.get_interpro_df()
+        .reset_index()
+        .groupby(
+            INDEX_ANNOTATION,
+            as_index=False,
+            dropna=False,
+        )
+        .agg(
+            TG_AC=("element_id", "nunique"),
+        )
+        .set_index(INDEX_ANNOTATION)
+        .unstack(fill_value=0)
+    )
+    df_counts = core.utils.get_counts_df()
+    df_annotation["EC"] = df_counts.sum(axis=1)
+    df_annotation["EC_AC"] = df_annotation["TG_AC"].sum(axis=1)
+    df_annotation["EC_AP"] = df_annotation["EC_AC"] / df_annotation["EC"]
+    df_annotation["TN_AP"] = (
+        df_annotation["TG_AC"].ge(1).sum(axis=1).div(df_counts.ge(1).sum(axis=1))
+    )
+    # df_annotation["TG_AP"] = (
+    #     df_annotation["TG_AP"]
+    #     .div(
+    #         df_counts,
+    #     )
+    #     .replace(np.nan, 0.0)
+    # )
+    df_annotation.columns = [
+        (f"{x}_{y}" if y else f"{x}") for x, y in df_annotation.columns.to_flat_index()
+    ]
+    front_cols = [
+        "orthogroup_id",
+        "EC",
+        "EC_AC",
+        "EC_AP",
+        "TN_AP",
+    ]
+    df_annotation = df_annotation.reset_index()
+    column_order = front_cols + [
+        col for col in df_annotation.columns if col not in front_cols
+    ]
+    core.utils.dump(
+        df_annotation[column_order],
+        fn=core.utils.format_fn(
+            definitions.ANNOTATION_FN,
+            prefix=core.utils.get_dir("ANNOTATION"),
+            suffix=f".{output_fmt}",
+        ),
+        index=False,
+    )
+    logger.info(f"[elapsed: {time.monotonic() - t_0}")
 
 
 def get_ids(
     sequence_ids_fn=None,
     species_ids_fn=None,
     sample_ids=[],
-    output_fmt="tsv",
 ):
     logger.info("parsing SpeciesIDs file")
     sample_ids = set(sample_ids)
@@ -133,8 +453,14 @@ def get_ids(
                 if species_idx in sample_ids:
                     data.append((element_id, sample_ids[species_idx]))
         df = pd.DataFrame().from_records(data, columns=["element_id", "sample_id"])
-        if not df.empty:
-            core.utils.dump(
+        if df.empty:
+            logger.error("no IDs could be parsed")
+        else:
+            logger.info(
+                f"{core.utils.format_number(df['sample_id'].nunique())} sample IDs parsed"
+            )
+            logger.info(f"{core.utils.format_number(len(df.index))} element IDs")
+            return core.utils.dump(
                 df,
                 fn=core.utils.format_fn(
                     fn=definitions.ELEMENTS_FN,
@@ -142,13 +468,6 @@ def get_ids(
                 ),
                 index=False,
             )
-            logger.info(
-                f"{core.utils.format_number(df['sample_id'].nunique())} sample IDs parsed"
-            )
-            logger.info(f"{core.utils.format_number(len(df.index))} element IDs")
-            return True
-        else:
-            logger.warning("no IDs could be parsed")
     except Exception as exc:
         logger.error(f"unexpected error - {exc}")
     sys.exit(1)
@@ -158,48 +477,36 @@ def get_elements(
     directory=None,
     sample_ids=[],
     processes=1,
-    output_fmt="feather",
 ):
     t_0 = time.monotonic()
-    payloads = []
-    sample_ids_found = []
-    for fasta_extension in definitions.SUPPORTED_FASTA_EXTENSIONS:
-        for fn in glob.glob(f"{directory}/*{fasta_extension}"):
-            sample_id = pathlib.Path(fn).stem.split(".")[0]
-            if sample_id in sample_ids:
-                sample_ids_found.append(sample_id)
-                payloads.append(
-                    (
-                        sample_id,
-                        fn,
-                    )
-                )
-    if len(payloads) < len(sample_ids):
+    tasks = get_parse_tasks(
+        directory=directory,
+        type="fasta",
+        sample_ids=sample_ids,
+        extensions=definitions.SUPPORTED_FASTA_EXTENSIONS,
+    )
+    if len(tasks) < len(sample_ids):
+        sample_ids_missing = set(sample_ids) - set([task.sample_id for task in tasks])
         logger.error(
-            f"FASTA files for the following sample IDs could not be found: {', '.join([set(sample_ids) - set(sample_ids_found)])}"
+            f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
         )
         sys.exit(1)
-    logger.info(f"parsing {len(payloads)} FASTA files using {processes} process(es)")
-    df_fns = []
-    if processes > 1:
-        with tqdm.tqdm(
-            total=len(payloads),
-            desc=definitions.PROGRESS_DESC_FASTA,
-            ncols=definitions.PROGRESS_NCOLS,
-        ) as t:
-            with poolcontext(processes=processes) as pool:
-                for df_fn in pool.imap_unordered(get_fasta_df, payloads):
-                    df_fns.append(df_fn)
-                    t.update()
-    else:
-        for payload in tqdm.tqdm(
-            payloads,
-            total=len(payloads),
-            desc=definitions.PROGRESS_DESC_FASTA,
-            ncols=definitions.PROGRESS_NCOLS,
-        ):
-            df_fn = get_fasta_df(payload)
-            df_fns.append(df_fn)
+    logger.info(f"parsing {len(tasks)} FASTA files using {processes} process(es)")
+    df_fns = do_tasks(
+        tasks=tasks,
+        desc=definitions.PROGRESS_DESC_FASTA,
+        processes=processes,
+        collect_results=True,
+    )
+    df_fns_valid = list(filter(None, df_fns))
+    if len(df_fns_valid) == 0:
+        logger.error(
+            f"No FASTA files with extension {', '.join(definitions.SUPPORTED_FASTA_EXTENSIONS)} found. Exiting."
+        )
+        sys.exit(1)
+    if len(df_fns_valid) < len(tasks):
+        logger.error("Some Fasta files could not be parsed. Exiting.")
+        sys.exit(1)
     core.utils.dump(
         pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
         fn=core.utils.format_fn(
@@ -215,21 +522,13 @@ def get_elements(
 def get_orthogroups(
     orthogroup_fn,
     sample_ids=[],
-    output_fmt="feather",
     sample_ids_source="parse",
 ):
     # [ToDo]
-    # - fastOMA parsing:
-    #   - maybe do some sort of agnostic iter_orthogroups
-    #   - maybe even easier to load
     # - make -P work when length is ALSO parsed from -f. Decide what happens if disagreement.
     data = []
     t_0 = time.monotonic()
     logger.info(f"parsing {len(sample_ids)} samples from '{orthogroup_fn}'")
-    if not sample_ids_source == "parse":
-        df_elements = core.utils.load(
-            fn=(core.utils.get_dir("INPUT") / definitions.ELEMENTS_FN)
-        ).set_index("element_id")
     rows = []
     with open(orthogroup_fn) as orthogroup_fh:
         for line in orthogroup_fh:
@@ -268,9 +567,10 @@ def get_orthogroups(
         logger.info(
             "inferring sample_ids for orthogroups (this might take a moment)..."
         )
+        df_elements = core.utils.get_elements_df().set_index("element_id")
         df_orthogroups["sample_id"] = df_orthogroups["element_id"].map(
             df_elements["sample_id"],
-            na_action="ignore",  # 14s !!
+            na_action="ignore",
         )
         logger.info("sample IDs inferred!")
     logger.info(
@@ -283,27 +583,11 @@ def get_orthogroups(
         f"{core.utils.format_number(len(list(df_orthogroups['sample_id'].unique())))} sample ID(s) in file"
     )
     if df_orthogroups.empty:
-        logger.error(f"none of these sample IDs were found: {', '.join(sample_ids)}")
+        logger.error(
+            f"none of these sample IDs were found: {', '.join(sample_ids)}. Exiting."
+        )
         sys.exit(1)
-    core.utils.dump(
-        df_orthogroups,
-        fn=core.utils.format_fn(
-            definitions.ORTHOGROUPS_FN,
-            prefix=core.utils.get_dir("INPUT"),
-        ),
-        index=False,
-    )
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-    return df_orthogroups
-
-
-def get_counts(
-    df_orthogroups,
-    output_fmt="tsv",
-):
-    t_0 = time.monotonic()
+    # [GET COUNTS]
     df_counts = (
         df_orthogroups.groupby(
             [
@@ -316,29 +600,47 @@ def get_counts(
         .set_index(["orthogroup_id", "sample_id"])["element_id"]
         .unstack(fill_value=0)
     )
+    # [DUMP COUNTS]
     core.utils.dump(
         df_counts,
         fn=core.utils.format_fn(
-            fn=f"{definitions.COUNTS_FN}.{output_fmt}",
+            fn=f"{definitions.COUNTS_FN}",
             prefix=core.utils.get_dir("INPUT"),
         ),
         index=True,
     )
+    core.utils.dump(
+        df_counts.apply(
+            pd.to_numeric,
+            downcast="float",  # float32
+        ).replace(
+            0,
+            np.nan,
+        ),
+        fn=core.utils.format_fn(
+            fn=definitions.COUNTS_NAN_FN,
+            prefix=core.utils.get_dir("TMP"),
+        ),
+        index=True,
+    )
+    # [DUMP OGS]
+    core.utils.dump(
+        df_orthogroups,
+        fn=core.utils.format_fn(
+            definitions.ORTHOGROUPS_FN,
+            prefix=core.utils.get_dir("INPUT"),
+        ),
+        index=False,
+    )
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
-    return df_counts
 
 
 def partition_lengths(df_orthogroups, lengths, TGs={}):
     """
     [ToDo]
-    - part of summary or a separate table?
-
-    # TG = "samples"
-    import playground; x = playground.get_lengths("/Users/dom/git/kinfin_.test_data/advanced/input/fastas"); z = playground.parse_df_orthogroups("../input/Orthogroups.txt"); playground.partition_lengths(z, x, TGs={"CBRIG": ("CBRIG",), "DMEDI": ("DMEDI",), "LSIGM": ("LSIGM",), "AVITE": ("AVITE",), "CELEG": ("CELEG",), "EELAP": ("EELAP",), "OOCHE2": ("OOCHE2",), "OFLEX": ("OFLEX",), "LOA2": ("LOA2",), "SLABI": ("SLABI",), "BMALA": ("BMALA",), "DIMMI": ("DIMMI",), "WBANC2": ("WBANC2",), "TCALL": ("TCALL",), "OOCHE1": ("OOCHE1",), "BPAHA": ("BPAHA",), "OVOLV": ("OVOLV",), "WBANC1": ("WBANC1",),  "LOA1": ("LOA1",)})
-    # TG = "host""
-    import playground; x = playground.get_lengths("/Users/dom/git/kinfin_.test_data/advanced/input/fastas"); z = playground.parse_df_orthogroups("../input/Orthogroups.txt"); playground.partition_lengths(z, x, TGs={"outgroup": ("CBRIG","CELEG"), "human": ("DMEDI", "LOA2", "BMALA", "WBANC2", "OVOLV", "WBANC1", "LOA1"), "other": ("LSIGM", "AVITE", "EELAP", "OOCHE2", "OFLEX", "SLABI", "DIMMI", "TCALL", "OOCHE1", "BPAHA")})
+    - finish
     """
     t_0 = time.monotonic()
     df_orthogroups["length"] = df_orthogroups["element_id"].map(lengths)
@@ -361,9 +663,33 @@ def partition_lengths(df_orthogroups, lengths, TGs={}):
     return df_lengths
 
 
-def get_df_entropy(df_orthogroups, df_interpro, df_counts, analysis="Pfam"):
-    # [ToDo]
-    # - drop as table
+def get_df_entropy(output_fmt="tsv"):
+    """
+    Entropy is correct. Previous KinFin implementation was off.
+    """
+
+    # def entropy2(values, base=2):
+    #    return True  # 3.08
+    #    values = [str(v) for v in values]
+    #    n_labels = len(values)
+
+    #    if n_labels <= 1:
+    #        return 0
+    #    value, counts = np.unique(values, return_counts=True)
+    #    probs = counts / n_labels
+    #    n_classes = np.count_nonzero(probs)
+
+    #    if n_classes <= 1:
+    #        return 0
+
+    #    ent = 0.0
+
+    #    # Compute entropy
+    #    base = math.e if base is None else base
+    #    for i in probs:
+    #        ent -= i * math.log(i, base)
+    #    return ent
+
     def infer_entropy(values):
         signature_counter = collections.Counter([v for k, v in values.items()])
         return -sum(
@@ -384,11 +710,7 @@ def get_df_entropy(df_orthogroups, df_interpro, df_counts, analysis="Pfam"):
         )
 
     t_0 = time.monotonic()
-    df = (
-        df_interpro.set_index("element_id")
-        .join(df_orthogroups.set_index("element_id"))
-        .reset_index()
-    )[
+    df_annotation = core.utils.get_interpro_df()[
         [
             "orthogroup_id",
             "analysis",
@@ -398,68 +720,85 @@ def get_df_entropy(df_orthogroups, df_interpro, df_counts, analysis="Pfam"):
             "sample_id",
         ]
     ]
-    df_entropy = (
-        df[df["analysis"] == analysis]
-        .groupby("orthogroup_id", as_index=False)
-        .agg(
-            **{
-                f"{analysis}_entropy": pd.NamedAgg(
-                    column="signature_id",
-                    aggfunc=infer_entropy,
+    for analysis in df_annotation["analysis"].unique():
+        if isinstance(analysis, str):
+            logger.info(f"calculating entropy for {analysis} annotations")
+            df_entropy = (
+                df_annotation[df_annotation["analysis"] == analysis]
+                .groupby("orthogroup_id", as_index=False)
+                .agg(
+                    **{
+                        f"{analysis}_entropy": pd.NamedAgg(
+                            column="signature_id",
+                            aggfunc=infer_entropy,
+                        ),
+                        f"{analysis}_ids": pd.NamedAgg(
+                            column="signature_id",
+                            aggfunc=glue_strings,
+                        ),
+                        f"{analysis}_SN_COV": pd.NamedAgg(
+                            column="sample_id",
+                            aggfunc="nunique",
+                        ),
+                        f"{analysis}_EC_COV": pd.NamedAgg(
+                            column="signature_id",
+                            aggfunc="count",
+                        ),
+                        "interpro_entropy": pd.NamedAgg(
+                            column="interpro_id",
+                            aggfunc=infer_entropy,
+                        ),
+                        # "interpro_entropy2": pd.NamedAgg(
+                        #     column="interpro_id",
+                        #     aggfunc=entropy2,
+                        # ),
+                        "interpro_ids": pd.NamedAgg(
+                            column="interpro_id",
+                            aggfunc=glue_strings,
+                        ),
+                        "go_entropy": pd.NamedAgg(
+                            column="go_annotation",
+                            aggfunc=infer_entropy,
+                        ),
+                        "go_ids": pd.NamedAgg(
+                            column="go_annotation",
+                            aggfunc=glue_strings,
+                        ),
+                    }
+                )
+                .set_index("orthogroup_id")
+            )
+            df_counts = core.utils.get_counts_df()
+            df_entropy[f"{analysis}_SN_COV"] /= df_counts.ge(1).sum(axis=1)
+            df_entropy[f"{analysis}_EC_COV"] /= df_counts.sum(axis=1)
+            core.utils.dump(
+                df_entropy[
+                    [
+                        f"{analysis}_SN_COV",
+                        f"{analysis}_EC_COV",
+                        f"{analysis}_entropy",
+                        f"{analysis}_ids",
+                        "interpro_entropy",
+                        # "interpro_entropy2",
+                        "interpro_ids",
+                        "go_entropy",
+                        "go_ids",
+                    ]
+                ],
+                fn=core.utils.format_fn(
+                    fn=f"{definitions.ENTROPY_FN}.{analysis}.{output_fmt}",
+                    prefix=core.utils.get_dir("ANNOTATION"),
                 ),
-                f"{analysis}_ids": pd.NamedAgg(
-                    column="signature_id",
-                    aggfunc=glue_strings,
-                ),
-                f"{analysis}_TN_COV": pd.NamedAgg(
-                    column="sample_id",
-                    aggfunc="nunique",
-                ),
-                f"{analysis}_EC_COV": pd.NamedAgg(
-                    column="signature_id",
-                    aggfunc="count",
-                ),
-                "interpro_entropy": pd.NamedAgg(
-                    column="signature_id",
-                    aggfunc=infer_entropy,
-                ),
-                "interpro_ids": pd.NamedAgg(
-                    column="signature_id",
-                    aggfunc=glue_strings,
-                ),
-                "go_entropy": pd.NamedAgg(
-                    column="go_annotation",
-                    aggfunc=infer_entropy,
-                ),
-                "go_ids": pd.NamedAgg(
-                    column="go_annotation",
-                    aggfunc=glue_strings,
-                ),
-            }
-        )
-        .set_index("orthogroup_id")
-    )
-    df_entropy[f"{analysis}_TN_COV"] /= df_counts.ge(1).sum(axis=1)
-    df_entropy[f"{analysis}_EC_COV"] /= df_counts.sum(axis=1)
+                index=True,
+            )
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
-    return df_entropy[
-        [
-            f"{analysis}_TN_COV",
-            f"{analysis}_EC_COV",
-            f"{analysis}_entropy",
-            f"{analysis}_ids",
-            "interpro_entropy",
-            "interpro_ids",
-            "go_entropy",
-            "go_ids",
-        ]
-    ]
 
 
 def get_df_table(fn, df_orthogroups):
     # [ToDo]
+    # - finish thinking about this
     # - decide how to expose to user. Args-config-json as mentioned by RC
     # - drop as table
     t_0 = time.monotonic()
@@ -495,202 +834,6 @@ def get_df_table(fn, df_orthogroups):
     return df_table[annotations_valid]
 
 
-# def get_interpro(
-#     directory=None,
-#     sample_ids=[],
-#     processes=1,
-#     output_fmt="feather",
-# ):
-#     t_0 = time.monotonic()
-#     payloads = []
-#     sample_ids_found = []
-#     for fn in glob.glob(f"{directory}/*{definitions.SUPPORTED_INTERPRO_EXTENSION}"):
-#         sample_id = pathlib.Path(fn).stem.split(".")[0]  # [ToDo] CHECK
-#         if sample_id in sample_ids:
-#             sample_ids_found.append(sample_id)
-#             payloads.append(
-#                 (
-#                     sample_id,
-#                     fn,
-#                 )
-#             )
-#     if len(payloads) < len(sample_ids):
-#         logger.warning(
-#             f"INTERPRO files for the following sample IDs could not be found: {', '.join([set(sample_ids) - set(sample_ids_found)])}"
-#         )
-#     logger.info(f"parsing {len(payloads)} INTERPRO files using {processes} process(es)")
-#     df_fns = []
-#     if processes > 1:
-#         with tqdm.tqdm(
-#             total=len(payloads),
-#             desc=definitions.PROGRESS_DESC_FASTA,
-#             ncols=definitions.PROGRESS_NCOLS,
-#         ) as t:
-#             with poolcontext(processes=processes) as pool:
-#                 for df_fn in pool.imap_unordered(get_df_interpro, payloads):
-#                     df_fns.append(df_fn)
-#                     t.update()
-#     else:
-#         for payload in tqdm.tqdm(
-#             payloads,
-#             total=len(payloads),
-#             desc=definitions.PROGRESS_DESC_FASTA,
-#             ncols=definitions.PROGRESS_NCOLS,
-#         ):
-#             df_fn = get_fasta_df(payload)
-#             df_fns.append(df_fn)
-#     core.utils.dump(
-#         pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
-#         fn=core.utils.format_fn(
-#             fn=definitions.ELEMENTS_FN,
-#             prefix=core.utils.get_dir("INPUT"),
-#         ),
-#         index=False,
-#     )
-#     logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-#     return True
-
-
-def get_df_interpro(
-    fn,
-    output_fmt="tsv",
-):
-    t_0 = time.monotonic()
-    logger.info(f"parsing '{fn}'")
-    df_interpro = core.utils.load(
-        fn,
-        names=[
-            "element_id",
-            "sequence_md5",
-            "sequence_length",
-            "analysis",
-            "signature_id",
-            "signature_desc",
-            "signature_start",
-            "signature_stop",
-            "signature_score",
-            "signature_status",
-            "date",
-            "interpro_id",
-            "interpro_desc",
-            "go_annotation",
-            "pathway_annotations",
-        ],
-    )
-    df_orthogroups = core.utils.load(
-        fn=core.utils.get_dir("INPUT") / definitions.ORTHOGROUPS_FN
-    )
-    annotations_valid = df_interpro["element_id"].isin(df_orthogroups["element_id"])
-    annotations_valid_count = annotations_valid.value_counts().get(True, 0)
-    annotations_orphan_count = annotations_valid.value_counts().get(False, 0)
-    if annotations_valid_count == 0:
-        logger.error(
-            f"{core.utils.format_number(annotations_valid_count)} valid annotation(s) found"
-        )
-        logger.error(
-            f"{core.utils.format_number(annotations_orphan_count)} orphan annotation(s) found"
-        )
-        sys.exit(1)
-    else:
-        logger.info(
-            f"{core.utils.format_number(annotations_valid_count)} valid annotation(s) found"
-        )
-        core.utils.dump(
-            df_interpro[annotations_valid],
-            fn=core.utils.format_fn(
-                fn,
-                prefix=core.utils.get_dir("INPUT"),
-                suffix=".filtered.tsv",
-            ),
-            index=False,
-        )
-        if annotations_orphan_count:
-            logger.warning(
-                f"{core.utils.format_number(annotations_orphan_count)} orphan annotation(s) found"
-            )
-            core.utils.dump(
-                df_interpro.loc[~annotations_valid],
-                fn=core.utils.format_fn(
-                    fn,
-                    prefix=core.utils.get_dir("INPUT"),
-                    suffix=".orphan.tsv",
-                ),
-                index=False,
-            )
-        annotated_EP = (
-            df_interpro["element_id"].nunique() / df_orthogroups["element_id"].nunique()
-        )
-        logger.info(f"{annotated_EP:.2%} of elements in orthogroups have annotations")
-        df_interpro = df_interpro[annotations_valid]
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-    return df_interpro
-
-
-def get_df_annotation(
-    df_orthogroups=None,
-    df_interpro=None,
-    df_counts=None,
-    output_fmt="tsv",
-):
-    _PROPORTIONAL = True
-    if df_interpro is None:
-        return None
-    t_0 = time.monotonic()
-    df_annotation = (
-        df_interpro.set_index("element_id")
-        .join(df_orthogroups.set_index("element_id"))
-        .reset_index()
-        .groupby(
-            INDEX_ANNOTATION,
-            as_index=False,
-            dropna=False,
-        )
-        .agg(
-            TG_AC=("element_id", "nunique"),
-        )
-        .set_index(INDEX_ANNOTATION)
-        .unstack(fill_value=0)
-    )
-    df_annotation["EC"] = df_counts.sum(axis=1)
-    df_annotation["EC_AC"] = df_annotation["TG_AC"].sum(axis=1)
-    df_annotation["EC_AP"] = df_annotation["EC_AC"] / df_annotation["EC"]
-    df_annotation["TN_AP"] = (
-        df_annotation["TG_AC"].ge(1).sum(axis=1).div(df_counts.ge(1).sum(axis=1))
-    )
-    df_annotation[
-        [
-            "EC",
-            "EC_AC",
-            "EC_AP",
-            "TN_AP",
-            "TG_AC",
-        ]
-    ]
-    if _PROPORTIONAL is True:
-        df_annotation["TG_AC"] = (
-            df_annotation["TG_AC"]
-            .div(
-                df_counts,
-            )
-            .replace(np.nan, 0.0)
-        ).rename(columns={"TG_AC": "TG_AP"})
-    df_annotation.columns = [
-        (f"{x}_{y}" if y else f"{x}") for x, y in df_annotation.columns.to_flat_index()
-    ]
-    core.utils.dump(
-        df_annotation.reset_index(),
-        fn=core.utils.format_fn(
-            f"orthogroups.annotated.{output_fmt}",
-            prefix=core.utils.get_dir("ANNOTATION"),
-        ),
-        index=False,
-    )
-    logger.info(f"[elapsed: {time.monotonic() - t_0}")
-    return df_annotation
-
-
 def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
     if np.all(values == count_target):
         return "true_cog"
@@ -702,10 +845,11 @@ def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
 
 def compare(task):
     _COLUMNS = ["EC_TG1", "OG_type_TG1", "COG_type_TG1"]
-    rows = []
+    compare_rows = []
+    df_sampling = None
     for label, tags in zip(task.labels, task.tags):
         directory = core.utils.get_dir("PARTITION") / label
-        if not rows:
+        if not compare_rows:
             for idx, tag in enumerate(tags):
                 fn = (
                     directory
@@ -715,6 +859,7 @@ def compare(task):
                     df = core.utils.load(fn)
                 else:
                     df = core.utils.load(fn, columns=_COLUMNS)
+                OC = len(df.index)
                 mask_absent = df["OG_type_TG1"] == "absent"
                 mask_present = df["OG_type_TG1"] != "absent"
                 mask_singleton = df["OG_type_TG1"] == "singleton"
@@ -722,41 +867,118 @@ def compare(task):
                 mask_shared = df["OG_type_TG1"] == "shared"
                 mask_cog_true = df["COG_type_TG1"] == "true_cog"
                 mask_cog_fuzzy = df["COG_type_TG1"] == "fuzzy_cog"
-                row = {}
-                row["label"] = label
-                row["tag"] = tag
-                row["SC"] = len(task.taxon_groups[idx])
-                row["OC"] = len(df[mask_present].index)
-                row["EC"] = int(df[mask_present]["EC_TG1"].sum())
-                row["OC_singleton"] = len(df[mask_present & mask_singleton].index)
-                row["EC_singleton"] = int(
+                EC_TG = int(df[mask_present]["EC_TG1"].sum())
+                SC_TG = len(task.taxon_groups[idx])
+                df_sampling = (
+                    df[mask_present][
+                        [
+                            "OG_type_TG1",
+                            "EC_TG1",
+                        ]
+                    ]
+                    .reset_index(drop=True)
+                    .rename(
+                        columns={
+                            "EC_TG1": "EC",
+                            "OG_type_TG1": "OG_OT",
+                        }
+                    )
+                    .replace(
+                        {
+                            "specific": "2_specific",
+                            "shared": "1_shared",
+                            "singleton": "3_singleton",
+                        }
+                    )
+                    .sort_values(
+                        ["OG_OT", "EC"],
+                        ascending=[True, True],
+                        ignore_index=True,
+                    )
+                    .reset_index(names="OC")
+                    .replace(
+                        {
+                            "2_specific": "specific",
+                            "1_shared": "shared",
+                            "3_singleton": "singleton",
+                        }
+                    )
+                )
+                df_sampling["OC"] += 1
+                df_sampling["EC"] = df_sampling["EC"].cumsum()
+                df_sampling["ECn"] = df_sampling["EC"].div(EC_TG)
+                df_sampling["OCn"] = df_sampling["OC"].div(OC)
+                core.utils.dump(
+                    df_sampling[
+                        [
+                            "OG_OT",
+                            "EC",
+                            "OC",
+                            "ECn",
+                            "OCn",
+                        ]
+                    ],
+                    fn=core.utils.format_fn(
+                        fn=f"{label}.{tag}.{SC_TG}.curve.{task.output_fmt}",
+                        prefix=core.utils.get_dir("PARTITION") / label,
+                    ),
+                    index=False,
+                )
+                compare_row = {}
+                compare_row["label"] = label
+                compare_row["tag"] = tag
+                compare_row["SC"] = SC_TG
+                compare_row["OC"] = len(df[mask_present].index)
+                compare_row["EC"] = EC_TG
+                compare_row["OC_singleton"] = len(
+                    df[mask_present & mask_singleton].index
+                )
+                compare_row["EC_singleton"] = int(
                     df[mask_present & mask_singleton]["EC_TG1"].sum()
                 )
-                row["OC_specific"] = len(df[mask_present & mask_specific].index)
-                row["EC_specific"] = int(
+                compare_row["OC_specific"] = len(df[mask_present & mask_specific].index)
+                compare_row["EC_specific"] = int(
                     df[mask_present & mask_specific]["EC_TG1"].sum()
                 )
-                row["OC_shared"] = len(df[mask_present & mask_shared].index)
-                row["EC_shared"] = int(df[mask_present & mask_shared]["EC_TG1"].sum())
-                row["OC_absent"] = len(df[mask_absent].index)
-                row["OC_specific_COG_true"] = len(
+                compare_row["OC_shared"] = len(df[mask_present & mask_shared].index)
+                compare_row["EC_shared"] = int(
+                    df[mask_present & mask_shared]["EC_TG1"].sum()
+                )
+                compare_row["OC_absent"] = len(df[mask_absent].index)
+                compare_row["OC_specific_COG_true"] = len(
                     df[mask_present & mask_specific & mask_cog_true].index
                 )
-                row["OC_specific_COG_fuzzy"] = len(
+                compare_row["OC_specific_COG_fuzzy"] = len(
                     df[mask_present & mask_specific & mask_cog_fuzzy].index
                 )
-                row["OC_shared_COG_true"] = len(
+                compare_row["OC_shared_COG_true"] = len(
                     df[mask_present & mask_shared & mask_cog_true].index
                 )
-                row["OC_shared_COG_fuzzy"] = len(
+                compare_row["OC_shared_COG_fuzzy"] = len(
                     df[mask_present & mask_shared & mask_cog_fuzzy].index
                 )
-                rows.append(row)
+                compare_rows.append(compare_row)
         else:
-            rows[idx]["label"] = label
-            rows[idx]["tag"] = tag
+            compare_rows[idx]["label"] = label
+            compare_rows[idx]["tag"] = tag
+            core.utils.dump(
+                df_sampling[
+                    [
+                        "OG_OT",
+                        "EC",
+                        "OC",
+                        "ECn",
+                        "OCn",
+                    ]
+                ],
+                fn=core.utils.format_fn(
+                    fn=f"{label}.{tag}.{SC_TG}.curve.{task.output_fmt}",
+                    prefix=core.utils.get_dir("PARTITION") / label,
+                ),
+                index=False,
+            )
         core.utils.dump(
-            pd.DataFrame.from_dict(rows),
+            pd.DataFrame.from_dict(compare_rows),
             fn=core.utils.format_fn(
                 fn=f"{label}.{task.type}.{task.output_fmt}",
                 prefix=core.utils.get_dir("PARTITION") / label,
@@ -775,9 +997,13 @@ def contrast(task):
     - pvalue is 20.2% of time
     """
     TG_1, TG_2 = task.taxon_groups
-    df_counts = core.utils.load(
-        fn=task.df_counts_fn,
+    # df_counts = core.utils.load(
+    #     fn=task.df_counts_fn,
+    #     columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
+    # )
+    df_counts = core.utils.get_counts_df(
         columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
+        nan=True,
     )
     df_counts_TG1 = df_counts.loc[:, TG_1]
     df_counts_TG2 = df_counts.loc[:, TG_2]
@@ -838,9 +1064,10 @@ def contrast(task):
         pd.Series(
             np.select(
                 condlist=[
-                    np.all(df_counts.eq(task.count_target), axis=1),
+                    np.all(df_counts_TG1.eq(task.count_target), axis=1),
                     np.mean(
-                        (df_counts >= task.count_min) & (df_counts <= task.count_max),
+                        (df_counts_TG1 >= task.count_min)
+                        & (df_counts_TG1 <= task.count_max),
                         axis=1,
                     )
                     >= task.count_fraction,
@@ -943,8 +1170,8 @@ def contrast(task):
         # [SAMPLE IDS]
         core.utils.dump(
             pd.DataFrame.from_records(
-                [{"TG": "1", "sample_id": TN, "label": TG1_tag} for TN in TG_1]
-                + [{"TG": "2", "sample_id": TN, "label": TG2_tag} for TN in TG_2]
+                [{"TG": "1", "sample_id": SN, "label": TG1_tag} for SN in TG_1]
+                + [{"TG": "2", "sample_id": SN, "label": TG2_tag} for SN in TG_2]
             ),
             fn=core.utils.format_fn(
                 fn=(f"{fn}.sample_ids.tsv"),
@@ -969,9 +1196,15 @@ def contrast(task):
 
 def do_task(task):
     if task.type == "summary":
-        compare(task)
+        return compare(task)
+    # elif task.type == "plot":
+    #     return plottify(task)
     elif task.type == "comparison":
-        contrast(task)
+        return contrast(task)
+    elif task.type == "fasta":
+        return do_fasta_task(task)
+    elif task.type == "interpro":
+        return do_interpro_task(task)
     else:
         raise ValueError(f"unknown task type: {task}")
 
@@ -980,27 +1213,34 @@ def do_tasks(
     tasks=[],
     desc="",
     processes=1,
+    collect_results=False,
 ):
     t_0 = time.monotonic()
-    logger.info(desc)
     _TOTAL = len(tasks)
-    _DESC = definitions.PROGRESS_DESC_PARTITIONING
+    _DESC = desc
     _NCOLS = definitions.PROGRESS_NCOLS
+    results = [] if collect_results else None
     if processes > 1:
         with tqdm.tqdm(total=_TOTAL, desc=_DESC, ncols=_NCOLS) as t:
             with poolcontext(processes=processes) as pool:
                 for _ in pool.imap_unordered(do_task, tasks):
+                    if collect_results:
+                        results.append(_)
                     t.update()
     else:
         for task in tqdm.tqdm(tasks, total=_TOTAL, desc=_DESC, ncols=_NCOLS):
             _ = do_task(task)
+            if collect_results:
+                results.append(_)
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
+    return results
 
 
 def get_summary_tasks(
     df_config=None,
+    type="summary",
     output_fmt="tsv",
     ignore_sample_comparisons=False,
 ):
@@ -1020,14 +1260,15 @@ def get_summary_tasks(
     for taxon_groups, v in collector.items():
         labels = [label[0] for label in v]
         tags = [label[1:] for label in v]
-        task = SummaryTask(
-            type="summary",
-            taxon_groups=taxon_groups,
-            labels=labels,
-            tags=tags,
-            output_fmt=output_fmt,
+        tasks.append(
+            SummaryTask(
+                type=type,
+                taxon_groups=taxon_groups,
+                labels=labels,
+                tags=tags,
+                output_fmt=output_fmt,
+            )
         )
-        tasks.append(task)
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
@@ -1036,7 +1277,6 @@ def get_summary_tasks(
 
 def get_comparison_tasks(
     df_config=None,
-    df_counts=None,
     count_target=1,
     count_min=0,
     count_max=2,
@@ -1057,21 +1297,6 @@ def get_comparison_tasks(
         collector_key = (TG_1, TG_2)
         collector_value = (grouping, label_1, label_2)
         collector[collector_key].append(collector_value)
-    df_counts_fn = core.utils.dump(
-        # df_counts.replace(0, np.nan)
-        df_counts.apply(
-            pd.to_numeric,
-            downcast="float",  # float32
-        ).replace(
-            0,
-            np.nan,
-        ),
-        fn=core.utils.format_fn(
-            fn="orthogroups.counts.nan.feather",
-            prefix=core.utils.get_dir("TMP"),
-        ),
-        index=True,
-    )
     tasks = []
     for taxon_groups, v in collector.items():
         labels = [label[0] for label in v]
@@ -1081,7 +1306,6 @@ def get_comparison_tasks(
             taxon_groups=taxon_groups,
             labels=labels,
             tags=tags,
-            df_counts_fn=df_counts_fn,
             count_target=count_target,
             count_min=count_min,
             count_max=count_max,
@@ -1309,6 +1533,7 @@ def get_combinations(taxon_groups, key):
 
 def get_tree(
     fn,
+    sample_ids=[],
     outgroup=[],
 ):
     """
@@ -1319,6 +1544,7 @@ def get_tree(
         logger.info("no tree provided")
         tree = None
     else:
+        logger.info(f"parsing tree in {fn}")
         tree = ete4.Tree(fn)
         if outgroup:
             logger.info(f"setting outgroup to {outgroup}")
@@ -1335,10 +1561,23 @@ def get_tree(
             )
         zeros = len(str(len(list(tree.traverse()))))
         idx = 0
+        sample_ids_found = []
         for node in tree.traverse("levelorder"):  # rename nodes
             if not node.name:
                 node.add_prop("name", f"{str(idx).zfill(zeros)}")
                 idx += 1
+            else:
+                sample_ids_found.append(node.name)
+        logger.info(f"tree has {core.utils.format_number(len(sample_ids_found))} taxa")
+        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
+        if sample_ids_missing:
+            logger.error(
+                f"{core.utils.format_number(len(sample_ids_missing))} sample IDs not in tree: {' '.join(sample_ids_missing)}"
+            )
+            sys.exit(1)
+        if sample_ids_found > sample_ids:
+            sample_ids_surplus = set(sample_ids_found) - set(sample_ids)
+            logger.warning(f"tree has additional taxa: {' '.join(sample_ids_surplus)}")
         tree.write(
             outfile=core.utils.format_fn(
                 fn=("tree.with_node_names.nwk"),
@@ -1362,9 +1601,10 @@ def get_tree(
     return tree
 
 
-def get_df_nodes(
-    df_counts,
-    tree,
+def process_tree(
+    tree_fn="",
+    outgroup=[],
+    sample_ids=[],
     output_fmt="tsv",
 ):
     """
@@ -1375,8 +1615,12 @@ def get_df_nodes(
     - OG_NP: NodeProportion (based only on leaf_names in df_counts)
     - EC: ElementCount
     """
-    if df_counts.empty or tree is None:
-        return None
+    t_0 = time.monotonic()
+    tree = get_tree(
+        fn=tree_fn,
+        sample_ids=sample_ids,
+        outgroup=outgroup,
+    )
 
     def place_orthogroup(row):
         row_dict = row.to_dict()
@@ -1397,11 +1641,15 @@ def get_df_nodes(
             EC,
         )
 
-    t_0 = time.monotonic()
     logger.info(
         f"placing orthogroups along {core.utils.format_number(len(list(tree.root.edges())))} branches on tree"
     )
-    df_nodes = df_counts.apply(place_orthogroup, axis=1, result_type="expand")
+
+    df_nodes = core.utils.get_counts_df().apply(
+        place_orthogroup,
+        axis=1,
+        result_type="expand",
+    )
     df_nodes.columns = ["node_id", "OG_AT", "OG_OT", "OG_NP", "EC"]
     OG_AT = df_nodes["OG_AT"].value_counts()
     logger.info(
@@ -1421,13 +1669,17 @@ def get_df_nodes(
     )
     df_nodes["OG_NT"] = "partial"
     df_nodes["OG_NT"] = df_nodes["OG_NT"].where(df_nodes["OG_NP"] == 1, "complete")
-    df_summary = (
-        df_nodes.groupby(["node_id", "OG_AT", "OG_OT", "OG_NT"], as_index=False)
-        .agg(OC=("orthogroup_id", "count"))
-        .set_index("node_id")
-    )
+    df_summary = df_nodes.groupby(
+        [
+            "node_id",
+            "OG_AT",
+            "OG_OT",
+            "OG_NT",
+        ],
+        as_index=False,
+    ).agg(OC=("orthogroup_id", "count"))
     core.utils.dump(
-        df_summary.reset_index(),
+        df_summary,
         fn=core.utils.format_fn(
             fn=f"tree.summary.{output_fmt}",
             prefix=core.utils.get_dir("TREE"),

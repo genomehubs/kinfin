@@ -59,7 +59,6 @@ def run(args):
             directory=args.f,
             sample_ids=list(df_config.sample_id),
             processes=args.p,
-            output_fmt=args.F,
         )
         sample_ids_source = "fasta"
     # [SEQUENCE/SPECIES IDs]
@@ -68,7 +67,6 @@ def run(args):
             sequence_ids_fn=args.s,
             species_ids_fn=args.S,
             sample_ids=list(df_config.sample_id),
-            output_fmt=args.F,
         )
         sample_ids_source = "sids"
     # [INFER IDs FROM OGs]
@@ -76,48 +74,37 @@ def run(args):
         sample_ids_source = "parse"
     else:
         sys.exit(1)
+
     # [ORTHOGRPUPS]
-    df_orthogroups = core.analysis.get_orthogroups(
+    core.analysis.get_orthogroups(
         args.g,
         sample_ids=list(df_config.sample_id),
-        output_fmt=args.F,
-        sample_ids_source=sample_ids_source,  # [ToDo] add
+        sample_ids_source=sample_ids_source,
     )
-    # [COUNTS]
-    df_counts = core.analysis.get_counts(
-        df_orthogroups,
-        output_fmt=args.F,
-    )
+
     # [TREE]
-    # - [ToDo] bundle tree stuff into one function
     if args.t:
-        tree = core.analysis.get_tree(
-            fn=args.t,
+        core.analysis.process_tree(
+            tree_fn=args.t,
             outgroup=args.o,
-        )
-        _ = core.analysis.get_df_nodes(
-            df_counts,
-            tree=tree,
+            sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
         )
+
     # [ANNOTATION]
-    # [ToDo] 
-    # - bundle annotation stuff into one function
-    # - 
-    if args.i:
-        df_interpro = core.analysis.get_df_interpro(
+    if args.i or args.I:
+        core.analysis.process_interpro(
             fn=args.i,
+            directory=args.I,
+            sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
+            processes=args.p,
         )
-        _ = core.analysis.get_df_annotation(
-            df_orthogroups=df_orthogroups,
-            df_interpro=df_interpro,
-            df_counts=df_counts,
+        core.analysis.get_df_entropy(
             output_fmt=args.F,
         )
     tasks = core.analysis.get_comparison_tasks(
         df_config=df_config,
-        df_counts=df_counts,
         count_target=args.n,
         count_min=args.m,
         count_max=args.M,
@@ -125,19 +112,32 @@ def run(args):
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
     )
+    # tasks += core.analysis.get_summary_tasks(
+    #     df_config=df_config,
+    #     type="plot",
+    #     output_fmt=args.F,
+    #     ignore_sample_comparisons=args.X,
+    # )
+    logger.info(
+        f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)"
+    )
     core.analysis.do_tasks(
         tasks,
-        desc=f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)",
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=args.p,
     )
     tasks = core.analysis.get_summary_tasks(
         df_config=df_config,
+        type="summary",
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
     )
+    logger.info(
+        f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)"
+    )
     core.analysis.do_tasks(
         tasks,
-        desc=f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)",
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=args.p,
     )
     # rarefaction_data = dataFactory.aloCollection.compute_rarefaction_data(
