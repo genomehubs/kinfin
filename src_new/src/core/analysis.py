@@ -243,7 +243,7 @@ def do_interpro_task(task):
                 fn_out = core.utils.dump(
                     df_annotation,
                     fn=core.utils.format_fn(
-                        f"{fn_stem}.{definitions.FN_STEM_ANNOTATION}.{definitions.STD_FORMAT}",
+                        f"{task.samnple_id}.{definitions.FN_STEM_ANNOTATION}.{definitions.STD_FORMAT}",
                         prefix=core.utils.get_dir("TMP"),
                     ),
                     index=True,
