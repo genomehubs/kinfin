@@ -35,6 +35,8 @@ COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
 COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
 ANNOTATION_FN = f"orthogroups.interpro.{STD_FORMAT}"
 INTERPRO_FN = f"interpro.{STD_FORMAT}"
+INTERPRO_TMP_FN_STEM = "interpro.signatures"
+SIGNATURES_TMP_FN_STEM = "interpro.signatures"
 ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
@@ -47,8 +49,11 @@ PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
-PROGRESS_DESC_INTERPRO = f"[{'INTERPRO'.center(23, '.')}]"
+PROGRESS_DESC_INTERPRO = f"[{'INTERPRO 1/3'.center(23, '.')}]"
+PROGRESS_DESC_INTERPRO_SUMMARY = f"[{'INTERPRO 2/3'.center(23, '.')}]"
 PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
+PROGRESS_DESC_TREE = f"[{'TREE'.center(23, '.')}]"
+
 INTERPRO_TSV_COLUMNS = [
     "element_id",
     "sequence_md5",
@@ -66,6 +71,39 @@ INTERPRO_TSV_COLUMNS = [
     "go_annotation",
     "pathway_annotations",
 ]
+INTERPRO_TSV_COLUMNS_VALID = [
+    "element_id",
+    "analysis",
+    "signature_id",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+]
+ANNOTATION_INDEX = [
+    "orthogroup_id",
+    "analysis",
+    "signature_id",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+    "sample_id",
+]
+SIGNATURE_COLUMNS = [
+    "signature_id",
+    "analysis",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+]
+ANNOTATION_COLUMNS = [
+    "signature_id",
+    "orthogroup_id",
+    "sample_id",
+]
+
 TAXDUMP_FN = DATA_DIR / "taxdump.tar.gz"
 TAXDUMP_URL = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz"
 TAXDUMP_URL_NEW = (
