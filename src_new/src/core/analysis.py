@@ -24,7 +24,7 @@ import core.utils
 logger = logging.getLogger(__name__)
 
 # pd.options.display.max_colwidth = None
-# pd.options.display.max_rows = None
+pd.options.display.max_rows = 1000
 
 
 ComparisonTask = collections.namedtuple(
@@ -192,32 +192,63 @@ def do_interpro_task(task):
     problem = None
     fn_out = None
     sample_ids = [task.sample_id] if isinstance(task.sample_id, str) else task.sample_id
+    fn_stem = "all" if len(sample_ids) > 1 else f"{task.sample_id}"
+    filters = [
+        (
+            "sample_id",
+            "in",
+            sample_ids,
+        )
+        if len(sample_ids) > 1
+        else ("sample_id", "==", sample_ids[0])
+    ]
     try:
         if task.fn is not None:
             df_interpro = core.utils.load(
                 task.fn,
                 names=definitions.INTERPRO_TSV_COLUMNS,
             )[definitions.INTERPRO_TSV_COLUMNS_VALID].set_index("element_id")
-            df_orthogroups = core.utils.get_orthogroups_df(
-                filters=[
-                    (
-                        "sample_id",
-                        "in",
-                        sample_ids,
-                    )
-                    if len(sample_ids) > 1
-                    else ("sample_id", "==", sample_ids[0])
-                ]
-            ).set_index("element_id")
+            df_orthogroups = core.utils.get_orthogroups_df(filters=filters).set_index(
+                "element_id"
+            )
+            # add orthorgoups information
             df_annotation = df_interpro.join(df_orthogroups, how="outer")
             # remove annotations of E's not in OG's
             is_orphan = df_annotation["orthogroup_id"].isnull()
             df_annotation = df_annotation[~is_orphan]
             if not df_annotation.empty:
+                df_signatures = (
+                    df_annotation[definitions.SIGNATURE_COLUMNS]
+                    .set_index("signature_id")
+                    .drop_duplicates()
+                    .dropna(subset=["analysis"])
+                )
+                _ = core.utils.dump(
+                    df_signatures,
+                    fn=core.utils.format_fn(
+                        f"{fn_stem}.{definitions.FN_STEM_SIGNATURES}.{definitions.STD_FORMAT}",
+                        prefix=core.utils.get_dir("TMP"),
+                    ),
+                    index=True,
+                )
+                df_annotation = df_annotation[definitions.ANNOTATION_COLUMNS]
+                df_annotation = (
+                    df_annotation.reset_index()
+                    .groupby(
+                        definitions.ANNOTATION_COLUMNS,
+                        as_index=False,
+                        dropna=False,
+                    )
+                    .agg(
+                        TG_AC=("element_id", "nunique"),
+                    )
+                    .set_index(definitions.ANNOTATION_COLUMNS)
+                    .unstack(fill_value=0)
+                )
                 fn_out = core.utils.dump(
                     df_annotation,
                     fn=core.utils.format_fn(
-                        f"{'all' if len(sample_ids) > 1 else f'{task.sample_id}'}.interpro.{definitions.STD_FORMAT}",
+                        f"{fn_stem}.{definitions.FN_STEM_ANNOTATION}.{definitions.STD_FORMAT}",
                         prefix=core.utils.get_dir("TMP"),
                     ),
                     index=True,
@@ -228,31 +259,23 @@ def do_interpro_task(task):
         else:
             # fake df_annotation for sample_ids without interpro file
             df_annotation = (
-                core.utils.get_orthogroups_df(
-                    filters=[
-                        (
-                            "sample_id",
-                            "in",
-                            sample_ids,
-                        )
-                    ]
+                core.utils.get_orthogroups_df(filters=filters)
+                .assign(**{"signature_id": np.nan})
+                .groupby(
+                    definitions.ANNOTATION_COLUMNS,
+                    as_index=False,
+                    dropna=False,
                 )
-                .assign(
-                    **{
-                        col: np.nan
-                        for col in [
-                            col
-                            for col in definitions.INTERPRO_TSV_COLUMNS_VALID
-                            if col != "element_id"
-                        ]
-                    }
+                .agg(
+                    TG_AC=("element_id", "nunique"),
                 )
-                .set_index("element_id")
+                .set_index(definitions.ANNOTATION_COLUMNS)
+                .unstack(fill_value=0)
             )
             fn_out = core.utils.dump(
                 df_annotation,
                 fn=core.utils.format_fn(
-                    f"{task.sample_id}.interpro.{definitions.STD_FORMAT}",
+                    f"{fn_stem}.{definitions.FN_STEM_ANNOTATION}.{definitions.STD_FORMAT}",
                     prefix=core.utils.get_dir("TMP"),
                 ),
                 index=True,
@@ -278,6 +301,7 @@ def summarize_annotations(
 ):
     interpro_summary = collections.defaultdict(lambda: collections.defaultdict(dict))
     df_signatures = None
+    df_annotations = None
     with tqdm.tqdm(
         total=len(interpro_results),
         desc=definitions.PROGRESS_DESC_INTERPRO_SUMMARY,
@@ -289,58 +313,73 @@ def summarize_annotations(
                 if isinstance(interpro_result.sample_id, list)
                 else [interpro_result.sample_id]
             )
-            df_annotation = core.utils.load(fn=interpro_result.fn_out)
-            if df_signatures is None:
-                df_signatures = df_annotation[definitions.SIGNATURE_COLUMNS].set_index(
-                    "signature_id"
+            df_annotations = (
+                core.utils.load(
+                    fn=interpro_result.fn_out
+                )  # .set_index("orthogroup_id")
+                if df_annotations is None
+                else pd.concat(
+                    [
+                        df_annotations,
+                        core.utils.load(fn=interpro_result.fn_out),  # .set_index(
+                        #    "orthogroup_id"
+                        # ),
+                    ],
+                    axis=1,
                 )
-            else:
-                df_signatures = (
-                    pd.concat(
-                        [
-                            df_signatures,
-                            df_annotation[definitions.SIGNATURE_COLUMNS].set_index(
-                                "signature_id"
-                            ),
-                        ]
-                    )
-                    .drop_duplicates()
-                    .dropna(subset=["analysis"])
-                )
-            for analysis in list(df_annotation["analysis"].unique()):
-                nan = False if isinstance(analysis, str) else True
-                analysis_string = analysis if not nan else "no_annotation"
-                df_annotation_analysis = (
-                    df_annotation[df_annotation["analysis"] == analysis]
-                    if not nan
-                    else df_annotation[df_annotation["analysis"].isnull()]
-                )
-                for interpro_sample_id in interpro_sample_ids:
-                    interpro_summary[analysis_string][interpro_sample_id]["EC"] = int(
-                        df_annotation[df_annotation["sample_id"] == interpro_sample_id][
-                            "sample_id"
-                        ].count()
-                    )
-                    interpro_summary[analysis_string][interpro_sample_id]["EC_AC"] = (
-                        int(
-                            df_annotation_analysis[
-                                df_annotation_analysis["sample_id"]
-                                == interpro_sample_id
-                            ]["analysis"].count()
-                            if not nan
-                            else df_annotation_analysis[
-                                df_annotation_analysis["sample_id"]
-                                == interpro_sample_id
-                            ]["analysis"]
-                            .isnull()
-                            .sum()
-                        )
-                    )
-
-                    interpro_summary[analysis_string][interpro_sample_id]["EC_AP"] = (
-                        interpro_summary[analysis_string][interpro_sample_id]["EC_AC"]
-                        / interpro_summary[analysis_string][interpro_sample_id]["EC"]
-                    )
+            )
+            print(df_annotations)
+            # if df_signatures is None:
+            #     df_signatures = df_annotation[definitions.SIGNATURE_COLUMNS].set_index(
+            #         "signature_id"
+            #     )
+            # else:
+            #     df_signatures = (
+            #         pd.concat(
+            #             [
+            #                 df_signatures,
+            #                 df_annotation[definitions.SIGNATURE_COLUMNS].set_index(
+            #                     "signature_id"
+            #                 ),
+            #             ]
+            #         )
+            #         .drop_duplicates()
+            #         .dropna(subset=["analysis"])
+            #     )
+            # for analysis in list(df_annotation["analysis"].unique()):
+            #    nan = False if isinstance(analysis, str) else True
+            #    analysis_string = analysis if not nan else "no_annotation"
+            #    df_annotation_analysis = (
+            #        df_annotation[df_annotation["analysis"] == analysis]
+            #        if not nan
+            #        else df_annotation[df_annotation["analysis"].isnull()]
+            #    )
+            #    for interpro_sample_id in interpro_sample_ids:
+            #        interpro_summary[analysis_string][interpro_sample_id]["EC"] = int(
+            #            df_annotation[df_annotation["sample_id"] == interpro_sample_id][
+            #                "sample_id"
+            #            ].count()
+            #        )
+            #        interpro_summary[analysis_string][interpro_sample_id]["EC_AC"] = (
+            #            int(
+            #                df_annotation_analysis[
+            #                    df_annotation_analysis["sample_id"]
+            #                    == interpro_sample_id
+            #                ]["analysis"].count()
+            #                if not nan
+            #                else df_annotation_analysis[
+            #                    df_annotation_analysis["sample_id"]
+            #                    == interpro_sample_id
+            #                ]["analysis"]
+            #                .isnull()
+            #                .sum()
+            #            )
+            #        )
+            #
+            #        interpro_summary[analysis_string][interpro_sample_id]["EC_AP"] = (
+            #            interpro_summary[analysis_string][interpro_sample_id]["EC_AC"]
+            #            / interpro_summary[analysis_string][interpro_sample_id]["EC"]
+            #        )
             t.update()
     core.utils.dump(
         df_signatures,

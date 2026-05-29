@@ -35,8 +35,8 @@ COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
 COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
 ANNOTATION_FN = f"orthogroups.interpro.{STD_FORMAT}"
 INTERPRO_FN = f"interpro.{STD_FORMAT}"
-INTERPRO_TMP_FN_STEM = "interpro.signatures"
-SIGNATURES_TMP_FN_STEM = "interpro.signatures"
+FN_STEM_ANNOTATION = "interpro_annotation"
+FN_STEM_SIGNATURES = "interpro_signatures"
 ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
@@ -99,8 +99,8 @@ SIGNATURE_COLUMNS = [
     "go_annotation",
 ]
 ANNOTATION_COLUMNS = [
-    "signature_id",
     "orthogroup_id",
+    "signature_id",
     "sample_id",
 ]
 
