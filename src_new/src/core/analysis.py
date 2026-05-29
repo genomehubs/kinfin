@@ -187,21 +187,13 @@ def do_interpro_task(task):
     """
     df_annotation MUST have all OGs (even if they do not have any annotations)
     [ToDo]
+    - ONLY only with single sample_id (multiple samples is too hard to keep doing)
     - make signatures files
     """
     problem = None
     fn_out = None
-    sample_ids = [task.sample_id] if isinstance(task.sample_id, str) else task.sample_id
-    fn_stem = "all" if len(sample_ids) > 1 else f"{task.sample_id}"
-    filters = [
-        (
-            "sample_id",
-            "in",
-            sample_ids,
-        )
-        if len(sample_ids) > 1
-        else ("sample_id", "==", sample_ids[0])
-    ]
+    filters = [("sample_id", "==", task.sample_id)]
+    print(filters)
     try:
         if task.fn is not None:
             df_interpro = core.utils.load(
@@ -217,6 +209,7 @@ def do_interpro_task(task):
             is_orphan = df_annotation["orthogroup_id"].isnull()
             df_annotation = df_annotation[~is_orphan]
             if not df_annotation.empty:
+                # SIGNATURES
                 df_signatures = (
                     df_annotation[definitions.SIGNATURE_COLUMNS]
                     .set_index("signature_id")
@@ -226,25 +219,27 @@ def do_interpro_task(task):
                 _ = core.utils.dump(
                     df_signatures,
                     fn=core.utils.format_fn(
-                        f"{fn_stem}.{definitions.FN_STEM_SIGNATURES}.{definitions.STD_FORMAT}",
+                        f"{task.sample_id}.{definitions.FN_STEM_SIGNATURES}.{definitions.STD_FORMAT}",
                         prefix=core.utils.get_dir("TMP"),
                     ),
                     index=True,
                 )
-                df_annotation = df_annotation[definitions.ANNOTATION_COLUMNS]
+                # ANNOTATION (needs df_counts so that all OGs are present in index)
                 df_annotation = (
-                    df_annotation.reset_index()
-                    .groupby(
-                        definitions.ANNOTATION_COLUMNS,
-                        as_index=False,
-                        dropna=False,
+                    core.utils.get_counts_df(
+                        columns=[task.sample_id],
                     )
-                    .agg(
-                        TG_AC=("element_id", "nunique"),
+                    .join(
+                        (
+                            df_annotation[definitions.ANNOTATION_COLUMNS]
+                            .reset_index()
+                            .set_index("orthogroup_id")
+                        ),
+                        how="left",
                     )
+                    .reset_index()
                     .set_index(definitions.ANNOTATION_COLUMNS)
-                    .unstack(fill_value=0)
-                )
+                ).drop(columns=[task.sample_id])
                 fn_out = core.utils.dump(
                     df_annotation,
                     fn=core.utils.format_fn(
@@ -314,21 +309,16 @@ def summarize_annotations(
                 else [interpro_result.sample_id]
             )
             df_annotations = (
-                core.utils.load(
-                    fn=interpro_result.fn_out
-                )  # .set_index("orthogroup_id")
+                core.utils.load(fn=interpro_result.fn_out)
                 if df_annotations is None
                 else pd.concat(
-                    [
-                        df_annotations,
-                        core.utils.load(fn=interpro_result.fn_out),  # .set_index(
-                        #    "orthogroup_id"
-                        # ),
-                    ],
+                    [df_annotations, core.utils.load(fn=interpro_result.fn_out)],
+                    # keys=["orthogroup_id", "signature_id"],
                     axis=1,
+                    join="outer",
                 )
             )
-            print(df_annotations)
+            print(df_annotations.head())
             # if df_signatures is None:
             #     df_signatures = df_annotation[definitions.SIGNATURE_COLUMNS].set_index(
             #         "signature_id"
