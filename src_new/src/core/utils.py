@@ -106,8 +106,38 @@ def get_interpro_df():
     return load(fn=get_dir("INPUT") / definitions.INTERPRO_FN)
 
 
-def get_annotation_df():
-    return load(fn=get_dir("ANNOTATION") / definitions.ANNOTATION_FN)
+def get_signatures_df(sample_id=None):
+    if sample_id is None:
+        return load(fn=get_dir("TMP") / definitions.SIGNATURES_FN)
+    else:
+        return load(
+            fn=get_dir("TMP") / sample_id / f"{sample_id}.{definitions.SIGNATURES_FN}"
+        )
+
+
+def get_signature_summary_df(sample_id=None):
+    return load(
+        fn=get_dir("TMP")
+        / sample_id
+        / f"{sample_id}.{definitions.SIGNATURES_SUMMARY_FN}"
+    )
+
+
+def get_annotation_df(sample_id=None, chunk="", delete=False):
+    if sample_id is None:
+        fn = get_dir("ANNOTATION") / definitions.ANNOTATION_FN
+    elif sample_id and chunk:
+        fn = (
+            get_dir("TMP")
+            / sample_id
+            / f"{sample_id}.{chunk}.{definitions.ANNOTATION_FN}"
+        )
+    else:
+        fn = get_dir("TMP") / sample_id / f"{sample_id}.{definitions.ANNOTATION_FN}"
+    df = load(fn=fn)
+    if delete:
+        fn.unlink()
+    return df
 
 
 def set_dir(name, value):
@@ -139,10 +169,36 @@ def format_number(number):
     return f"{number:,.12g}"
 
 
+def downcast(df, categorical=[], info=False):
+    ints = []
+    floats = []
+    if info:
+        print("[+]\n")
+        df.info()
+    for column in df.columns:
+        if column in categorical:
+            df[column] = df[column].astype("category")
+        elif df[column].dtype == "float64":
+            floats.append(column)
+        elif df[column].dtype == "int64":
+            ints.append(column)
+        elif df[column].dtype == "categorical":
+            df[column] = df[column].cat.remove_unused_categories()
+        else:
+            pass
+    df[ints] = df[ints].apply(pd.to_numeric, downcast="unsigned")
+    df[floats] = df[floats].apply(pd.to_numeric, downcast="float")
+    if info:
+        df.info()
+        print("[*]")
+    return df
+
+
 def mkdir(name, subdirs=[], do_replace=False):
     try:
         output_dir = pathlib.Path(name)
         if do_replace and output_dir.exists():
+            logger.debug(f"existing directory will be deleted: {name}")
             shutil.rmtree(
                 output_dir,
                 ignore_errors=True,
@@ -200,7 +256,12 @@ def load(fn, columns=None, names=None, filters=None):
                 )
         elif fmt == "parquet":
             # https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html
-            data = pd.read_parquet(fn, columns=columns, engine="auto", filters=filters)
+            data = pd.read_parquet(
+                fn,
+                columns=columns,
+                engine="pyarrow",
+                filters=filters,
+            )
         elif fmt == "feather":
             # print(f"{fn=}, columns={columns=}, names={names=}")
             # https://pandas.pydata.org/docs/reference/api/pandas.read_feather.html
@@ -214,9 +275,8 @@ def load(fn, columns=None, names=None, filters=None):
         else:
             logger.error(f"unsupported extension '.{fmt}'' in file {fn}")
             sys.exit(1)
-    except FileNotFoundError as exc:
-        logger.error(f"reading {fn=} failed - {exc}")
-        sys.exit(1)
+    except FileNotFoundError:
+        return None
     return data
 
 
@@ -235,8 +295,12 @@ def dump(data, fn, fmt="", index=True):
                 index=index,
             )
         elif fmt == "parquet":
+            # for column in data.columns:
+            #     if data[column].dtype == "category":
+            #         print(data[column])
+            #         data[column] = data[column].cat.remove_unused_categories()
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html#pandas.DataFrame.to_parquet
-            data.to_parquet(f"{fn}")
+            data.to_parquet(f"{fn}", engine="pyarrow")
         elif fmt == "feather":
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_feather.html#pandas.DataFrame.to_feather
             data.to_feather(fn)

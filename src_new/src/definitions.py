@@ -35,8 +35,10 @@ COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
 COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
 ANNOTATION_FN = f"orthogroups.interpro.{STD_FORMAT}"
 INTERPRO_FN = f"interpro.{STD_FORMAT}"
-FN_STEM_ANNOTATION = "interpro_annotation"
-FN_STEM_SIGNATURES = "interpro_signatures"
+ANNOTATION_FN = f"interpro_annotation.{STD_FORMAT}"
+ANNOTATION_DENOMINATOR_FN = f"interpro_annotation_denominator.{STD_FORMAT}"
+SIGNATURES_FN = f"interpro_signatures.{STD_FORMAT}"
+SIGNATURES_SUMMARY_FN = f"interpro_signatures.summary.{STD_FORMAT}"
 ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
@@ -49,8 +51,12 @@ PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
-PROGRESS_DESC_INTERPRO = f"[{'INTERPRO 1/3'.center(23, '.')}]"
-PROGRESS_DESC_INTERPRO_SUMMARY = f"[{'INTERPRO 2/3'.center(23, '.')}]"
+PROGRESS_DESC_INTERPRO = f"[{'INTERPRO PARSING'.center(23, '.')}]"
+PROGRESS_DESC_SIGNATURES = f"[{'SIGNATURES 1/2'.center(23, '.')}]"
+PROGRESS_DESC_SIGNATURES_COUNTING = f"[{'SIGNATURES 2/2'.center(23, '.')}]"
+PROGRESS_DESC_ANNOTATION_TASK_PREP = f"[{'CHUNKING ANNOTATION'.center(23, '.')}]"
+PROGRESS_DESC_ANNOTATION_TASK_RUN = f"[{'ANALYSING ANNOTATION'.center(23, '.')}]"
+PROGRESS_DESC_CHUNKS = f"[{'INTERPRO CHUNKS'.center(23, '.')}]"
 PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
 PROGRESS_DESC_TREE = f"[{'TREE'.center(23, '.')}]"
 
@@ -101,6 +107,7 @@ SIGNATURE_COLUMNS = [
 ANNOTATION_COLUMNS = [
     "orthogroup_id",
     "signature_id",
+    "analysis",
     "sample_id",
 ]
 

@@ -47,6 +47,12 @@ def run(args):
         config_fn=args.c,
         taxonomic_ranks=args.r,
     )
+    # create sample TMP dirs
+    core.utils.mkdir(
+        name=core.utils.get_dir("TMP"),
+        subdirs=list(df_config.sample_id),
+        do_replace=False,
+    )
     # create partition DIRs
     core.utils.mkdir(
         name=core.utils.get_dir("PARTITION"),
@@ -93,15 +99,11 @@ def run(args):
 
     # [ANNOTATION]
     if args.i or args.I:
-        core.analysis.process_interpro(
-            fn=args.i,
+        core.analysis.analyse_interpro(
             directory=args.I,
             sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
             processes=args.p,
-        )
-        core.analysis.get_df_entropy(
-            output_fmt=args.F,
         )
     tasks = core.analysis.get_comparison_tasks(
         df_config=df_config,
@@ -112,12 +114,6 @@ def run(args):
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
     )
-    # tasks += core.analysis.get_summary_tasks(
-    #     df_config=df_config,
-    #     type="plot",
-    #     output_fmt=args.F,
-    #     ignore_sample_comparisons=args.X,
-    # )
     logger.info(
         f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)"
     )
@@ -128,7 +124,6 @@ def run(args):
     )
     tasks = core.analysis.get_summary_tasks(
         df_config=df_config,
-        type="summary",
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
     )
@@ -140,16 +135,6 @@ def run(args):
         desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=args.p,
     )
-    # rarefaction_data = dataFactory.aloCollection.compute_rarefaction_data(
-    #     repetitions=dataFactory.inputData.repetitions
-    # )
-    # dataFactory.plot_rarefaction_data(
-    #     dirs=dataFactory.dirs,
-    #     plotsize=dataFactory.inputData.plotsize,
-    #     plot_format=dataFactory.inputData.plot_format,
-    #     fontsize=dataFactory.inputData.fontsize,
-    #     rarefaction_by_samplesize_by_level_by_attribute=rarefaction_data,
-    # )
     logger.info("done")
     logger.info(core.utils.format_elapsed(time.monotonic() - t_0))
     sys.exit(0)

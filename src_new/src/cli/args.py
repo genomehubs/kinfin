@@ -195,7 +195,7 @@ def add_analysis_parser(subparsers):
         "-F",
         choices=definitions.ARGS_SUPPORTED_OUTPUT_FORMATS,
         metavar="FMT",
-        default="feather",
+        default="parquet",
         help="Output table format (default: %(default)s)",
     )
     analysis_parser_parameters.add_argument(
