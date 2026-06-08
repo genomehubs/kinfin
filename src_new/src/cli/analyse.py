@@ -5,6 +5,7 @@ import time
 
 import core.analysis
 import core.log
+import core.tree
 import definitions
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,20 @@ def run(args):
         subdirs=["sample_ids"] + list(df_config.columns),
         do_replace=False,
     )
+    if not args.L:
+        core.utils.mkdir(
+            name=core.utils.get_dir("PLOTS"),
+            subdirs=[
+                "/".join([d1, d2])
+                for d1 in ["curve"]
+                for d2 in ["sample_ids"] + list(df_config.columns)
+            ]
+            + [
+                "tally",
+                "volcano",
+            ],
+            do_replace=False,
+        )
     # [FASTA IDs]
     if args.f:
         core.analysis.get_elements(
@@ -86,11 +101,13 @@ def run(args):
         args.g,
         sample_ids=list(df_config.sample_id),
         sample_ids_source=sample_ids_source,
+        output_fmt=args.F,
+        plot_fmt=args.l,
+        do_plots=(not args.L),
     )
-
     # [TREE]
     if args.t:
-        core.analysis.process_tree(
+        core.tree.process_tree(
             tree_fn=args.t,
             outgroup=args.o,
             sample_ids=list(df_config.sample_id),
@@ -126,6 +143,7 @@ def run(args):
         df_config=df_config,
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
+        plot_fmt=args.l if not args.L else None,
     )
     logger.info(
         f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)"

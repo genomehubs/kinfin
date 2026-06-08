@@ -15,6 +15,8 @@ if __name__ == "__main__":
             cli.head.run(args)
         elif args.command == "tail":
             cli.tail.run(args)
+        elif args.command == "preprocess":
+            cli.preprocess.run(args)
         elif args.command == "convert":
             cli.convert.run(args)
         elif args.command == "taxid":
