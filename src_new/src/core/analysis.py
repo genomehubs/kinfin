@@ -763,7 +763,7 @@ def get_orthogroups(
             fn=core.utils.format_fn(
                 definitions.ELEMENTS_ORPHAN_SUMMARY_FN,
                 prefix=core.utils.get_dir("INPUT"),
-                suffix=output_fmt,
+                suffix=f".{output_fmt}",
             ),
             index=True,
         )
