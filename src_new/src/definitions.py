@@ -7,6 +7,8 @@ ARGS_TAXONOMY_RANKS_DEFAULT = ["phylum", "order", "genus"]
 ARGS_TAXONOMY_RANKS_SUPPORTED = [
     "species",
     "genus",
+    "tribe",
+    "subfamily",
     "family",
     "order",
     "class",
@@ -29,12 +31,22 @@ LOG_DIR = BASE_DIR / "logs"
 LOG_CONFIG = CONFIG_DIR / "logging.json"
 
 STD_FORMAT = "parquet"
+PLOT_FORMAT = "png"
 ELEMENTS_FN = f"orthogroups.elements.{STD_FORMAT}"
+ELEMENTS_ORPHAN_FN = f"orthogroups.elements.orphans.{STD_FORMAT}"
+ELEMENTS_ORPHAN_SUMMARY_FN = f"orthogroups.elements.orphans.table.{STD_FORMAT}"
+REPEATS_FN = f"repeats.{STD_FORMAT}"
 ORTHOGROUPS_FN = f"orthogroups.{STD_FORMAT}"
 COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
 COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
+EC_TALLY_FN = f"orthogroups.EC.tally.{STD_FORMAT}"
+SC_TALLY_FN = f"orthogroups.SC.tally.{STD_FORMAT}"
 ANNOTATION_FN = f"orthogroups.interpro.{STD_FORMAT}"
 INTERPRO_FN = f"interpro.{STD_FORMAT}"
+ANNOTATION_FN = f"interpro_annotation.{STD_FORMAT}"
+ANNOTATION_DENOMINATOR_FN = f"interpro_annotation_denominator.{STD_FORMAT}"
+SIGNATURES_FN = f"interpro_signatures.{STD_FORMAT}"
+SIGNATURES_SUMMARY_FN = f"interpro_signatures.summary.{STD_FORMAT}"
 ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
@@ -47,8 +59,16 @@ PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
-PROGRESS_DESC_INTERPRO = f"[{'INTERPRO'.center(23, '.')}]"
+PROGRESS_DESC_INTERPRO = f"[{'INTERPRO PARSING'.center(23, '.')}]"
+PROGRESS_DESC_REPEATS = f"[{'REPEATS PARSING'.center(23, '.')}]"
+PROGRESS_DESC_SIGNATURES = f"[{'SIGNATURES 1/2'.center(23, '.')}]"
+PROGRESS_DESC_SIGNATURES_COUNTING = f"[{'SIGNATURES 2/2'.center(23, '.')}]"
+PROGRESS_DESC_ANNOTATION_TASK_PREP = f"[{'CHUNKING ANNOTATION'.center(23, '.')}]"
+PROGRESS_DESC_ANNOTATION_TASK_RUN = f"[{'ANALYSING ANNOTATION'.center(23, '.')}]"
+PROGRESS_DESC_CHUNKS = f"[{'INTERPRO CHUNKS'.center(23, '.')}]"
 PROGRESS_DESC_PARTITIONING = f"[{'PARTITIONING'.center(23, '.')}]"
+PROGRESS_DESC_TREE = f"[{'TREE'.center(23, '.')}]"
+
 INTERPRO_TSV_COLUMNS = [
     "element_id",
     "sequence_md5",
@@ -66,6 +86,40 @@ INTERPRO_TSV_COLUMNS = [
     "go_annotation",
     "pathway_annotations",
 ]
+INTERPRO_TSV_COLUMNS_VALID = [
+    "element_id",
+    "analysis",
+    "signature_id",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+]
+ANNOTATION_INDEX = [
+    "orthogroup_id",
+    "analysis",
+    "signature_id",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+    "sample_id",
+]
+SIGNATURE_COLUMNS = [
+    "signature_id",
+    "analysis",
+    "signature_desc",
+    "interpro_id",
+    "interpro_desc",
+    "go_annotation",
+]
+ANNOTATION_COLUMNS = [
+    "orthogroup_id",
+    "signature_id",
+    "analysis",
+    "sample_id",
+]
+
 TAXDUMP_FN = DATA_DIR / "taxdump.tar.gz"
 TAXDUMP_URL = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz"
 TAXDUMP_URL_NEW = (

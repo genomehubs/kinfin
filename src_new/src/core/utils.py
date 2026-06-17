@@ -92,22 +92,72 @@ def get_orthogroups_df(filters=None):
     return load(fn=get_dir("INPUT") / definitions.ORTHOGROUPS_FN, filters=filters)
 
 
+def get_tally_df():
+    return load(fn=get_dir("PLOTS") / definitions.COUNTS_TALLY_FN)
+
+
 def get_counts_df(columns=None, nan=False):
     if nan:
         return load(fn=get_dir("TMP") / definitions.COUNTS_NAN_FN, columns=columns)
     return load(fn=get_dir("INPUT") / definitions.COUNTS_FN, columns=columns)
 
 
-def get_elements_df():
-    return load(fn=get_dir("INPUT") / definitions.ELEMENTS_FN)
+def get_elements_df(sample_id=None):
+    if sample_id is None:
+        return load(fn=get_dir("INPUT") / definitions.ELEMENTS_FN)
+    else:
+        return load(
+            fn=get_dir("TMP")
+            / sample_id
+            / f"{sample_id}.elements.{definitions.STD_FORMAT}"
+        )
 
 
 def get_interpro_df():
     return load(fn=get_dir("INPUT") / definitions.INTERPRO_FN)
 
 
-def get_annotation_df():
-    return load(fn=get_dir("ANNOTATION") / definitions.ANNOTATION_FN)
+def get_signatures_df(sample_id=None):
+    if sample_id is None:
+        return load(fn=get_dir("TMP") / definitions.SIGNATURES_FN)
+    else:
+        return load(
+            fn=get_dir("TMP") / sample_id / f"{sample_id}.{definitions.SIGNATURES_FN}"
+        )
+
+
+def get_signature_summary_df(sample_id=None):
+    return load(
+        fn=get_dir("TMP")
+        / sample_id
+        / f"{sample_id}.{definitions.SIGNATURES_SUMMARY_FN}"
+    )
+
+
+def get_repeat_df(sample_id=None, repeat_group=None):
+    if sample_id is not None:
+        return load(
+            fn=get_dir("TMP")
+            / sample_id
+            / f"{sample_id}.{repeat_group}.count.{definitions.REPEATS_FN}"
+        )
+    else:
+        return load(
+            fn=get_dir("TMP") / f"{repeat_group}.count.{definitions.REPEATS_FN}"
+        )
+
+
+def get_annotation_df(sample_id=None, output_fmt=definitions.STD_FORMAT, delete=False):
+    if sample_id is None:
+        fn = (get_dir("ANNOTATION") / definitions.ANNOTATION_FN).with_suffix(
+            f".{output_fmt}"
+        )
+    else:
+        fn = get_dir("TMP") / sample_id / f"{sample_id}.{definitions.ANNOTATION_FN}"
+    df = load(fn=fn)
+    if delete:
+        fn.unlink()
+    return df
 
 
 def set_dir(name, value):
@@ -139,10 +189,39 @@ def format_number(number):
     return f"{number:,.12g}"
 
 
+def downcast(df, categorical=[], info=False):
+    ints = []
+    floats = []
+    if info:
+        print("[+]\n")
+        df.info()
+    if isinstance(df, pd.DataFrame):
+        for column in df.columns:
+            if column in categorical:
+                df[column] = df[column].astype("category")
+            elif df[column].dtype == "float64":
+                floats.append(column)
+            elif df[column].dtype == "int64":
+                ints.append(column)
+            elif df[column].dtype == "category":
+                df[column] = df[column].astype(str)
+            else:
+                pass
+        df[ints] = df[ints].apply(pd.to_numeric, downcast="unsigned")
+        df[floats] = df[floats].apply(pd.to_numeric, downcast="float")
+    elif isinstance(df, pd.Series):
+        df = pd.to_numeric(df)
+    if info:
+        df.info()
+        print("[*]")
+    return df
+
+
 def mkdir(name, subdirs=[], do_replace=False):
     try:
         output_dir = pathlib.Path(name)
         if do_replace and output_dir.exists():
+            logger.debug(f"existing directory will be deleted: {name}")
             shutil.rmtree(
                 output_dir,
                 ignore_errors=True,
@@ -163,12 +242,14 @@ def mkdir(name, subdirs=[], do_replace=False):
             if subdirs == "init":
                 set_dir("INPUT", output_dir / "input")
                 set_dir("TMP", output_dir / ".tmp")
+                set_dir("PLOTS", output_dir / "plot")
                 set_dir("ANNOTATION", output_dir / "annotation")
                 set_dir("TREE", output_dir / "tree")
                 set_dir("PARTITION", output_dir / "partition")
                 for subdir in [
                     get_dir("INPUT"),
                     get_dir("TMP"),
+                    get_dir("PLOTS"),
                     get_dir("ANNOTATION"),
                     get_dir("TREE"),
                     get_dir("PARTITION"),
@@ -200,7 +281,12 @@ def load(fn, columns=None, names=None, filters=None):
                 )
         elif fmt == "parquet":
             # https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html
-            data = pd.read_parquet(fn, columns=columns, engine="auto", filters=filters)
+            data = pd.read_parquet(
+                fn,
+                columns=columns,
+                engine="pyarrow",
+                filters=filters,
+            )
         elif fmt == "feather":
             # print(f"{fn=}, columns={columns=}, names={names=}")
             # https://pandas.pydata.org/docs/reference/api/pandas.read_feather.html
@@ -214,10 +300,9 @@ def load(fn, columns=None, names=None, filters=None):
         else:
             logger.error(f"unsupported extension '.{fmt}'' in file {fn}")
             sys.exit(1)
-    except FileNotFoundError as exc:
-        logger.error(f"reading {fn=} failed - {exc}")
-        sys.exit(1)
-    return data
+    except FileNotFoundError:
+        return None
+    return downcast(data) if isinstance(data, pd.DataFrame) else data
 
 
 def dump(data, fn, fmt="", index=True):
@@ -235,11 +320,15 @@ def dump(data, fn, fmt="", index=True):
                 index=index,
             )
         elif fmt == "parquet":
+            # for column in data.columns:
+            #     if data[column].dtype == "category":
+            #         print(data[column])
+            #         data[column] = data[column].cat.remove_unused_categories()
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html#pandas.DataFrame.to_parquet
-            data.to_parquet(f"{fn}")
+            downcast(data).to_parquet(f"{fn}", engine="pyarrow")
         elif fmt == "feather":
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_feather.html#pandas.DataFrame.to_feather
-            data.to_feather(fn)
+            downcast(data).to_feather(fn)
         elif fmt == "pickle":
             # assumes data is dict
             with open(fn, "wb") as fh:

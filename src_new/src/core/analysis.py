@@ -8,11 +8,12 @@ import multiprocessing
 import pathlib
 import sys
 import time
+import traceback
 
 import core.log
+import core.plot
 import core.taxonomy
 import definitions
-import ete4
 import numpy as np
 import pandas as pd
 import scipy
@@ -25,17 +26,6 @@ logger = logging.getLogger(__name__)
 # pd.options.display.max_colwidth = None
 # pd.options.display.max_rows = None
 
-INDEX_ANNOTATION = [
-    "orthogroup_id",
-    "analysis",
-    "signature_id",
-    "signature_desc",
-    "interpro_id",
-    "interpro_desc",
-    "go_annotation",
-    "pathway_annotations",
-    "sample_id",
-]
 
 ComparisonTask = collections.namedtuple(
     "ComparisonTask",
@@ -49,6 +39,7 @@ ComparisonTask = collections.namedtuple(
         "count_max",
         "count_fraction",
         "output_fmt",
+        "plot_fmt",
     ],
 )
 
@@ -60,6 +51,7 @@ SummaryTask = collections.namedtuple(
         "tags",
         "taxon_groups",
         "output_fmt",
+        "plot_fmt",
     ],
 )
 
@@ -69,17 +61,16 @@ ParseTask = collections.namedtuple(
         "type",
         "sample_id",
         "fn",
+        "params",
     ],
 )
 
-ParseResult = collections.namedtuple(
-    "ParseResult",
+VolcanoTask = collections.namedtuple(
+    "VolcanoTask",
     [
         "type",
-        "fn_in",
-        "fn_out",
-        "sample_id",
-        "problem",
+        "fn",
+        "label",
     ],
 )
 
@@ -112,6 +103,7 @@ def get_parse_tasks(
     type="",
     sample_ids=[],
     extensions=[],
+    params={},
 ):
     _SAMPLE_IDS = set(sample_ids)
     tasks = []
@@ -124,13 +116,14 @@ def get_parse_tasks(
                         type=type,
                         sample_id=sample_id,
                         fn=fn,
+                        params=params,
                     )
                 )
     return tasks
 
 
 # [DONE]
-def do_fasta_task(task):
+def do_parse_fasta_task(task):
     try:
         data = []
         for header, length in core.utils.iter_seq_length(task.fn):
@@ -141,11 +134,15 @@ def do_fasta_task(task):
         if df_fasta.empty:
             logger.warning(f"no sequences found in {task.fn}")
         else:
+            df_fasta = downcast(
+                df_fasta,
+                categorical=["sample_id"],
+            )
             return core.utils.dump(
                 df_fasta,
                 fn=core.utils.format_fn(
                     f"{task.sample_id}.elements.{definitions.STD_FORMAT}",
-                    prefix=core.utils.get_dir("TMP"),
+                    prefix=core.utils.get_dir("TMP") / task.sample_id,
                 ),
                 index=False,
             )
@@ -155,278 +152,760 @@ def do_fasta_task(task):
 
 
 # [DONE]
-def get_interpro_tasks(
-    fn=None,
+def get_parse_interpro_tasks(
     directory=None,
     sample_ids=[],
 ):
-    if fn is not None:
-        tasks = [
-            ParseTask(
-                type="interpro",
-                sample_id=sample_ids,
-                fn=fn,
-            )
-        ]
-    else:
-        tasks = get_parse_tasks(
-            directory=directory,
-            type="interpro",
-            sample_ids=sample_ids,
-            extensions=definitions.SUPPORTED_INTERPRO_EXTENSIONS,
+    tasks = get_parse_tasks(
+        directory=directory,
+        type="interpro",
+        sample_ids=sample_ids,
+        extensions=definitions.SUPPORTED_INTERPRO_EXTENSIONS,
+    )
+    sample_ids_found = [task.sample_id for task in tasks]
+    if len(sample_ids_found) < len(sample_ids):
+        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
+        logger.warning(
+            f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
         )
-        sample_ids_found = [task.sample_id for task in tasks]
-        if len(sample_ids_found) < len(sample_ids):
-            sample_ids_missing = set(sample_ids) - set(sample_ids_found)
-            logger.warning(
-                f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
-            )
-            for sample_id in sample_ids_missing:
-                tasks.append(
-                    ParseTask(
-                        type="interpro",
-                        sample_id=sample_id,
-                        fn=None,
-                    )
+        for sample_id in sample_ids_missing:
+            tasks.append(
+                ParseTask(
+                    type="interpro",
+                    sample_id=sample_id,
+                    fn=None,
                 )
+            )
     return tasks
 
 
-# [DONE]
-def do_interpro_task(task):
-    problem = None
-    fn_out = None
-    sample_ids = [task.sample_id] if isinstance(task.sample_id, str) else task.sample_id
+def get_interpro_df_empty(sample_id):
+    return (
+        core.utils.get_orthogroups_df(filters=[("sample_id", "==", sample_id)])
+        .set_index("orthogroup_id")
+        .join(
+            core.utils.get_counts_df(
+                columns=[sample_id],
+            ),
+            how="right",
+        )
+        .assign(**{"signature_id": np.nan, "analysis": np.nan})
+        .reset_index()
+    ).drop(columns=[sample_id])
+
+
+def do_parse_interpro_task(task):
+    analyses = []
     try:
-        if task.fn is not None:
+        if task.fn is None:
+            # fake df_annotation for sample_ids without interpro file
+            df_annotation = get_interpro_df_empty(task.sample_id)
+        else:
             df_interpro = core.utils.load(
                 task.fn,
                 names=definitions.INTERPRO_TSV_COLUMNS,
-            ).set_index("element_id")
-            df_orthogroups = core.utils.get_orthogroups_df(
-                filters=[
-                    (
-                        "sample_id",
-                        "in",
-                        sample_ids,
-                    )
-                ]
-            ).set_index("element_id")
-            df_annotation = df_interpro.join(df_orthogroups, how="outer")
+            )[definitions.INTERPRO_TSV_COLUMNS_VALID].set_index("element_id")
+            # add orthorgoups information
+            df_annotation = downcast(
+                df_interpro.join(
+                    core.utils.get_orthogroups_df(
+                        filters=[("sample_id", "==", task.sample_id)],
+                    ).set_index("element_id"),
+                    how="outer",
+                )
+            )
             # remove annotations of E's not in OG's
-            is_orphan = df_annotation["orthogroup_id"].isnull()
-            df_annotation = df_annotation[~is_orphan]
-            if not df_annotation.empty:
-                fn_out = core.utils.dump(
-                    df_annotation,
+            df_annotation = df_annotation[~df_annotation["orthogroup_id"].isnull()]
+            if df_annotation.empty:
+                df_annotation = get_interpro_df_empty(task.sample_id)
+            else:
+                df_signatures = (
+                    df_annotation[
+                        [
+                            "signature_id",
+                            "analysis",
+                            "signature_desc",
+                            "interpro_id",
+                            "interpro_desc",
+                            "go_annotation",
+                        ]
+                    ]
+                    .set_index("signature_id")
+                    .drop_duplicates()
+                    .dropna(subset=["analysis"])
+                )
+                analyses = df_signatures["analysis"].unique()
+                _ = core.utils.dump(
+                    df_signatures,
                     fn=core.utils.format_fn(
-                        f"{'all' if len(sample_ids) > 1 else f'{task.sample_id}'}.interpro.{definitions.STD_FORMAT}",
-                        prefix=core.utils.get_dir("TMP"),
+                        f"{task.sample_id}.{definitions.SIGNATURES_FN}",
+                        prefix=core.utils.get_dir("TMP") / task.sample_id,
                     ),
                     index=True,
                 )
-            else:
-                if df_annotation["analysis"].isnull().values.any():
-                    problem = f"inconsistent tabs in file {task.fn}"
-        else:
-            # fake df_annotation for sample_ids without interpro file
-            df_annotation = (
-                core.utils.get_orthogroups_df(
-                    filters=[
-                        (
-                            "sample_id",
-                            "in",
-                            sample_ids,
-                        )
+                df_annotation = df_annotation[
+                    [
+                        "orthogroup_id",
+                        "signature_id",
+                        "analysis",
                     ]
-                )
-                .assign(
-                    **{
-                        col: np.nan
-                        for col in [
-                            col
-                            for col in definitions.INTERPRO_TSV_COLUMNS
-                            if col != "element_id"
-                        ]
-                    }
-                )
-                .set_index("element_id")
-            )
-            fn_out = core.utils.dump(
-                df_annotation,
-                fn=core.utils.format_fn(
-                    f"{task.sample_id}.interpro.{definitions.STD_FORMAT}",
-                    prefix=core.utils.get_dir("TMP"),
-                ),
-                index=True,
-            )
+                ].reset_index()
     except Exception as exc:
-        problem = f"problem reading {task.fn} - {exc}"
-    return ParseResult(
-        type="interpro",
-        fn_in=task.fn,
+        logger.error(f"{exc}")
+        logger.error(f"{traceback.format_exc()}")
+        sys.exit(1)
+    dump_signature_summary(
+        df=df_annotation,
+        analyses=analyses,
         sample_id=task.sample_id,
-        fn_out=fn_out,
-        problem=problem,
+    )
+    df_annotation = (
+        downcast(df_annotation)
+        .groupby(
+            ["orthogroup_id", "analysis", "signature_id"],
+            dropna=False,
+        )
+        .agg(sample=("element_id", "nunique"))
+        .rename(columns={"sample": task.sample_id})
+    )
+    df_annotation = df_annotation.loc[(df_annotation != 0).any(axis=1)]
+    core.utils.dump(
+        df_annotation,
+        fn=core.utils.format_fn(
+            f"{task.sample_id}.{definitions.ANNOTATION_FN}",
+            prefix=core.utils.get_dir("TMP") / task.sample_id,
+        ),
+        index=True,
     )
 
 
-def get_interpro_summary_table(
-    interpro_results,
-    sample_ids=[],
-    output_fmt="tsv",
-):
-    interpro_summary = {}
-    for interpro_result in interpro_results:
-        interpro_sample_ids = (
-            interpro_result.sample_id
-            if isinstance(interpro_result.sample_id, list)
-            else [interpro_result.sample_id]
-        )
-        df_annotation = core.utils.load(fn=interpro_result.fn_out)
-        for interpro_sample_id in interpro_sample_ids:
-            interpro_summary[interpro_sample_id] = {
-                "EC": df_annotation[df_annotation["sample_id"] == interpro_sample_id][
-                    "sample_id"
-                ].count(),
-                "EC_AC": df_annotation[
-                    df_annotation["sample_id"] == interpro_sample_id
-                ]["analysis"].count(),
-            }
-            interpro_summary[interpro_sample_id]["EC_AP"] = (
-                interpro_summary[interpro_sample_id]["EC_AC"]
-                / interpro_summary[interpro_sample_id]["EC"]
-            )
-    interpro_summary_rows = []
-    for sample_id in sample_ids:
-        interpro_summary_rows.append(
-            {
-                "sample_id": sample_id,
-                **interpro_summary[sample_id],
-            }
-        )
+def dump_signature_summary(df, analyses=[], sample_id=None):
+    df_counts = core.utils.get_counts_df(
+        columns=[sample_id],
+    )
+    EC = int(df_counts[sample_id].sum(axis=0))
+    rows = []
+    for analysis in analyses:
+        EC_AC = int(df[df["analysis"] == analysis]["element_id"].nunique())
+        rows.append((analysis, sample_id, EC, EC_AC, float(EC_AC / EC)))
+    EC_AC = int(df[df["analysis"].isna()]["element_id"].nunique(dropna=True))
+    rows.append(("not_annotated", sample_id, EC, EC_AC, float(EC_AC / EC)))
     core.utils.dump(
-        pd.DataFrame().from_records(interpro_summary_rows),
+        pd.DataFrame().from_records(
+            rows, columns=["analysis", "sample_id", "EC", "EC_AC", "EC_AP"]
+        ),
         fn=core.utils.format_fn(
-            f"interpro.summary.{output_fmt}",
-            prefix=core.utils.get_dir("ANNOTATION"),
+            f"{sample_id}.{definitions.SIGNATURES_SUMMARY_FN}",
+            prefix=core.utils.get_dir("TMP") / sample_id,
         ),
         index=False,
     )
 
 
-def get_interpro(
-    fn=None,
+def downcast(df, categorical=[], info=False):
+    ints = []
+    floats = []
+    if info:
+        print("[+]\n")
+        df.info()
+    for column in df.columns:
+        if column in categorical:
+            df[column] = df[column].astype("category")
+        elif df[column].dtype == "float64":
+            floats.append(column)
+        elif df[column].dtype == "int64":
+            ints.append(column)
+        elif df[column].dtype == "category" and not categorical:
+            df[column] = df[column].astype(str)
+        else:
+            pass
+    df[ints] = df[ints].apply(pd.to_numeric, downcast="unsigned")
+    df[floats] = df[floats].apply(pd.to_numeric, downcast="float")
+    if info:
+        df.info()
+        print("[*]")
+    return df
+
+
+def do_parse_earlgrey_task(task):
+    """
+    ["family", "class", "subclass", "span", "count"]
+    # Earlgrey
+    ## TE Family   Coverage (bp)   Copy Number
+    ## {name}#{superfamily}/{family}
+    A-RICH#Low_complexity   27522   592
+    => ["A-RICH", "Other", "Low_complexity"]
+    RND-1_FAMILY-11#RC/Helitron 6212    29
+    => ["RND-1_FAMILY-11", "RC", "Helitron"]
+    RND-2_FAMILY-54#LINE/RTE-RTE    4389    19
+    => ["RND-2_FAMILY-54", "LINE", "RTE-RTE"]
+    (AAT)N#Simple_repeat    2530    59
+    => ["(AAT)N", "Other", "Simple_repeat"]
+    RND-1_FAMILY-6#Unknown  2488    7
+    => ["RND-1_FAMILY-6", "Other", "Unknown"]
+    RND-1_FAMILY-24#DNA/TcMar-Tc1   44617   42
+    => ["RND-1_FAMILY-24", "DNA", "TcMar-Tc1"]
+    """
+    try:
+        HEADER = [
+            "te_family",
+            "coverage",
+            "copies",
+        ]
+        HEADER_VALID = set(HEADER)
+        rows = []
+        with open(task.fn) as fh:
+            header = None
+            for line in fh:
+                if header is None:
+                    header = HEADER
+                else:
+                    row = {
+                        h: r for h, r in zip(header, line.split()) if h in HEADER_VALID
+                    }
+                    repeat_family, repeat_class_subclass = row["te_family"].split("#")
+                    repeat_class_subclass = repeat_class_subclass.split("/")
+                    rows.append(
+                        {
+                            "span": int(row["coverage"]),
+                            "count": int(row["copies"]),
+                            "repeat_family": repeat_family,
+                            "repeat_class": "Other"
+                            if len(repeat_class_subclass) == 1
+                            else repeat_class_subclass[0],
+                            "repeat_subclass": repeat_class_subclass[0]
+                            if len(repeat_class_subclass) == 1
+                            else repeat_class_subclass[1],
+                        }
+                    )
+        df_repeats = pd.DataFrame().from_dict(rows)
+        groups = ["repeat_class", "repeat_subclass", "repeat_family"]
+        for group in groups:
+            df_group = df_repeats.groupby(group).agg(
+                span=("span", "sum"),
+                count=("repeat_family", "sum"),
+            )
+            df_group["sample_id"] = task.sample_id
+            core.utils.dump(
+                df_group,
+                fn=core.utils.format_fn(
+                    f"{task.sample_id}.{group},{definitions.REPEATS_FN}",
+                    prefix=core.utils.get_dir("TMP") / task.sample_id,
+                ),
+                index=False,
+            )
+        core.utils.dump(
+            df_group,
+            fn=core.utils.format_fn(
+                f"{task.sample_id}.{definitions.REPEATS_FN}",
+                prefix=core.utils.get_dir("TMP") / task.sample_id,
+            ),
+            index=False,
+        )
+    except Exception as exc:
+        logger.error(f"problem reading {task.fn} - {exc}")
+
+
+def do_parse_repeatmasker_task(task):
+    """
+    # RM
+    ["family", "class", "subclass", "span", "count"]
+    431  19.4  0.0  2.0  CM057379    10748   10847 (207354771) +  aSto-6.9027    LTR/ERV                897  994 (6786)     29
+    => ["aSto-6.9027", "LTR", "ERV", (10847-10748-1), 1]
+    401  38.6  8.0  0.5  CM057379    13000   13374 (207352244) C  LTR78B         LTR/ERV1             (576)  720    318     35
+    => ["LTR78B", "LTR", "ERV1", (13374-13000-1), 1]
+     21  15.2  1.4  9.2  CM057379    14076   14145 (207351473) +  (CCCGC)n       Simple_repeat            1   65    (0)     37
+    => ["(CCCGC)n", "Other", "Simple_repeat", (13374-13000-1), 1]
+    976   5.1  0.0  4.4  CM057379    14957   15099 (207350519) C  5S-Sauria      SINE/5S-Sauria-RTE   (211)  137      1     38
+    => ["5S-Sauria", "SINE", "5S-Sauria-RTE", (15099-14957-1), 1]
+     17  22.6  4.5  4.5  CM057379    15821   15887 (207349731) +  GA-rich        Low_complexity           1   67    (0)     40
+    => ["GA-rich", "Other", "Low_complexity", (15099-14957-1), 1]
+     14   4.9  0.0  0.0  CM057379    16566   16586 (207349032) +  (GCGG)n        Simple_repeat            1   21    (0)     43
+    => ["(GCGG)n", "Other", "Simple_repeat", (16586-16566-1), 1]
+    951   2.5  0.0  0.0  CM057379    16718   16838 (207348780) C  5S             rRNA/rRNA              (0)  121      1     45
+    => ["5S", "rRNA", "rRNA", (16838-16718-1), 1]
+    """
+    HEADER = [
+        "score",
+        "div",
+        "del",
+        "ins",
+        "sequence",
+        "qstart",
+        "qend",
+        "qleft",
+        "C",
+        "repeat",
+        "family",
+        "mstart",
+        "mend",
+        "mleft",
+        "ID",
+        "last",
+    ]
+    HEADER_VALID = set(
+        [
+            "div",
+            "qstart",
+            "qend",
+            "repeat",
+            "family",
+        ]
+    )
+    rows = []
+    if task.fn is not None:
+        with open(task.fn) as fh:
+            header = None
+            for line in fh:
+                if header is None:
+                    header = HEADER
+                else:
+                    row = {
+                        h: r for h, r in zip(header, line.split()) if h in HEADER_VALID
+                    }
+                    if (
+                        task.params.get("min_div", 0.0)
+                        <= float(row["div"])
+                        <= task.params.get("max_div", 100.0)
+                    ):
+                        repeat_class_subclass = row["family"].split("/")
+                        rows.append(
+                            {
+                                # "span": int(row["qend"]) - int(row["qstart"]) + 1,
+                                "repeat_family": row["repeat"],
+                                "repeat_class": "Other"
+                                if len(repeat_class_subclass) == 1
+                                else repeat_class_subclass[0],
+                                "repeat_subclass": repeat_class_subclass[0]
+                                if len(repeat_class_subclass) == 1
+                                else repeat_class_subclass[1],
+                            }
+                        )
+        df_repeats = pd.DataFrame().from_dict(rows)
+        groups = ["repeat_class", "repeat_subclass", "repeat_family"]
+        for group in groups:
+            df_group = df_repeats.groupby(group).agg(
+                # span=("span", "sum"),
+                count=("repeat_family", "count"),
+            )
+            df_group["sample_id"] = task.sample_id
+            core.utils.dump(
+                df_group,
+                fn=core.utils.format_fn(
+                    f"{task.sample_id}.{group}.{definitions.REPEATS_FN}",
+                    prefix=core.utils.get_dir("TMP") / task.sample_id,
+                ),
+                index=False,
+            )
+        core.utils.dump(
+            df_group,
+            fn=core.utils.format_fn(
+                f"{task.sample_id}.{definitions.REPEATS_FN}",
+                prefix=core.utils.get_dir("TMP") / task.sample_id,
+            ),
+            index=False,
+        )
+
+
+def get_parse_repeats_tasks(
+    directory=None,
+    file_type="repeatmasker",
+    sample_ids=[],
+    min_div=0.0,
+    max_div=100.0,
+):
+    extensions = []
+    if file_type == "repeatmasker":
+        extensions = [".out"]
+    if file_type == "earlgrey":
+        extensions = ["familyLevelCount.txt"]
+    if file_type == "bed":
+        extensions = [".bed"]
+    tasks = get_parse_tasks(
+        directory=directory,
+        type=file_type,
+        sample_ids=sample_ids,
+        extensions=extensions,
+        params={
+            "min_div": min_div,
+            "max_div": max_div,
+        },
+    )
+    sample_ids_found = [task.sample_id for task in tasks]
+    if len(sample_ids_found) == 0:
+        logger.warning(
+            f"no files with extension '{extensions.pop()}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
+        )
+        sys.exit(1)
+    if len(sample_ids_found) < len(sample_ids):
+        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
+        logger.warning(
+            f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
+        )
+        for sample_id in sample_ids_missing:
+            tasks.append(
+                ParseTask(
+                    type=file_type,
+                    sample_id=sample_id,
+                    fn=None,
+                    params={
+                        "min_div": min_div,
+                        "max_div": max_div,
+                    },
+                )
+            )
+    return tasks
+
+
+def get_repeats(
+    directory=None,
+    repeat_type="repeatmasker",
+    sample_ids=[],
+    min_div=0.0,
+    max_div=100.0,
+    processes=1,
+):
+    parse_repeats(
+        directory=directory,
+        repeat_type=repeat_type,
+        sample_ids=sample_ids,
+        min_div=min_div,
+        max_div=max_div,
+        processes=processes,
+    )
+    tally_repeats(
+        directory=directory,
+        repeat_type=repeat_type,
+        sample_ids=sample_ids,
+    )
+
+
+def tally_repeats(
+    directory=None,
+    repeat_type="",
+    sample_ids="",
+):
+    t_0 = time.monotonic()
+    logger.info("joining repeat data ...")
+    repeat_groups = ["repeat_family", "repeat_subclass", "repeat_class"]
+    with tqdm.tqdm(
+        total=len(sample_ids) * len(repeat_groups),
+        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
+        ncols=definitions.PROGRESS_NCOLS,
+    ) as pbar:
+        for repeat_group in repeat_groups:
+            df_repeats = []
+            sample_ids_missing = []
+            for sample_id in sample_ids:
+                df = core.utils.get_repeat_df(
+                    sample_id=sample_id,
+                    repeat_group=repeat_group,
+                )
+                if isinstance(df, pd.DataFrame):
+                    df_repeats.append(df)
+                else:
+                    sample_ids_missing.append(sample_id)
+                pbar.update()
+            df_repeats = (
+                (
+                    pd.concat(
+                        df_repeats,
+                        axis=0,
+                    )
+                )
+                .reset_index()
+                .groupby([repeat_group, "sample_id"], as_index=False)
+                .sum()
+                .set_index([repeat_group, "sample_id"])
+                .unstack(fill_value=0)
+            )
+            for sample_id in sample_ids_missing:
+                df_repeats[("count", sample_id)] = 0
+                # df_repeats[("span", sample_id)] = 0
+            core.utils.dump(
+                df_repeats["count"],
+                fn=core.utils.format_fn(
+                    f"{repeat_group}.count.{definitions.REPEATS_FN}",
+                    prefix=core.utils.get_dir("TMP"),
+                ),
+                index=True,
+            )
+            # core.utils.dump(
+            #    df_repeats["span"],
+            #    fn=core.utils.format_fn(
+            #        f"{repeat_group}.span.{definitions.REPEATS_FN}",
+            #        prefix=core.utils.get_dir("TMP"),
+            #    ),
+            #    index=True,
+            # )
+    logger.info("annotation data joined")
+    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+
+
+def parse_repeats(
+    directory=None,
+    repeat_type=None,
+    sample_ids=[],
+    min_div=0.0,
+    max_div=100.0,
+    processes=1,
+):
+    t_0 = time.monotonic()
+    logger.info(f"parsing 'repeat' data in {directory}")
+    tasks = get_parse_repeats_tasks(
+        directory=directory,
+        sample_ids=sample_ids,
+        min_div=min_div,
+        max_div=max_div,
+    )
+    processes = 1 if len(tasks) == 1 else processes
+    logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
+    do_tasks(
+        tasks=tasks,
+        desc=definitions.PROGRESS_DESC_REPEATS,
+        processes=processes,
+        collect_results=False,
+    )
+    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+
+
+def parse_interpro(
     directory=None,
     sample_ids=[],
     output_fmt="tsv",
     processes=1,
 ):
     t_0 = time.monotonic()
-    logger.info(f"parsing INTERPRO data in {fn or directory}")
-    tasks = get_interpro_tasks(
-        fn=fn,
+    logger.info(f"parsing INTERPRO data in {directory}")
+    tasks = get_parse_interpro_tasks(
         directory=directory,
         sample_ids=sample_ids,
     )
-    if len(tasks) == 1:
-        processes = 1
+    processes = 1 if len(tasks) == 1 else processes
     logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
-    interpro_results = do_tasks(
+    do_tasks(
         tasks=tasks,
         desc=definitions.PROGRESS_DESC_INTERPRO,
         processes=processes,
         collect_results=True,
     )
-    logger.info("generating summary table")
-    get_interpro_summary_table(
-        interpro_results,
-        sample_ids=sample_ids,
-        output_fmt=output_fmt,
+    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+
+
+def analyse_annotation(
+    sample_ids=[],
+    output_fmt="tsv",
+    processes=1,
+):
+
+    def get_EC_SC():
+        df_counts = core.utils.get_counts_df()
+        EC = df_counts.sum(axis=1).rename("EC")
+        SC = df_counts.ge(1).sum(axis=1).rename("SC")
+        return (EC, SC)
+
+    t_0 = time.monotonic()
+    logger.info("joining annotation data ...")
+    df_annotations = []
+    with tqdm.tqdm(
+        total=len(sample_ids),
+        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
+        ncols=definitions.PROGRESS_NCOLS,
+    ) as pbar:
+        for sample_id in sample_ids:
+            df = core.utils.get_annotation_df(
+                sample_id=sample_id,
+                delete=False,
+            )
+            df_annotations.append(df)
+            pbar.update()
+    df_annotations = (
+        pd.concat(
+            df_annotations,
+            axis=1,
+        )
+        .dropna(
+            axis=0,
+            how="all",
+        )
+        .replace(
+            np.nan,
+            0,
+        )
     )
-    core.utils.dump(
+    logger.info("annotation data joined")
+    for column in df_annotations.columns:
+        df_annotations[column] = df_annotations[column].astype(int)
+    df_annotations = downcast(df_annotations)
+    columns = []
+    EC_AC = df_annotations.sum(axis=1).rename("EC_AC")
+    columns.append(EC_AC)
+    SC_AC = df_annotations.ge(1).sum(axis=1).rename("SC_AC")
+    columns.append(SC_AC)
+    EC, SC = get_EC_SC()
+    df_annotations = df_annotations.join(EC)
+    df_annotations = df_annotations.join(SC)
+    EC_AP = EC_AC.div(df_annotations["EC"]).rename("EC_AP")
+    columns.append(EC_AP)
+    SC_AP = SC_AC.div(df_annotations["SC"]).rename("SC_AP")
+    columns.append(SC_AP)
+    COLUMNS = [
+        "signature_desc",
+        "interpro_id",
+        "interpro_desc",
+        "go_annotation",
+        "SC",
+        "SC_AC",
+        "SC_AP",
+        "EC",
+        "EC_AC",
+        "EC_AP",
+    ]
+    df_annotations = df_annotations.join(
+        core.utils.get_signatures_df()
+        .reset_index()
+        .set_index(["analysis", "signature_id"]),
+    )
+    df_annotation = core.utils.downcast(
         pd.concat(
             [
-                core.utils.load(interpro_result.fn_out)
-                for interpro_result in interpro_results
-                if interpro_result.fn_out is not None
-            ]
-        ),
+                df_annotations,
+                pd.concat(columns, axis=1),
+            ],
+            axis=1,
+        )
+    )[COLUMNS + [col for col in df_annotations.columns if col not in COLUMNS]].astype(
+        {
+            "signature_desc": "category",
+            "interpro_id": "category",
+            "interpro_desc": "category",
+            "go_annotation": "category",
+        }
+    )
+    core.utils.dump(
+        df_annotation,
         fn=core.utils.format_fn(
-            fn=definitions.INTERPRO_FN,
-            prefix=core.utils.get_dir("INPUT"),
+            f"{definitions.ANNOTATION_FN}",
+            prefix=core.utils.get_dir("ANNOTATION"),
+            suffix=f".{output_fmt}",
         ),
-        index=False,
+        index=True,
+    )
+    get_df_entropy(
+        df_annotation=df_annotation.copy(deep=True),
+        output_fmt=output_fmt,
     )
     logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-    return None
 
 
-def process_interpro(
-    fn=None,
+def analyse_signatures(
+    sample_ids=[],
+    output_fmt="tsv",
+):
+    df_signatures = None
+    logger.info("collecting InterPro signatures ...")
+    with tqdm.tqdm(
+        total=len(sample_ids),
+        desc=definitions.PROGRESS_DESC_SIGNATURES,
+        ncols=definitions.PROGRESS_NCOLS,
+    ) as pbar:
+        for sample_id in sample_ids:
+            df_signatures_instance = core.utils.get_signatures_df(
+                sample_id=sample_id,
+            )
+            df_signatures = (
+                df_signatures_instance
+                if df_signatures is None
+                else pd.concat(
+                    [
+                        df_signatures,
+                        df_signatures_instance,
+                    ],
+                    axis=0,
+                ).drop_duplicates()
+            )
+            pbar.update()
+    if df_signatures is not None and not df_signatures.empty:
+        core.utils.dump(
+            df_signatures,
+            fn=core.utils.format_fn(
+                f"{definitions.SIGNATURES_FN}",
+                prefix=core.utils.get_dir("TMP"),
+            ),
+            index=True,
+        )
+    analyses = df_signatures["analysis"].unique()
+    logger.info("tallying InterPro signatures ...")
+    df_signature_summary = []
+    with tqdm.tqdm(
+        total=len(sample_ids),
+        desc=definitions.PROGRESS_DESC_SIGNATURES_COUNTING,
+        ncols=definitions.PROGRESS_NCOLS,
+    ) as pbar:
+        for sample_id in sample_ids:
+            df_signature_summary_instance = core.utils.get_signature_summary_df(
+                sample_id=sample_id,
+            )
+            if len(df_signature_summary_instance) == 1:
+                rows = []
+                for analysis in analyses:
+                    rows.append(
+                        {
+                            "sample_id": df_signature_summary_instance["sample_id"][0],
+                            "analysis": analysis,
+                            "EC": df_signature_summary_instance["EC"][0],
+                            "EC_AC": 0,
+                            "EC_AP": 0.0,
+                        }
+                    )
+                df_signature_summary_instance = pd.concat(
+                    [df_signature_summary_instance, pd.DataFrame.from_dict(rows)],
+                    ignore_index=True,
+                    axis=0,
+                )
+            df_signature_summary.append(df_signature_summary_instance)
+            pbar.update()
+        df_signature_summary = pd.concat(df_signature_summary, axis=0)[
+            [
+                "sample_id",
+                "analysis",
+                "EC",
+                "EC_AC",
+                "EC_AP",
+            ]
+        ]
+    for analysis in df_signature_summary["analysis"].unique():
+        core.utils.dump(
+            df_signature_summary[df_signature_summary["analysis"] == analysis],
+            fn=core.utils.format_fn(
+                f"interpro_signatures.{analysis}.summary.{output_fmt}",
+                prefix=core.utils.get_dir("ANNOTATION"),
+            ),
+            index=False,
+        )
+
+
+def analyse_interpro(
     directory=None,
     sample_ids=[],
     output_fmt="tsv",
     processes=1,
 ):
     t_0 = time.monotonic()
-    get_interpro(
-        fn=fn,
+    parse_interpro(
         directory=directory,
         sample_ids=sample_ids,
         output_fmt=output_fmt,
         processes=processes,
     )
-    df_annotation = (
-        core.utils.get_interpro_df()
-        .reset_index()
-        .groupby(
-            INDEX_ANNOTATION,
-            as_index=False,
-            dropna=False,
-        )
-        .agg(
-            TG_AC=("element_id", "nunique"),
-        )
-        .set_index(INDEX_ANNOTATION)
-        .unstack(fill_value=0)
+    analyse_signatures(
+        sample_ids=sample_ids,
+        output_fmt=output_fmt,
     )
-    df_counts = core.utils.get_counts_df()
-    df_annotation["EC"] = df_counts.sum(axis=1)
-    df_annotation["EC_AC"] = df_annotation["TG_AC"].sum(axis=1)
-    df_annotation["EC_AP"] = df_annotation["EC_AC"] / df_annotation["EC"]
-    df_annotation["TN_AP"] = (
-        df_annotation["TG_AC"].ge(1).sum(axis=1).div(df_counts.ge(1).sum(axis=1))
-    )
-    # df_annotation["TG_AP"] = (
-    #     df_annotation["TG_AP"]
-    #     .div(
-    #         df_counts,
-    #     )
-    #     .replace(np.nan, 0.0)
-    # )
-    df_annotation.columns = [
-        (f"{x}_{y}" if y else f"{x}") for x, y in df_annotation.columns.to_flat_index()
-    ]
-    front_cols = [
-        "orthogroup_id",
-        "EC",
-        "EC_AC",
-        "EC_AP",
-        "TN_AP",
-    ]
-    df_annotation = df_annotation.reset_index()
-    column_order = front_cols + [
-        col for col in df_annotation.columns if col not in front_cols
-    ]
-    core.utils.dump(
-        df_annotation[column_order],
-        fn=core.utils.format_fn(
-            definitions.ANNOTATION_FN,
-            prefix=core.utils.get_dir("ANNOTATION"),
-            suffix=f".{output_fmt}",
-        ),
-        index=False,
+    analyse_annotation(
+        sample_ids=sample_ids,
+        processes=processes,
+        output_fmt=output_fmt,
     )
     logger.info(f"[elapsed: {time.monotonic() - t_0}")
 
@@ -461,7 +940,7 @@ def get_ids(
             )
             logger.info(f"{core.utils.format_number(len(df.index))} element IDs")
             return core.utils.dump(
-                df,
+                downcast(df, categorical=["sample_id"]),
                 fn=core.utils.format_fn(
                     fn=definitions.ELEMENTS_FN,
                     prefix=core.utils.get_dir("INPUT"),
@@ -481,7 +960,7 @@ def get_elements(
     t_0 = time.monotonic()
     tasks = get_parse_tasks(
         directory=directory,
-        type="fasta",
+        type="ParseTask",
         sample_ids=sample_ids,
         extensions=definitions.SUPPORTED_FASTA_EXTENSIONS,
     )
@@ -508,7 +987,9 @@ def get_elements(
         logger.error("Some Fasta files could not be parsed. Exiting.")
         sys.exit(1)
     core.utils.dump(
-        pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
+        downcast(
+            pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
+        ),
         fn=core.utils.format_fn(
             fn=definitions.ELEMENTS_FN,
             prefix=core.utils.get_dir("INPUT"),
@@ -523,10 +1004,14 @@ def get_orthogroups(
     orthogroup_fn,
     sample_ids=[],
     sample_ids_source="parse",
+    output_fmt=definitions.STD_FORMAT,
+    plot_fmt=definitions.PLOT_FORMAT,
+    do_plots=True,
+    ignore_duplicated_elements=False,
 ):
     # [ToDo]
     # - make -P work when length is ALSO parsed from -f. Decide what happens if disagreement.
-    data = []
+    # data = []
     t_0 = time.monotonic()
     logger.info(f"parsing {len(sample_ids)} samples from '{orthogroup_fn}'")
     rows = []
@@ -537,56 +1022,128 @@ def get_orthogroups(
         total=len(rows),
         desc=definitions.PROGRESS_DESC_ORTHOGROUPS_PARSE,
         ncols=definitions.PROGRESS_NCOLS,
-    ) as t:
+    ) as pbar:
+        _element_ids = []
+        _orthogroup_ids = []
+        _sample_ids = []
         for row in rows:
             orthogroup_id, element_ids = row[0].replace(":", ""), row[1:]
             for element_id in element_ids:
+                _element_ids.append(element_id)
+                _orthogroup_ids.append(orthogroup_id)
                 if sample_ids_source == "parse":
-                    sample_id = element_id.split(".")[0]
-                    data.append((element_id, orthogroup_id, sample_id))
-                else:
-                    data.append((element_id, orthogroup_id))
-            t.update()
+                    _sample_ids.append(element_id.split(".")[0])
+            pbar.update()
+    data = {
+        "orthogroup_id": _orthogroup_ids,
+        "element_id": _element_ids,
+    }
+    dtypes = {
+        "orthogroup_id": "category",
+        "element_id": str,
+    }
     if sample_ids_source == "parse":
-        df_orthogroups = pd.DataFrame.from_records(
-            data,
-            columns=[
-                "element_id",
-                "orthogroup_id",
-                "sample_id",
-            ],
-        )
-    else:
-        df_orthogroups = pd.DataFrame.from_records(
-            data,
-            columns=[
-                "element_id",
-                "orthogroup_id",
-            ],
-        )
+        data["sample_id"] = _sample_ids
+        dtypes["sample_id"] = "category"
+    df_orthogroups = pd.DataFrame.from_dict(data=data).astype(dtypes)
+    logger.info("orthogroups parsed")
+    duplicated_elements_count = int(
+        (df_orthogroups["element_id"].value_counts() > 1).value_counts().get(True, 0)
+    )
+    if not ignore_duplicated_elements:
+        if duplicated_elements_count > 0:
+            duplicated_element_ids = (
+                df_orthogroups["element_id"]
+                .value_counts()
+                .reset_index()
+                .query("count > 1")["element_id"]
+                .to_list()
+            )
+            logger.error(
+                f"{core.utils.format_number(duplicated_elements_count)} duplicated element(s) encountered in {orthogroup_fn}: {' '.join(duplicated_element_ids)}"
+            )
+            sys.exit(1)
+    if not sample_ids_source == "parse":
         logger.info(
-            "inferring sample_ids for orthogroups (this might take a moment)..."
+            "inferring Sample IDs for orthogroups (this might take a moment)..."
         )
-        df_elements = core.utils.get_elements_df().set_index("element_id")
-        df_orthogroups["sample_id"] = df_orthogroups["element_id"].map(
-            df_elements["sample_id"],
-            na_action="ignore",
+        df_elements = (
+            core.utils.get_elements_df()
+            .set_index("element_id")
+            .astype({"sample_id": "category"})
         )
-        logger.info("sample IDs inferred!")
-    logger.info(
-        f"{core.utils.format_number(len(df_orthogroups['orthogroup_id'].unique()))} orthogroup(s) in file"
+        df_orthogroups = df_elements.join(
+            df_orthogroups.set_index("element_id"), how="outer"
+        ).reset_index()
+        # df_orthogroups["sample_id"] = df_orthogroups["element_id"].map(
+        #     df_elements["sample_id"],
+        #     na_action="ignore",
+        # )
+        #
+        # df_orthogroups = df_orthogroups[
+        #     ~df_orthogroups["sample_id"].isna()
+        # ].reset_index(drop=True)
+    orthogroups_count = df_orthogroups["orthogroup_id"].nunique()
+    logger.info(f"{core.utils.format_number(orthogroups_count)} orthogroup(s) in file")
+    elements_in_fasta_count = int(df_orthogroups["element_id"].count())
+    elements_in_orthogroups_count = int(
+        df_orthogroups[~df_orthogroups["orthogroup_id"].isna()]["element_id"].count()
     )
     logger.info(
-        f"{core.utils.format_number(len(df_orthogroups.index))} element(s) in file"
+        f"{core.utils.format_number(elements_in_fasta_count)} element(s) in FASTA file(s)"
     )
-    logger.info(
-        f"{core.utils.format_number(len(list(df_orthogroups['sample_id'].unique())))} sample ID(s) in file"
-    )
+    msg = f"{core.utils.format_number(elements_in_orthogroups_count)} element(s) in orthogroups file ({elements_in_orthogroups_count / elements_in_fasta_count:.3%})"
+    if elements_in_fasta_count == elements_in_orthogroups_count:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+        df_orphan_elements = df_orthogroups[df_orthogroups["orthogroup_id"].isna()]
+        df_orphan_elements_fn = core.utils.dump(
+            df_orphan_elements,
+            fn=core.utils.format_fn(
+                definitions.ELEMENTS_ORPHAN_FN,
+                prefix=core.utils.get_dir("INPUT"),
+                suffix=f".{output_fmt}",
+            ),
+            index=True,
+        )
+        logger.warning(f"wrote orphan elements(s) to {df_orphan_elements_fn}")
+        df_orphan_elements_summary_fn = core.utils.dump(
+            df_orphan_elements.groupby("sample_id").agg(
+                missing_count=("sample_id", "count"),
+                min_length=("length", "min"),
+                max_length=("length", "max"),
+                median_length=("length", "median"),
+            ),
+            fn=core.utils.format_fn(
+                definitions.ELEMENTS_ORPHAN_SUMMARY_FN,
+                prefix=core.utils.get_dir("INPUT"),
+                suffix=f".{output_fmt}",
+            ),
+            index=True,
+        )
+        logger.warning(
+            f"wrote orphan elements(s) summary to {df_orphan_elements_summary_fn}"
+        )
+        df_orthogroups = df_orthogroups[
+            ~df_orthogroups["sample_id"].isna()
+            & ~df_orthogroups["orthogroup_id"].isna()
+        ].reset_index(drop=True)[["orthogroup_id", "element_id", "sample_id"]]
     if df_orthogroups.empty:
         logger.error(
             f"none of these sample IDs were found: {', '.join(sample_ids)}. Exiting."
         )
         sys.exit(1)
+
+    # [DUMP OGS]
+    core.utils.dump(
+        df_orthogroups,
+        fn=core.utils.format_fn(
+            definitions.ORTHOGROUPS_FN,
+            prefix=core.utils.get_dir("INPUT"),
+        ),
+        index=False,
+    )
     # [GET COUNTS]
     df_counts = (
         df_orthogroups.groupby(
@@ -604,31 +1161,76 @@ def get_orthogroups(
     core.utils.dump(
         df_counts,
         fn=core.utils.format_fn(
-            fn=f"{definitions.COUNTS_FN}",
+            fn=definitions.COUNTS_FN,
             prefix=core.utils.get_dir("INPUT"),
         ),
         index=True,
     )
     core.utils.dump(
-        df_counts.apply(
-            pd.to_numeric,
-            downcast="float",  # float32
-        ).replace(
-            0,
-            np.nan,
-        ),
+        df_counts.replace(0, np.nan),
         fn=core.utils.format_fn(
             fn=definitions.COUNTS_NAN_FN,
             prefix=core.utils.get_dir("TMP"),
         ),
         index=True,
     )
-    # [DUMP OGS]
+    tally_counts(
+        output_fmt=output_fmt,
+        plot_fmt=plot_fmt,
+        do_plots=do_plots,
+    )
+    logger.info(
+        core.utils.format_elapsed(time.monotonic() - t_0),
+    )
+
+
+def tally_counts(
+    output_fmt=definitions.STD_FORMAT,
+    plot_fmt=definitions.PLOT_FORMAT,
+    do_plots=True,
+):
+    t_0 = time.monotonic()
+    df_counts = core.utils.get_counts_df()
+    df_EC = (
+        df_counts.sum(axis=1)
+        .value_counts(ascending=False)
+        .reset_index()
+        .rename(columns={"index": "EC"})
+        .sort_values(by=["EC"])
+    )
+    df_SC = (
+        df_counts.ge(1)
+        .sum(axis=1)
+        .value_counts(ascending=False)
+        .reset_index()
+        .rename(columns={"index": "SC"})
+        .sort_values(by=["SC"])
+    )
+    if do_plots:
+        core.plot.tally_plot(
+            df_EC=df_EC,
+            df_SC=df_SC,
+            fn=core.utils.format_fn(
+                fn="tally.plot",
+                prefix=core.utils.get_dir("PLOTS") / "tally",
+                suffix=f".{plot_fmt}",
+            ),
+        )
     core.utils.dump(
-        df_orthogroups,
+        df_EC,
         fn=core.utils.format_fn(
-            definitions.ORTHOGROUPS_FN,
-            prefix=core.utils.get_dir("INPUT"),
+            fn=definitions.EC_TALLY_FN,
+            prefix=core.utils.get_dir("PLOTS") / "tally",
+            suffix=f".{output_fmt}",
+        ),
+        index=False,
+    )
+    core.utils.dump(
+        df_SC,
+        fn=core.utils.format_fn(
+            fn=definitions.SC_TALLY_FN,
+            prefix=core.utils.get_dir("PLOTS") / "tally",
+            suffix=f".{output_fmt}",
         ),
         index=False,
     )
@@ -663,32 +1265,10 @@ def partition_lengths(df_orthogroups, lengths, TGs={}):
     return df_lengths
 
 
-def get_df_entropy(output_fmt="tsv"):
+def get_df_entropy(df_annotation, output_fmt="tsv"):
     """
     Entropy is correct. Previous KinFin implementation was off.
     """
-
-    # def entropy2(values, base=2):
-    #    return True  # 3.08
-    #    values = [str(v) for v in values]
-    #    n_labels = len(values)
-
-    #    if n_labels <= 1:
-    #        return 0
-    #    value, counts = np.unique(values, return_counts=True)
-    #    probs = counts / n_labels
-    #    n_classes = np.count_nonzero(probs)
-
-    #    if n_classes <= 1:
-    #        return 0
-
-    #    ent = 0.0
-
-    #    # Compute entropy
-    #    base = math.e if base is None else base
-    #    for i in probs:
-    #        ent -= i * math.log(i, base)
-    #    return ent
 
     def infer_entropy(values):
         signature_counter = collections.Counter([v for k, v in values.items()])
@@ -710,14 +1290,18 @@ def get_df_entropy(output_fmt="tsv"):
         )
 
     t_0 = time.monotonic()
-    df_annotation = core.utils.get_interpro_df()[
+    # print(df_annotation)
+    df_annotation = df_annotation.reset_index()[
         [
             "orthogroup_id",
             "analysis",
+            "signature_id",
             "interpro_id",
             "go_annotation",
-            "signature_id",
-            "sample_id",
+            "SC",
+            "SC_AP",
+            "EC",
+            "EC_AP",
         ]
     ]
     for analysis in df_annotation["analysis"].unique():
@@ -736,22 +1320,26 @@ def get_df_entropy(output_fmt="tsv"):
                             column="signature_id",
                             aggfunc=glue_strings,
                         ),
-                        f"{analysis}_SN_COV": pd.NamedAgg(
-                            column="sample_id",
-                            aggfunc="nunique",
+                        f"{analysis}_SC": pd.NamedAgg(
+                            column="SC",
+                            aggfunc="max",
                         ),
-                        f"{analysis}_EC_COV": pd.NamedAgg(
-                            column="signature_id",
-                            aggfunc="count",
+                        f"{analysis}_SC_AP": pd.NamedAgg(
+                            column="SC_AP",
+                            aggfunc="max",
+                        ),
+                        f"{analysis}_EC": pd.NamedAgg(
+                            column="EC",
+                            aggfunc="max",
+                        ),
+                        f"{analysis}_EC_AP": pd.NamedAgg(
+                            column="EC_AP",
+                            aggfunc="max",
                         ),
                         "interpro_entropy": pd.NamedAgg(
                             column="interpro_id",
                             aggfunc=infer_entropy,
                         ),
-                        # "interpro_entropy2": pd.NamedAgg(
-                        #     column="interpro_id",
-                        #     aggfunc=entropy2,
-                        # ),
                         "interpro_ids": pd.NamedAgg(
                             column="interpro_id",
                             aggfunc=glue_strings,
@@ -768,18 +1356,16 @@ def get_df_entropy(output_fmt="tsv"):
                 )
                 .set_index("orthogroup_id")
             )
-            df_counts = core.utils.get_counts_df()
-            df_entropy[f"{analysis}_SN_COV"] /= df_counts.ge(1).sum(axis=1)
-            df_entropy[f"{analysis}_EC_COV"] /= df_counts.sum(axis=1)
             core.utils.dump(
                 df_entropy[
                     [
-                        f"{analysis}_SN_COV",
-                        f"{analysis}_EC_COV",
+                        f"{analysis}_SC",
+                        f"{analysis}_SC_AP",
+                        f"{analysis}_EC",
+                        f"{analysis}_EC_AP",
                         f"{analysis}_entropy",
                         f"{analysis}_ids",
                         "interpro_entropy",
-                        # "interpro_entropy2",
                         "interpro_ids",
                         "go_entropy",
                         "go_ids",
@@ -795,43 +1381,90 @@ def get_df_entropy(output_fmt="tsv"):
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
 
+    # def get_df_table(fn, df_orthogroups):
+    #     # [ToDo]
+    #     # - finish thinking about this
+    #     # - decide how to expose to user. Args-config-json as mentioned by RC
+    #     # - drop as table
+    #     t_0 = time.monotonic()
+    #     logger.info(f"parsing '{fn}'")
+    #     df_table = core.utils.load(fn)
+    #     try:
+    #         annotations_valid = df_table["element_id"].isin(df_orthogroups["element_id"])
+    #         annotations_valid_count = int(annotations_valid.value_counts().get(True, 0))
+    #         annotations_orphan_count = int(annotations_valid.value_counts().get(False, 0))
+    #         if annotations_orphan_count:
+    #             logger.warning(
+    #                 f"found {core.utils.format_number(annotations_orphan_count)} orphan annotation(s). Not part of any Orthogroup"
+    #             )
+    #             core.utils.dump(
+    #                 df_table[~annotations_valid],
+    #                 fn=core.utils.format_fn(fn, suffix=".orphans.tsv"),
+    #                 index=False,
+    #             )
+    #         if annotations_valid_count:
+    #             logger.info(
+    #                 f"found {core.utils.format_number(annotations_valid_count)} annotation(s) of elements in Orthogroups"
+    #             )
+    #             core.utils.dump(
+    #                 df_table[annotations_valid],
+    #                 fn=core.utils.format_fn(fn, suffix=".filtered.tsv"),
+    #                 index=False,
+    #             )
+    #     except NameError:
+    #         logger.error("missing column 'element_id'")
+    #     logger.info(
+    #         core.utils.format_elapsed(time.monotonic() - t_0),
+    #     )
+    #     return df_table[annotations_valid]
 
-def get_df_table(fn, df_orthogroups):
-    # [ToDo]
-    # - finish thinking about this
-    # - decide how to expose to user. Args-config-json as mentioned by RC
-    # - drop as table
-    t_0 = time.monotonic()
-    logger.info(f"parsing '{fn}'")
-    df_table = core.utils.load(fn)
-    try:
-        annotations_valid = df_table["element_id"].isin(df_orthogroups["element_id"])
-        annotations_valid_count = int(annotations_valid.value_counts().get(True, 0))
-        annotations_orphan_count = int(annotations_valid.value_counts().get(False, 0))
-        if annotations_orphan_count:
-            logger.warning(
-                f"found {core.utils.format_number(annotations_orphan_count)} orphan annotation(s). Not part of any Orthogroup"
-            )
-            core.utils.dump(
-                df_table[~annotations_valid],
-                fn=core.utils.format_fn(fn, suffix=".orphans.tsv"),
-                index=False,
-            )
-        if annotations_valid_count:
-            logger.info(
-                f"found {core.utils.format_number(annotations_valid_count)} annotation(s) of elements in Orthogroups"
-            )
-            core.utils.dump(
-                df_table[annotations_valid],
-                fn=core.utils.format_fn(fn, suffix=".filtered.tsv"),
-                index=False,
-            )
-    except NameError:
-        logger.error("missing column 'element_id'")
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
+
+def analyse_orthogroups(
+    df_config=None,
+    count_target=1,
+    count_min=0,
+    count_max=1,
+    count_fraction=0.75,
+    output_fmt="tsv",
+    ignore_sample_comparisons=False,
+    plot_fmt=definitions.PLOT_FORMAT,
+    processes=1,
+):
+    tasks = get_comparison_tasks(
+        df_config=df_config,
+        count_target=count_target,
+        count_min=count_min,
+        count_max=count_max,
+        count_fraction=count_fraction,
+        output_fmt=output_fmt,
+        ignore_sample_comparisons=ignore_sample_comparisons,
+        plot_fmt=plot_fmt,
     )
-    return df_table[annotations_valid]
+    logger.info(
+        f"calculating {len(tasks)} comparisons between taxon-groups using {processes} process(es)"
+    )
+    core.analysis.do_tasks(
+        tasks,
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
+        processes=processes,
+    )
+    tasks = get_summary_tasks(
+        df_config=df_config,
+        output_fmt=output_fmt,
+        ignore_sample_comparisons=ignore_sample_comparisons,
+        plot_fmt=plot_fmt,
+    )
+    logger.info(
+        f"calculating summary metrics for {len(tasks)} labels using {processes} process(es)"
+    )
+    core.analysis.do_tasks(
+        tasks,
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
+        processes=processes,
+    )
+    logger.info(
+        f"calculating summary metrics for {len(tasks)} labels using {processes} process(es)"
+    )
 
 
 def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
@@ -844,143 +1477,146 @@ def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
 
 
 def compare(task):
-    _COLUMNS = ["EC_TG1", "OG_type_TG1", "COG_type_TG1"]
+    _COLUMNS = ["EC_TG1", "OT", "CT"]
     compare_rows = []
     df_sampling = None
     for label, tags in zip(task.labels, task.tags):
-        directory = core.utils.get_dir("PARTITION") / label
-        if not compare_rows:
-            for idx, tag in enumerate(tags):
-                fn = (
-                    directory
-                    / f"partition.{label}.{tag}_vs_{definitions.REMAINDER_LABEL}.contrast.{task.output_fmt}"
-                )
-                if task.output_fmt == "tsv":
-                    df = core.utils.load(fn)
-                else:
-                    df = core.utils.load(fn, columns=_COLUMNS)
-                OC = len(df.index)
-                mask_absent = df["OG_type_TG1"] == "absent"
-                mask_present = df["OG_type_TG1"] != "absent"
-                mask_singleton = df["OG_type_TG1"] == "singleton"
-                mask_specific = df["OG_type_TG1"] == "specific"
-                mask_shared = df["OG_type_TG1"] == "shared"
-                mask_cog_true = df["COG_type_TG1"] == "true_cog"
-                mask_cog_fuzzy = df["COG_type_TG1"] == "fuzzy_cog"
-                EC_TG = int(df[mask_present]["EC_TG1"].sum())
-                SC_TG = len(task.taxon_groups[idx])
-                df_sampling = (
-                    df[mask_present][
-                        [
-                            "OG_type_TG1",
-                            "EC_TG1",
-                        ]
+        line_plot_data = []
+        for idx, tag in enumerate(tags):
+            df = core.utils.load(
+                fn=(
+                    core.utils.get_dir("PARTITION")
+                    / label
+                    / f"{label}.{tag}_vs_{definitions.REMAINDER_LABEL}.partition.{task.output_fmt}"
+                ),
+                columns=_COLUMNS,
+            )
+            OC = len(df.index)
+            mask_absent = df["OT"] == "absent"
+            mask_present = df["OT"] != "absent"
+            mask_singleton = df["OT"] == "singleton"
+            mask_specific = df["OT"] == "specific"
+            mask_shared = df["OT"] == "shared"
+            mask_cog_true = df["CT"] == "true_cog"
+            mask_cog_fuzzy = df["CT"] == "fuzzy_cog"
+            EC_TG = int(df[mask_present]["EC_TG1"].sum())
+            SC_TG = len(task.taxon_groups[idx])
+            df_sampling = (
+                df[mask_present][
+                    [
+                        "OT",
+                        "EC_TG1",
                     ]
-                    .reset_index(drop=True)
-                    .rename(
-                        columns={
-                            "EC_TG1": "EC",
-                            "OG_type_TG1": "OG_OT",
-                        }
-                    )
-                    .replace(
-                        {
-                            "specific": "2_specific",
-                            "shared": "1_shared",
-                            "singleton": "3_singleton",
-                        }
-                    )
-                    .sort_values(
-                        ["OG_OT", "EC"],
-                        ascending=[True, True],
-                        ignore_index=True,
-                    )
-                    .reset_index(names="OC")
-                    .replace(
-                        {
-                            "2_specific": "specific",
-                            "1_shared": "shared",
-                            "3_singleton": "singleton",
-                        }
-                    )
+                ]
+                .reset_index(drop=True)
+                .rename(
+                    columns={
+                        "EC_TG1": "EC",
+                        "OT": "OT",
+                    }
                 )
-                df_sampling["OC"] += 1
-                df_sampling["EC"] = df_sampling["EC"].cumsum()
-                df_sampling["ECn"] = df_sampling["EC"].div(EC_TG)
-                df_sampling["OCn"] = df_sampling["OC"].div(OC)
-                core.utils.dump(
-                    df_sampling[
-                        [
-                            "OG_OT",
-                            "EC",
-                            "OC",
-                            "ECn",
-                            "OCn",
-                        ]
-                    ],
-                    fn=core.utils.format_fn(
-                        fn=f"{label}.{tag}.{SC_TG}.curve.{task.output_fmt}",
-                        prefix=core.utils.get_dir("PARTITION") / label,
-                    ),
-                    index=False,
+                .replace(
+                    {
+                        "specific": "2_specific",
+                        "shared": "1_shared",
+                        "singleton": "3_singleton",
+                    }
                 )
-                compare_row = {}
-                compare_row["label"] = label
-                compare_row["tag"] = tag
-                compare_row["SC"] = SC_TG
-                compare_row["OC"] = len(df[mask_present].index)
-                compare_row["EC"] = EC_TG
-                compare_row["OC_singleton"] = len(
-                    df[mask_present & mask_singleton].index
+                .sort_values(
+                    ["OT", "EC"],
+                    ascending=[True, True],
+                    ignore_index=True,
                 )
-                compare_row["EC_singleton"] = int(
-                    df[mask_present & mask_singleton]["EC_TG1"].sum()
+                .reset_index(names="OC")
+                .replace(
+                    {
+                        "2_specific": "specific",
+                        "1_shared": "shared",
+                        "3_singleton": "singleton",
+                    }
                 )
-                compare_row["OC_specific"] = len(df[mask_present & mask_specific].index)
-                compare_row["EC_specific"] = int(
-                    df[mask_present & mask_specific]["EC_TG1"].sum()
-                )
-                compare_row["OC_shared"] = len(df[mask_present & mask_shared].index)
-                compare_row["EC_shared"] = int(
-                    df[mask_present & mask_shared]["EC_TG1"].sum()
-                )
-                compare_row["OC_absent"] = len(df[mask_absent].index)
-                compare_row["OC_specific_COG_true"] = len(
-                    df[mask_present & mask_specific & mask_cog_true].index
-                )
-                compare_row["OC_specific_COG_fuzzy"] = len(
-                    df[mask_present & mask_specific & mask_cog_fuzzy].index
-                )
-                compare_row["OC_shared_COG_true"] = len(
-                    df[mask_present & mask_shared & mask_cog_true].index
-                )
-                compare_row["OC_shared_COG_fuzzy"] = len(
-                    df[mask_present & mask_shared & mask_cog_fuzzy].index
-                )
-                compare_rows.append(compare_row)
-        else:
-            compare_rows[idx]["label"] = label
-            compare_rows[idx]["tag"] = tag
-            core.utils.dump(
+            )
+            df_sampling["OC"] += 1
+            df_sampling["EC"] = df_sampling["EC"].cumsum()
+            df_sampling["ECn"] = df_sampling["EC"].div(EC_TG)
+            df_sampling["OCn"] = df_sampling["OC"].div(OC)
+            df_sampling = downcast(
                 df_sampling[
                     [
-                        "OG_OT",
+                        "OT",
                         "EC",
                         "OC",
                         "ECn",
                         "OCn",
                     ]
                 ],
+                categorical=["OT"],
+            )
+            if task.plot_fmt is not None:
+                line_plot_data.append([tag, SC_TG, df_sampling])
+            core.utils.dump(
+                df_sampling,
                 fn=core.utils.format_fn(
                     fn=f"{label}.{tag}.{SC_TG}.curve.{task.output_fmt}",
-                    prefix=core.utils.get_dir("PARTITION") / label,
+                    prefix=core.utils.get_dir("PLOTS") / "curve" / label,
                 ),
                 index=False,
             )
+            compare_row = {}
+            compare_row["label"] = label
+            compare_row["tag"] = tag
+            compare_row["SC"] = SC_TG
+            compare_row["OC"] = len(df[mask_present].index)
+            compare_row["EC"] = EC_TG
+            compare_row["OC_singleton"] = len(df[mask_present & mask_singleton].index)
+            compare_row["EC_singleton"] = int(
+                df[mask_present & mask_singleton]["EC_TG1"].sum()
+            )
+            compare_row["OC_specific"] = len(df[mask_present & mask_specific].index)
+            compare_row["EC_specific"] = int(
+                df[mask_present & mask_specific]["EC_TG1"].sum()
+            )
+            compare_row["OC_shared"] = len(df[mask_present & mask_shared].index)
+            compare_row["EC_shared"] = int(
+                df[mask_present & mask_shared]["EC_TG1"].sum()
+            )
+            compare_row["OC_absent"] = len(df[mask_absent].index)
+            compare_row["OC_specific_COG_true"] = len(
+                df[mask_present & mask_specific & mask_cog_true].index
+            )
+            compare_row["OC_specific_COG_fuzzy"] = len(
+                df[mask_present & mask_specific & mask_cog_fuzzy].index
+            )
+            compare_row["OC_shared_COG_true"] = len(
+                df[mask_present & mask_shared & mask_cog_true].index
+            )
+            compare_row["OC_shared_COG_fuzzy"] = len(
+                df[mask_present & mask_shared & mask_cog_fuzzy].index
+            )
+            compare_rows.append(compare_row)
+        if line_plot_data:
+            indices = np.argsort([_data[1] for _data in line_plot_data])[::-1]
+            plot_tags = [line_plot_data[idx][0] for idx in indices]
+            plot_SC = [line_plot_data[idx][1] for idx in indices]
+            plot_dfs = [line_plot_data[idx][2] for idx in indices]
+            plot_labels = [
+                f"{tag} ({SC})" if int(SC) > 1 else f"{tag}"
+                for tag, SC in zip(plot_tags, plot_SC)
+            ]
+            core.plot.lines(
+                label,
+                plot_dfs,
+                plot_labels,
+                x="EC",
+                y="OCn",
+                m="OT",
+                max_lines=9,
+                plot_fmt=task.plot_fmt,
+            )
         core.utils.dump(
-            pd.DataFrame.from_dict(compare_rows),
+            downcast(pd.DataFrame.from_dict(compare_rows)),
             fn=core.utils.format_fn(
-                fn=f"{label}.{task.type}.{task.output_fmt}",
+                fn=f"{label}.summary.{task.output_fmt}",
                 prefix=core.utils.get_dir("PARTITION") / label,
             ),
             index=False,
@@ -989,18 +1625,7 @@ def compare(task):
 
 
 def contrast(task):
-    """
-    - np.nanmedian is not faster
-    - .ge() is faster than .mask()
-    - dtype="category" does not help in OG_type
-    - medians are 42.1% of time
-    - pvalue is 20.2% of time
-    """
     TG_1, TG_2 = task.taxon_groups
-    # df_counts = core.utils.load(
-    #     fn=task.df_counts_fn,
-    #     columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
-    # )
     df_counts = core.utils.get_counts_df(
         columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
         nan=True,
@@ -1008,58 +1633,40 @@ def contrast(task):
     df_counts_TG1 = df_counts.loc[:, TG_1]
     df_counts_TG2 = df_counts.loc[:, TG_2]
     df_partition_list = []
-    # timing, t_i = {}, time.monotonic()
     df_partition_list.append(df_counts.ge(1).sum(axis=1).rename("SC"))
-    # timing["SC"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG1.ge(1).sum(axis=1).rename("SC_TG1"))
-    # timing["SC_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append((df_partition_list[1] / len(TG_1)).rename("SP_TG1"))
-    # timing["SP_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG2.ge(1).sum(axis=1).rename("SC_TG2"))
-    # timing["SC_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append((df_partition_list[3] / len(TG_2)).rename("SP_TG2"))
-    # timing["SP_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts.sum(axis=1).astype(int).rename("EC"))
-    # timing["EC"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG1.sum(axis=1).astype(int).rename("EC_TG1"))
-    # timing["EC_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG2.sum(axis=1).astype(int).rename("EC_TG2"))
-    # timing["EC_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
         pd.Series(
             np.select(
                 condlist=[
                     (df_partition_list[6] == 0),
                     (df_partition_list[5] == 1),
-                    (df_partition_list[7] == 0),  # sufficient!
-                    # (df_partition_list[7] == 0) & (df_partition_list[6] >= 1),
-                    # (df_partition_list[6] >= 1) & (df_partition_list[7] >= 1),
+                    (df_partition_list[7] == 0),
                 ],
                 choicelist=[
                     "absent",
                     "singleton",
                     "specific",
-                    # "shared",
                 ],
                 default="shared",
             ),
             index=df_counts.index,
-        ).rename("OG_type_TG1")
+        ).rename("OT")
     )
-    # timing["OG_type"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
         (df_counts.eq(task.count_target).sum(axis=1) / len(df_counts.columns)).rename(
-            "COG_TP"
+            "CSP"
         )
     )
-    # timing["COG_TP"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
-        (df_counts_TG1.eq(task.count_target).sum(axis=1) / len(TG_1)).rename(
-            "COG_TP_TG1"
-        )
+        (df_counts_TG1.eq(task.count_target).sum(axis=1) / len(TG_1)).rename("CSP_TG1")
     )
-    # timing["COG_TP_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
-    # FASTER NPSELECT
     df_partition_list.append(
         pd.Series(
             np.select(
@@ -1079,39 +1686,17 @@ def contrast(task):
                 default="no_cog",
             ),
             index=df_counts.index,
-        ).rename("COG_type_TG1")
+        ).rename("CT")
     )
-    ## SLOWER apply
-    # df_partition_list.append(
-    #     df_counts_TG1.apply(
-    #         infer_cog_type,
-    #         axis=1,
-    #         raw=True,
-    #         args=(
-    #             task.count_target,
-    #             task.count_min,
-    #             task.count_max,
-    #             task.count_fraction,
-    #         ),
-    #     ).rename("COG_type_TG1")
-    # )
-    # timing["COG_type_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts.mean(axis=1).rename("EC_mean"))
-    # timing["EC_mean"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG1.mean(axis=1).rename("EC_mean_TG1"))
-    # timing["EC_mean_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts_TG2.mean(axis=1).rename("EC_mean_TG2"))
-    # timing["EC_mean_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
         pd.Series(
             np.log2(df_partition_list[13] / df_partition_list[14]),
             index=df_counts.index,
-        ).rename("log2_mean(TG1/TG2)")
+        ).rename("l2m_TG1_TG2")
     )
-    # timing["log2_mean(TG1/TG2)"], t_i = (
-    #    time.monotonic() - t_i,
-    #    time.monotonic(),
-    # )
     df_partition_list.append(
         pd.Series(
             scipy.stats.mannwhitneyu(
@@ -1126,23 +1711,17 @@ def contrast(task):
             index=df_counts.index,
         ).rename("pvalue")
     )
-    # timing["pvalue"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(df_counts.median(axis=1, skipna=True).rename("EC_median"))
-    # timing["EC_median"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
         df_counts_TG1.median(axis=1, skipna=True).rename("EC_median_TG1")
     )
-    # timing["EC_median_TG1"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition_list.append(
         df_counts_TG2.median(axis=1, skipna=True).rename("EC_median_TG2")
     )
-    # timing["EC_median_TG2"], t_i = time.monotonic() - t_i, time.monotonic()
-    # concat
     df_partition = pd.concat(df_partition_list, axis=1)
-    # timing["concat"], t_i = time.monotonic() - t_i, time.monotonic()
     df_partition = df_partition[
         [
-            "OG_type_TG1",
+            "OT",
             "SC",
             "SC_TG1",
             "SP_TG1",
@@ -1154,19 +1733,19 @@ def contrast(task):
             "EC_mean",
             "EC_mean_TG1",
             "EC_mean_TG2",
-            "log2_mean(TG1/TG2)",
+            "l2m_TG1_TG2",
             "pvalue",
             "EC_median",
             "EC_median_TG1",
             "EC_median_TG2",
-            "COG_type_TG1",
-            "COG_TP",
-            "COG_TP_TG1",
+            "CT",
+            "CSP",
+            "CSP_TG1",
         ]
     ]
     for idx, label in enumerate(task.labels):
         TG1_tag, TG2_tag = task.tags[idx]
-        fn = f"partition.{label}.{TG1_tag}_vs_{TG2_tag}"
+        fn = f"{label}.{TG1_tag}_vs_{TG2_tag}"
         # [SAMPLE IDS]
         core.utils.dump(
             pd.DataFrame.from_records(
@@ -1183,28 +1762,48 @@ def contrast(task):
         core.utils.dump(
             df_partition.reset_index(),
             fn=core.utils.format_fn(
-                fn=(f"{fn}.contrast.{task.output_fmt}"),
+                fn=(f"{fn}.partition.{task.output_fmt}"),
                 prefix=core.utils.get_dir("PARTITION") / label,
             ),
             index=False,
         )
-    # timing["dumping"] = time.monotonic() - t_i
-    # import pprint
-    # pprint.pp(timing)
+        # [VOLCANO]
+        if task.plot_fmt is not None:
+            df_volcano = df_partition[["l2m_TG1_TG2", "pvalue"]].dropna()
+            if not df_volcano.empty:
+                core.utils.dump(
+                    df_volcano,
+                    fn=core.utils.format_fn(
+                        fn=(f"{fn}.volcano.{task.output_fmt}"),
+                        prefix=core.utils.get_dir("PLOTS") / "volcano" / label,
+                    ),
+                    index=True,
+                )
+                core.plot.volcano(
+                    x=df_volcano["l2m_TG1_TG2"],
+                    y=df_volcano["pvalue"],
+                    fn=core.utils.format_fn(
+                        fn=(f"{fn}.volcano.{task.plot_fmt}"),
+                        prefix=core.utils.get_dir("PLOTS") / "volcano" / label,
+                    ),
+                )
+
     return True
 
 
 def do_task(task):
-    if task.type == "summary":
+    if task.type == "SummaryTask":
         return compare(task)
-    # elif task.type == "plot":
-    #     return plottify(task)
-    elif task.type == "comparison":
+    elif task.type == "ComparisonTask":
         return contrast(task)
-    elif task.type == "fasta":
-        return do_fasta_task(task)
+    elif task.type == "ParseTask":
+        return do_parse_fasta_task(task)
     elif task.type == "interpro":
-        return do_interpro_task(task)
+        return do_parse_interpro_task(task)
+    elif task.type == "repeatmasker":
+        return do_parse_repeatmasker_task(task)
+    elif task.type == "earlgrey":
+        return do_parse_earlgrey_task(task)
     else:
         raise ValueError(f"unknown task type: {task}")
 
@@ -1240,9 +1839,9 @@ def do_tasks(
 
 def get_summary_tasks(
     df_config=None,
-    type="summary",
     output_fmt="tsv",
     ignore_sample_comparisons=False,
+    plot_fmt=definitions.PLOT_FORMAT,
 ):
     t_0 = time.monotonic()
     collector = collections.defaultdict(list)
@@ -1262,11 +1861,12 @@ def get_summary_tasks(
         tags = [label[1:] for label in v]
         tasks.append(
             SummaryTask(
-                type=type,
+                type="SummaryTask",
                 taxon_groups=taxon_groups,
                 labels=labels,
                 tags=tags,
                 output_fmt=output_fmt,
+                plot_fmt=plot_fmt,
             )
         )
     logger.info(
@@ -1283,8 +1883,8 @@ def get_comparison_tasks(
     count_fraction=0.75,
     output_fmt="tsv",
     ignore_sample_comparisons=False,
+    plot_fmt=definitions.PLOT_FORMAT,
 ):
-    t_0 = time.monotonic()
     collector = collections.defaultdict(list)
     taxon_groups = get_taxon_groups(
         df_config.to_dict(orient="records"),
@@ -1302,7 +1902,7 @@ def get_comparison_tasks(
         labels = [label[0] for label in v]
         tags = [label[1:] for label in v]
         task = ComparisonTask(
-            type="comparison",
+            type="ComparisonTask",
             taxon_groups=taxon_groups,
             labels=labels,
             tags=tags,
@@ -1311,11 +1911,9 @@ def get_comparison_tasks(
             count_max=count_max,
             count_fraction=count_fraction,
             output_fmt=output_fmt,
+            plot_fmt=plot_fmt,
         )
         tasks.append(task)
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
     return tasks
 
 
@@ -1529,167 +2127,6 @@ def get_combinations(taxon_groups, key):
             )
         )
     return sorted(combinations)
-
-
-def get_tree(
-    fn,
-    sample_ids=[],
-    outgroup=[],
-):
-    """
-    # [done]
-    - technically only checks for outgroups. A tree with additional tips should work.
-    """
-    if fn is None:
-        logger.info("no tree provided")
-        tree = None
-    else:
-        logger.info(f"parsing tree in {fn}")
-        tree = ete4.Tree(fn)
-        if outgroup:
-            logger.info(f"setting outgroup to {outgroup}")
-            try:
-                tree.set_outgroup(tree.common_ancestor(outgroup))
-            except KeyError as exc:
-                logger.error(
-                    f"setting outgroup to {outgroup} failed - {exc} not in tree"
-                )
-                sys.exit(1)
-        else:
-            logger.warning(
-                "no outgroup provided. No outgroup will be set. Verify tree topology"
-            )
-        zeros = len(str(len(list(tree.traverse()))))
-        idx = 0
-        sample_ids_found = []
-        for node in tree.traverse("levelorder"):  # rename nodes
-            if not node.name:
-                node.add_prop("name", f"{str(idx).zfill(zeros)}")
-                idx += 1
-            else:
-                sample_ids_found.append(node.name)
-        logger.info(f"tree has {core.utils.format_number(len(sample_ids_found))} taxa")
-        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
-        if sample_ids_missing:
-            logger.error(
-                f"{core.utils.format_number(len(sample_ids_missing))} sample IDs not in tree: {' '.join(sample_ids_missing)}"
-            )
-            sys.exit(1)
-        sample_ids_surplus = set(sample_ids_found) - set(sample_ids)
-        if sample_ids_surplus:
-            logger.warning(f"tree has additional taxa: {' '.join(sample_ids_surplus)}")
-        tree.write(
-            outfile=core.utils.format_fn(
-                fn=("tree.with_node_names.nwk"),
-                prefix=core.utils.get_dir("TREE"),
-            ),
-            props=None,
-            parser=1,
-        )
-        tree_strings = tree.to_str(compact=True, props=["name"]).split("\n")
-        if len(tree[str(0).zfill(zeros)]) <= definitions.TREE_NODES_MAX_FOR_LOG:
-            logger.debug("[Tree]")
-            for tree_string in tree_strings:
-                logger.debug(tree_string)
-        core.utils.dump(
-            tree_strings,
-            fn=core.utils.format_fn(
-                fn=("tree.with_node_names.txt"),
-                prefix=core.utils.get_dir("TREE"),
-            ),
-        )
-    return tree
-
-
-def process_tree(
-    tree_fn="",
-    outgroup=[],
-    sample_ids=[],
-    output_fmt="tsv",
-):
-    """
-    # [done]
-    - agnostic about additional leafs
-    - OG_AT: ApomorphyType
-    - OG_OT: OrthogroupType
-    - OG_NP: NodeProportion (based only on leaf_names in df_counts)
-    - EC: ElementCount
-    """
-    t_0 = time.monotonic()
-    tree = get_tree(
-        fn=tree_fn,
-        sample_ids=sample_ids,
-        outgroup=outgroup,
-    )
-
-    def place_orthogroup(row):
-        row_dict = row.to_dict()
-        TNs = [k for k, v in row_dict.items() if v > 0]
-        EC = sum(row_dict.values())
-        node = tree.common_ancestor(TNs)
-        node_id = node.get_prop("name")
-        OG_AT = "synapomorphy" if len(TNs) > 1 else "autapomorphy"
-        OG_OT = "specific" if EC > 1 else "singleton"
-        OG_NP = len(TNs) / len(
-            [leaf_name for leaf_name in node.leaf_names() if leaf_name in row_dict]
-        )
-        return (
-            node_id,
-            OG_AT,
-            OG_OT,
-            OG_NP,
-            EC,
-        )
-
-    logger.info(
-        f"placing orthogroups along {core.utils.format_number(len(list(tree.root.edges())))} branches on tree"
-    )
-
-    df_nodes = core.utils.get_counts_df().apply(
-        place_orthogroup,
-        axis=1,
-        result_type="expand",
-    )
-    df_nodes.columns = ["node_id", "OG_AT", "OG_OT", "OG_NP", "EC"]
-    OG_AT = df_nodes["OG_AT"].value_counts()
-    logger.info(
-        f"{core.utils.format_number(OG_AT.get('synapomorphy', 0))} synapomorphic orthogroups"
-    )
-    logger.info(
-        f"{core.utils.format_number(OG_AT.get('autapomorphy', 0))} autapomorphic orthogroups"
-    )
-    df_nodes = df_nodes.reset_index()
-    core.utils.dump(
-        df_nodes,
-        fn=core.utils.format_fn(
-            fn=f"tree.node_metrics.{output_fmt}",
-            prefix=core.utils.get_dir("TREE"),
-        ),
-        index=False,
-    )
-    df_nodes["OG_NT"] = "partial"
-    df_nodes["OG_NT"] = df_nodes["OG_NT"].where(df_nodes["OG_NP"] == 1, "complete")
-    df_summary = df_nodes.groupby(
-        [
-            "node_id",
-            "OG_AT",
-            "OG_OT",
-            "OG_NT",
-        ],
-        as_index=False,
-    ).agg(OC=("orthogroup_id", "count"))
-    core.utils.dump(
-        df_summary,
-        fn=core.utils.format_fn(
-            fn=f"tree.summary.{output_fmt}",
-            prefix=core.utils.get_dir("TREE"),
-        ),
-        index=False,
-    )
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-    return df_nodes
 
 
 if __name__ == "__main__":

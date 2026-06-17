@@ -29,6 +29,7 @@ def run(args):
     t_0 = time.monotonic()
     # [ToDo] put everything 'setup' into one function
     # create basic DIRs (before core.log.init_logger!)
+    print("reps")
     core.utils.mkdir(
         name=args.d,
         subdirs="init",
@@ -65,45 +66,44 @@ def run(args):
             name=core.utils.get_dir("PLOTS"),
             subdirs=[
                 "/".join([d1, d2])
-                for d1 in ["curve", "volcano"]
+                for d1 in ["curve"]
                 for d2 in ["sample_ids"] + list(df_config.columns)
             ]
             + [
                 "tally",
+                "volcano",
             ],
             do_replace=False,
         )
-    # [FASTA IDs]
-    if args.f:
-        core.analysis.get_elements(
-            directory=args.f,
+    # [repeatmasker]
+    if args.e:
+        core.analysis.get_repeats(
+            directory=args.e,
             sample_ids=list(df_config.sample_id),
+            repeat_type="repeatmasker",
+            min_div=args.m,
+            max_div=args.M,
             processes=args.p,
         )
-        sample_ids_source = "fasta"
-    # [SEQUENCE/SPECIES IDs]
-    elif args.s and args.S:
-        core.analysis.get_ids(
-            sequence_ids_fn=args.s,
-            species_ids_fn=args.S,
+    # [earlgrey]
+    elif args.E:
+        core.analysis.get_repeats(
+            directory=args.E,
             sample_ids=list(df_config.sample_id),
+            repeat_type="earlgrey",
+            processes=args.p,
         )
-        sample_ids_source = "sids"
-    # [INFER IDs FROM OGs]
-    elif args.P:
-        sample_ids_source = "parse"
+    # [BED]
+    # elif args.b:
+    #     core.analysis.get_repeats(
+    #         directory=args.b,
+    #         sample_ids=list(df_config.sample_id),
+    #         repeat_type="bed",
+    #         processes=args.p,
+    #     )
     else:
         sys.exit(1)
-
-    # [ORTHOGRPUPS]
-    core.analysis.get_orthogroups(
-        args.g,
-        sample_ids=list(df_config.sample_id),
-        sample_ids_source=sample_ids_source,
-        output_fmt=args.F,
-        plot_fmt=args.l,
-        do_plots=(not args.L),
-    )
+    sys.exit(1)
     # [TREE]
     if args.t:
         core.tree.process_tree(
@@ -112,16 +112,7 @@ def run(args):
             sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
         )
-
-    # [ANNOTATION]
-    if args.i or args.I:
-        core.analysis.analyse_interpro(
-            directory=args.I,
-            sample_ids=list(df_config.sample_id),
-            output_fmt=args.F,
-            processes=args.p,
-        )
-    core.analysis.analyse_orthogroups(
+    tasks = core.analysis.get_comparison_tasks(
         df_config=df_config,
         count_target=args.n,
         count_min=args.m,
@@ -129,39 +120,29 @@ def run(args):
         count_fraction=args.x,
         output_fmt=args.F,
         ignore_sample_comparisons=args.X,
-        plot_fmt=args.l if not args.L else None,
+    )
+    logger.info(
+        f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)"
+    )
+    core.analysis.do_tasks(
+        tasks,
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=args.p,
     )
-    # tasks = core.analysis.get_comparison_tasks(
-    #     df_config=df_config,
-    #     count_target=args.n,
-    #     count_min=args.m,
-    #     count_max=args.M,
-    #     count_fraction=args.x,
-    #     output_fmt=args.F,
-    #     ignore_sample_comparisons=args.X,
-    # )
-    # logger.info(
-    #     f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)"
-    # )
-    # core.analysis.do_tasks(
-    #     tasks,
-    #     desc=definitions.PROGRESS_DESC_PARTITIONING,
-    #     processes=args.p,
-    # )
-    # tasks = core.analysis.get_summary_tasks(
-    #     df_config=df_config,
-    #     output_fmt=args.F,
-    #     ignore_sample_comparisons=args.X,
-    #     plot_fmt=args.l if not args.L else None,
-    # )
-    # logger.info(
-    #     f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)"
-    # )
-    # core.analysis.do_tasks(
-    #     tasks,
-    #     desc=definitions.PROGRESS_DESC_PARTITIONING,
-    #     processes=args.p,
-    # )
+    tasks = core.analysis.get_summary_tasks(
+        df_config=df_config,
+        output_fmt=args.F,
+        ignore_sample_comparisons=args.X,
+        plot_fmt=args.l if not args.L else None,
+    )
+    logger.info(
+        f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)"
+    )
+    core.analysis.do_tasks(
+        tasks,
+        desc=definitions.PROGRESS_DESC_PARTITIONING,
+        processes=args.p,
+    )
+    logger.info("done")
     logger.info(core.utils.format_elapsed(time.monotonic() - t_0))
     sys.exit(0)
