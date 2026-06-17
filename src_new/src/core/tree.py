@@ -189,7 +189,6 @@ def process_tree(
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
-    return df_nodes
 
 
 if __name__ == "__main__":

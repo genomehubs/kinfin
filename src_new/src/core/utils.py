@@ -134,6 +134,19 @@ def get_signature_summary_df(sample_id=None):
     )
 
 
+def get_repeat_df(sample_id=None, repeat_group=None):
+    if sample_id is not None:
+        return load(
+            fn=get_dir("TMP")
+            / sample_id
+            / f"{sample_id}.{repeat_group}.count.{definitions.REPEATS_FN}"
+        )
+    else:
+        return load(
+            fn=get_dir("TMP") / f"{repeat_group}.count.{definitions.REPEATS_FN}"
+        )
+
+
 def get_annotation_df(sample_id=None, output_fmt=definitions.STD_FORMAT, delete=False):
     if sample_id is None:
         fn = (get_dir("ANNOTATION") / definitions.ANNOTATION_FN).with_suffix(

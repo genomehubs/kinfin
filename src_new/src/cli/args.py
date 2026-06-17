@@ -58,6 +58,127 @@ def float_proportion(value):
     raise argparse.ArgumentTypeError(msg)
 
 
+def add_reps_parser(subparsers):
+    subparser = subparsers.add_parser(
+        "reps",
+        help="start KinFin analysis of repeat/TE data",
+    )
+    subparser._optionals.title = "[optional]"
+    subparser_required = subparser.add_argument_group("[essential]")
+    subparser_parameters = subparser.add_argument_group("[parameters]")
+    subparser_required.add_argument(
+        "-c",
+        metavar="CONFIG_FN",
+        required=True,
+        type=existing_file,
+        help="Config file in CSV or JSON",
+    )
+    subparser_required.add_argument(
+        "-e",
+        metavar="REPEATMASKER_DIR",
+        required=False,
+        type=existing_dir,
+        help="Directory containing Repeatmasker (*.out) files to parse",
+    )
+    subparser_required.add_argument(
+        "-m",
+        metavar="MIN_DIV",
+        required=False,
+        type=float,
+        default=0.0,
+        help="Minimum divergence when filtering Repeatmasker (*.out) files (default: %(default)s)",
+    )
+    subparser_required.add_argument(
+        "-M",
+        metavar="MAX_DIV",
+        required=False,
+        type=float,
+        default=100.0,
+        help="Maximum divergence when filtering Repeatmasker (*.out) files (default: %(default)s)",
+    )
+    subparser_required.add_argument(
+        "-E",
+        metavar="EARLGREY_DIR",
+        required=False,
+        type=existing_dir,
+        help="Directory containing Earlgrey (*.familyLevelCount.txt) files to parse",
+    )
+    subparser_parameters.add_argument(
+        "-t",
+        metavar="TREE_FN",
+        required=False,
+        type=existing_file,
+        help="Tree file in Newick format. Sample IDs must be the same as 'sample_ids' in CONFIG_FN",
+    )
+    subparser_parameters.add_argument(
+        "-o",
+        metavar="OUTGROUP",
+        required=False,
+        type=str,
+        nargs="*",
+        default=[],
+        help="Sample-ID(s) (space-separated) that will be used as outgroup when parsing TREE_FN. Must be monophyletic.",
+    )
+    subparser_parameters.add_argument(
+        "-r",
+        metavar="TAXRANKS",
+        required=False,
+        choices=definitions.ARGS_TAXONOMY_RANKS_SUPPORTED,
+        nargs="*",
+        default=definitions.ARGS_TAXONOMY_RANKS_DEFAULT,
+        help=f"Taxonomic ranks to be inferred from NCBI 'taxids' column in config file (or None to ignore) (default: {' '.join(definitions.ARGS_TAXONOMY_RANKS_DEFAULT)})",
+    )
+    subparser_parameters.add_argument(
+        "-d",
+        metavar="OUTDIR",
+        type=str,
+        default="kinfin_analysis/",
+        help="Output directory (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-F",
+        choices=definitions.ARGS_SUPPORTED_OUTPUT_FORMATS,
+        metavar="FMT",
+        default="parquet",
+        help="Output table format (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-p",
+        metavar="PROCESSES",
+        required=False,
+        type=int_positive,
+        default=1,
+        help="Number of processes to use for the analysis (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-v",
+        action="store_true",
+        help="Verbose log",
+    )
+    subparser_parameters.add_argument(
+        "-X",
+        action="store_true",
+        help="Ignore 'sample_id' column for comparisons",
+    )
+    subparser_parameters.add_argument(
+        "-L",
+        action="store_true",
+        help="No plots",
+    )
+    subparser_parameters.add_argument(
+        "-l",
+        metavar="PLOT_FMT",
+        choices=definitions.ARGS_SUPPORTED_PLOT_FORMATS,
+        default=definitions.PLOT_FORMAT,
+        help="Format for plots (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-N",
+        action="store_true",
+        help="No cleanup of temporary directory",
+    )
+
+
 def add_analysis_parser(subparsers):
     subparser = subparsers.add_parser(
         "analysis",
@@ -483,6 +604,7 @@ def get_argparse():
         dest="command",
     )
     add_analysis_parser(subparsers)
+    add_reps_parser(subparsers)
     add_api_parser(subparsers)
     add_plot_parser(subparsers)
     add_view_parser(subparsers)
@@ -504,6 +626,14 @@ def get_argparse():
             subparser.error(
                 "must specify options (-f) or (-P) or (-s/-S) depending on your data"
             )
+    if args.command == "reps":
+        subparser = subparsers.choices[args.command]
+        if (args.E and args.e) or not (args.E or args.e):
+            subparser.error("must specify either (-e) or (-E)")
+        if args.m >= args.M:
+            subparser.error(
+                f"value for '-m' must be smaller than '-M' (not {args.m} >= {args.M}) !",
+            )
     if args.command == "preprocess":
         subparser = subparsers.choices[args.command]
         if args.i and args.e:
@@ -514,5 +644,4 @@ def get_argparse():
             subparser.error(
                 "can't specify both '-I' and '-E'!",
             )
-
     return parser.parse_args()

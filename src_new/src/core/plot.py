@@ -5,6 +5,7 @@ import matplotlib as mat
 
 # mat.use("agg")
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.lines import Line2D
 
 import core.utils
@@ -42,6 +43,124 @@ line_style = {
 - make -d an argument so user can point it to dir of interest and it does all the plots
 - export all plot parameters to config file in config/ so that they can be globally edited
 """
+
+
+def volcano(x, y, fn):
+    P_VALUES_MIN = 0.0001
+
+    x_label = "log2FC"
+    y_label = "p-value"
+    y = y.clip(lower=P_VALUES_MIN)
+    # fig = plt.figure(figsize=(12, 8), dpi=200, frameon=True)
+    # ax = fig.add_subplot()
+    # ax_histx = ax.inset_axes([0, 1.05, 1, 0.3], sharex=ax)
+    fig, axs = plt.subplot_mosaic(
+        [["top"], ["bottom"]],
+        figsize=(12, 8),
+        height_ratios=(1, 3),
+        sharex=True,
+        layout="constrained",
+    )
+    binwidth = 0.05
+    xymax = max([x.abs().max(), y.abs().max()])
+    lim = (int(xymax / binwidth) + 1) * binwidth
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    axs["top"].hist(
+        x,
+        bins=bins,
+        histtype="stepfilled",
+        color="dimgray",
+        align="left",
+    )
+    axs["top"].tick_params(axis="x", which="both", labelbottom=False)
+    axs["bottom"].scatter(
+        x,
+        y,
+        alpha=0.8,
+        edgecolors=None,
+        s=5,
+        c="dimgray",
+    )
+    axs["bottom"].axhline(
+        y=0.05,
+        linewidth=1,
+        color="orange",
+        linestyle="--",
+        label=f"{y_label} = 0.05",
+        alpha=0.5,
+    )
+    axs["bottom"].axhline(
+        y=0.01,
+        linewidth=1,
+        color="red",
+        linestyle="--",
+        label=f"{y_label} = 0.01",
+        alpha=0.5,
+    )
+    axs["bottom"].axvline(
+        x=1.0,
+        linewidth=1,
+        color="purple",
+        linestyle="--",
+        label=f"|{x_label}| = 1",
+        alpha=0.5,
+    )
+    axs["bottom"].axvline(
+        x=-1.0,
+        linewidth=1,
+        color="purple",
+        linestyle="--",
+        alpha=0.5,
+    )
+    log2fc_percentile = np.percentile(x, 95)
+    axs["bottom"].axvline(
+        x=log2fc_percentile,
+        linewidth=1,
+        color="blue",
+        linestyle="--",
+        label=f"|log2FC-95%ile| = {log2fc_percentile:.3f}",
+        alpha=0.5,
+    )
+    axs["bottom"].axvline(
+        x=-log2fc_percentile,
+        linewidth=1,
+        color="blue",
+        linestyle="--",
+        alpha=0.5,
+    )
+    axs["bottom"].grid(
+        True,
+        linewidth=1,
+        which="major",
+        color="lightgrey",
+    )
+    axs["bottom"].grid(
+        True,
+        linewidth=0.5,
+        which="minor",
+        color="lightgrey",
+    )
+    axs["top"].grid(
+        True,
+        linewidth=1,
+        which="major",
+        color="lightgrey",
+    )
+    axs["top"].grid(
+        True,
+        linewidth=0.5,
+        which="minor",
+        color="lightgrey",
+    )
+    axs["bottom"].set_ylim(1.5, 10 ** (math.log(P_VALUES_MIN, 10) - 0.5))
+    axs["bottom"].set_xlim(-x.abs().max() - 1, x.abs().max() + 1)
+    axs["bottom"].set_yscale("log")
+    axs["bottom"].set_ylabel(y_label)
+    axs["bottom"].set_xlabel(x_label)
+    axs["bottom"].legend(frameon=False, fontsize=10)
+    # plt.tight_layout()
+    fig.savefig(fn)
+    plt.close(fig)
 
 
 def lines(

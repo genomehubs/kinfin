@@ -7,6 +7,8 @@ ARGS_TAXONOMY_RANKS_DEFAULT = ["phylum", "order", "genus"]
 ARGS_TAXONOMY_RANKS_SUPPORTED = [
     "species",
     "genus",
+    "tribe",
+    "subfamily",
     "family",
     "order",
     "class",
@@ -33,6 +35,7 @@ PLOT_FORMAT = "png"
 ELEMENTS_FN = f"orthogroups.elements.{STD_FORMAT}"
 ELEMENTS_ORPHAN_FN = f"orthogroups.elements.orphans.{STD_FORMAT}"
 ELEMENTS_ORPHAN_SUMMARY_FN = f"orthogroups.elements.orphans.table.{STD_FORMAT}"
+REPEATS_FN = f"repeats.{STD_FORMAT}"
 ORTHOGROUPS_FN = f"orthogroups.{STD_FORMAT}"
 COUNTS_FN = f"orthogroups.counts.{STD_FORMAT}"
 COUNTS_NAN_FN = f"orthogroups.counts.nan.{STD_FORMAT}"
@@ -57,6 +60,7 @@ PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
 PROGRESS_DESC_INTERPRO = f"[{'INTERPRO PARSING'.center(23, '.')}]"
+PROGRESS_DESC_REPEATS = f"[{'REPEATS PARSING'.center(23, '.')}]"
 PROGRESS_DESC_SIGNATURES = f"[{'SIGNATURES 1/2'.center(23, '.')}]"
 PROGRESS_DESC_SIGNATURES_COUNTING = f"[{'SIGNATURES 2/2'.center(23, '.')}]"
 PROGRESS_DESC_ANNOTATION_TASK_PREP = f"[{'CHUNKING ANNOTATION'.center(23, '.')}]"
