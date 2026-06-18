@@ -46,14 +46,10 @@ line_style = {
 
 
 def volcano(x, y, fn):
-    P_VALUES_MIN = 0.0001
-
+    # P_VALUES_MIN = 0.0001
     x_label = "log2FC"
     y_label = "p-value"
-    y = y.clip(lower=P_VALUES_MIN)
-    # fig = plt.figure(figsize=(12, 8), dpi=200, frameon=True)
-    # ax = fig.add_subplot()
-    # ax_histx = ax.inset_axes([0, 1.05, 1, 0.3], sharex=ax)
+    # y = y.clip(lower=P_VALUES_MIN)
     fig, axs = plt.subplot_mosaic(
         [["top"], ["bottom"]],
         figsize=(12, 8),
@@ -152,7 +148,7 @@ def volcano(x, y, fn):
         which="minor",
         color="lightgrey",
     )
-    axs["bottom"].set_ylim(1.5, 10 ** (math.log(P_VALUES_MIN, 10) - 0.5))
+    axs["bottom"].set_ylim(1.5, 10 ** (math.log(y.min(), 10) - 0.5))
     axs["bottom"].set_xlim(-x.abs().max() - 1, x.abs().max() + 1)
     axs["bottom"].set_yscale("log")
     axs["bottom"].set_ylabel(y_label)
