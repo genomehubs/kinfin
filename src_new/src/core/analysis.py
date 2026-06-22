@@ -52,6 +52,7 @@ SummaryTask = collections.namedtuple(
         "taxon_groups",
         "output_fmt",
         "plot_fmt",
+        "lengths_parsed",
     ],
 )
 
@@ -918,22 +919,30 @@ def get_ids(
     logger.info("parsing SpeciesIDs file")
     sample_ids = set(sample_ids)
     try:
-        sample_ids = {}
+        sample_ids_found = {}
         with open(species_ids_fn, "r") as fh:
             for line in fh:
                 species_idx, sample_id = line.rstrip("\n").split(": ")
                 if sample_id in sample_ids:
-                    sample_ids[species_idx] = sample_id
+                    sample_ids_found[species_idx] = sample_id
         data = []
         with open(sequence_ids_fn, "r") as fh:
             for line in fh:
                 sequence_idx, element_id = line.rstrip("\n").split(": ")
                 species_idx, _ = sequence_idx.split("_")
-                if species_idx in sample_ids:
-                    data.append((element_id, sample_ids[species_idx]))
+                if species_idx in sample_ids_found:
+                    data.append((element_id, sample_ids_found[species_idx]))
         df = pd.DataFrame().from_records(data, columns=["element_id", "sample_id"])
         if df.empty:
-            logger.error("no IDs could be parsed")
+            logger.error(
+                f"none of the following IDs was found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids))}"
+            )
+            sys.exit(1)
+        elif not len(sample_ids) == len(sample_ids_found):
+            logger.error(
+                f"the following IDs were not found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids - set(sample_ids_found.values())))}"
+            )
+            sys.exit(1)
         else:
             logger.info(
                 f"{core.utils.format_number(df['sample_id'].nunique())} sample IDs parsed"
@@ -1006,6 +1015,7 @@ def get_orthogroups(
     sample_ids_source="parse",
     output_fmt=definitions.STD_FORMAT,
     plot_fmt=definitions.PLOT_FORMAT,
+    lengths_parsed=False,
     do_plots=True,
     ignore_duplicated_elements=False,
 ):
@@ -1075,14 +1085,6 @@ def get_orthogroups(
         df_orthogroups = df_elements.join(
             df_orthogroups.set_index("element_id"), how="outer"
         ).reset_index()
-        # df_orthogroups["sample_id"] = df_orthogroups["element_id"].map(
-        #     df_elements["sample_id"],
-        #     na_action="ignore",
-        # )
-        #
-        # df_orthogroups = df_orthogroups[
-        #     ~df_orthogroups["sample_id"].isna()
-        # ].reset_index(drop=True)
     orthogroups_count = df_orthogroups["orthogroup_id"].nunique()
     logger.info(f"{core.utils.format_number(orthogroups_count)} orthogroup(s) in file")
     elements_in_fasta_count = int(df_orthogroups["element_id"].count())
@@ -1114,6 +1116,10 @@ def get_orthogroups(
                 min_length=("length", "min"),
                 max_length=("length", "max"),
                 median_length=("length", "median"),
+            )
+            if lengths_parsed
+            else df_orphan_elements.groupby("sample_id").agg(
+                missing_count=("sample_id", "count"),
             ),
             fn=core.utils.format_fn(
                 definitions.ELEMENTS_ORPHAN_SUMMARY_FN,
@@ -1134,7 +1140,10 @@ def get_orthogroups(
             f"none of these sample IDs were found: {', '.join(sample_ids)}. Exiting."
         )
         sys.exit(1)
-
+    if lengths_parsed:
+        df_orthogroups["length"] = df_orthogroups["element_id"].map(
+            df_elements["length"]
+        )
     # [DUMP OGS]
     core.utils.dump(
         df_orthogroups,
@@ -1239,30 +1248,39 @@ def tally_counts(
     )
 
 
-def partition_lengths(df_orthogroups, lengths, TGs={}):
-    """
-    [ToDo]
-    - finish
-    """
-    t_0 = time.monotonic()
-    df_orthogroups["length"] = df_orthogroups["element_id"].map(lengths)
+def partition_lengths(task=None):
+    df_orthogroups = core.utils.get_orthogroups_df()
     dfs = [
         df_orthogroups.groupby("orthogroup_id").agg(
             EL_mean=("length", "mean"), EL_sd=("length", "std")
         )
     ]
-    for TG, TNs in TGs.items():
+    for idx, TNs in enumerate(task.taxon_groups):
         dfs.append(
             df_orthogroups.where(df_orthogroups["sample_id"].isin(TNs))
             .groupby("orthogroup_id")
             .agg(TG_EL_mean=("length", "mean"), TG_EL_sd=("length", "std"))
-            .rename(columns={"TG_EL_mean": f"{TG}_EL_mean", "TG_EL_sd": f"{TG}_EL_sd"})
+            .rename(
+                columns={"TG_EL_mean": f"{idx}_EL_mean", "TG_EL_sd": f"{idx}_EL_sd"}
+            )
         )
     df_lengths = pd.concat(dfs, axis=1).reindex(dfs[0].index)
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-    return df_lengths
+    for label, tags in zip(task.labels, task.tags):
+        for idx, tag in enumerate(tags):
+            df_lengths = df_lengths.rename(
+                columns={
+                    f"{idx}_EL_mean": f"{tag}_EL_mean",
+                    f"{idx}_EL_sd": f"{tag}_EL_sd",
+                }
+            )
+        core.utils.dump(
+            df_lengths,
+            fn=core.utils.format_fn(
+                fn=f"{label}.lengths.{task.output_fmt}",
+                prefix=core.utils.get_dir("PARTITION") / label,
+            ),
+            index=True,
+        )
 
 
 def get_df_entropy(df_annotation, output_fmt="tsv"):
@@ -1426,6 +1444,7 @@ def analyse_orthogroups(
     count_max=1,
     count_fraction=0.75,
     output_fmt="tsv",
+    lengths_parsed=False,
     ignore_sample_comparisons=False,
     plot_fmt=definitions.PLOT_FORMAT,
     processes=1,
@@ -1451,6 +1470,7 @@ def analyse_orthogroups(
     tasks = get_summary_tasks(
         df_config=df_config,
         output_fmt=output_fmt,
+        lengths_parsed=lengths_parsed,
         ignore_sample_comparisons=ignore_sample_comparisons,
         plot_fmt=plot_fmt,
     )
@@ -1461,9 +1481,6 @@ def analyse_orthogroups(
         tasks,
         desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=processes,
-    )
-    logger.info(
-        f"calculating summary metrics for {len(tasks)} labels using {processes} process(es)"
     )
 
 
@@ -1480,6 +1497,20 @@ def compare(task):
     _COLUMNS = ["EC_TG1", "OT", "CT"]
     compare_rows = []
     df_sampling = None
+    """
+    SummaryTask(
+    type='SummaryTask', 
+    labels=['sample_ids', 'phylum', 'order'], 
+    tags=[('all',), ('Nematoda',), ('Rhabditida',)], 
+    taxon_groups=(('CBRIG', 'DMEDI', 'LSIGM', 'AVITE', 'CELEG', 'EELAP', 'OOCHE2', 'OFLEX', 'LOA2', 'SLABI', 'BMALA', 'DIMMI', 'WBANC2', 'TCALL', 'OOCHE1', 'BPAHA', 'OVOLV', 'WBANC1', 'LOA1'),), output_fmt='tsv', plot_fmt='png', lengths_parsed=True)
+
+    SummaryTask(type='SummaryTask', 
+    labels=['sample_id'], 
+    tags=[('CBRIG', 'DMEDI', 'LSIGM', 'AVITE', 'CELEG', 'EELAP', 'OOCHE2', 'OFLEX', 'LOA2', 'SLABI', 'BMALA', 'DIMMI', 'WBANC2', 'TCALL', 'OOCHE1', 'BPAHA', 'OVOLV', 'WBANC1', 'LOA1')], 
+    taxon_groups=(('CBRIG',), ('DMEDI',), ('LSIGM',), ('AVITE',), ('CELEG',), ('EELAP',), ('OOCHE2',), ('OFLEX',), ('LOA2',), ('SLABI',), ('BMALA',), ('DIMMI',), ('WBANC2',), ('TCALL',), ('OOCHE1',), ('BPAHA',), ('OVOLV',), ('WBANC1',), ('LOA1',)), output_fmt='tsv', plot_fmt='png', lengths_parsed=True)
+    """
+    if task.lengths_parsed:
+        partition_lengths(task=task)
     for label, tags in zip(task.labels, task.tags):
         line_plot_data = []
         for idx, tag in enumerate(tags):
@@ -1840,6 +1871,7 @@ def do_tasks(
 def get_summary_tasks(
     df_config=None,
     output_fmt="tsv",
+    lengths_parsed=False,
     ignore_sample_comparisons=False,
     plot_fmt=definitions.PLOT_FORMAT,
 ):
@@ -1867,6 +1899,7 @@ def get_summary_tasks(
                 tags=tags,
                 output_fmt=output_fmt,
                 plot_fmt=plot_fmt,
+                lengths_parsed=lengths_parsed,
             )
         )
     logger.info(
