@@ -1,6 +1,7 @@
 import core.log
 
-from . import analyse, args, convert, head, plot, preprocess, reps, taxid, view
+# from . import analyse, args, convert, head, plot, preprocess, reps, taxid, view
+from . import analyse, args, convert, head, preprocess, reps, taxid, view
 
 core.log.init_logger()
 
@@ -11,7 +12,7 @@ __all__ = [
     "head",
     "view",
     "taxid",
-    "plot",
+    # "plot",
     "preprocess",
     "reps",
 ]
