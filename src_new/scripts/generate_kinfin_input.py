@@ -10,15 +10,16 @@ Options:
         -h --help                       show this
         -f, --fasta_dir <DIR>           Directory containing FASTA files ("*.fasta", "*.fas", "*.faa", "*.fa")
         -o, --outprefix <STRING>        Output prefix
-        orthofinder                     Formats sequence header as would OrthoFinder
-                                           ([:,()] are replaced with "_")
+        orthofinder                     Formats sequence header as would OrthoFinder ([:,()] are replaced with "_")
         config                          Only generates KinFin config file
 
 
 """
-from docopt import docopt
-import sys
+
 import os
+import sys
+
+from docopt import docopt
 
 
 def read_file(infile):
@@ -39,13 +40,13 @@ def write_file(out_f, outprefix, header, lines):
         else:
             out_f = "%s.%s" % (outprefix, out_f)
     print("[+] \t Writing file %s ..." % (out_f))
-    with open(out_f, 'w') as out_fh:
+    with open(out_f, "w") as out_fh:
         if header:
             out_fh.write("%s\n" % (header))
         out_fh.write("%s\n" % "\n".join(lines))
 
 
-class DataCollection():
+class DataCollection:
     def __init__(self, fasta_dir, outprefix, orthofinder_flag, config_flag):
         self.fasta_dir = fasta_dir
         self.outprefix = outprefix
@@ -71,33 +72,43 @@ class DataCollection():
                     self.parse_fasta_f(fasta_f, species_idx)
                 species_idx += 1
         if not self.config_flag:
-            print("[+] [Summary] %s fasta files (containing %s sequences) parsed." % (len(self.species_id_lines), len(self.sequence_id_lines)))
+            print(
+                "[+] [Summary] %s fasta files (containing %s sequences) parsed."
+                % (len(self.species_id_lines), len(self.sequence_id_lines))
+            )
 
     def parse_fasta_f(self, fasta_f, species_idx):
         seq_count = 0
         for line in read_file(fasta_f):
-            if line and line[0] == '>':
+            if line and line[0] == ">":
                 header = line[1:].split()[0]
                 if self.orthofinder_flag:
-                    header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")
-                self.sequence_id_lines.append("%s_%s: %s" % (species_idx, seq_count, header))
+                    header = (
+                        header.replace(":", "_")
+                        .replace(",", "_")
+                        .replace("(", "_")
+                        .replace(")", "_")
+                    )
+                self.sequence_id_lines.append(
+                    "%s_%s: %s" % (species_idx, seq_count, header)
+                )
                 seq_count += 1
         print("[+] \t %s sequences parsed" % (seq_count))
 
     def write_files(self):
         print("[+] Writing output ...")
         if not self.config_flag:
-            write_file('SpeciesIDs.txt', self.outprefix, None, self.species_id_lines)
-            write_file('SequenceIDs.txt', self.outprefix, None, self.sequence_id_lines)
-        write_file('config.txt', self.outprefix, "#IDX,TAXON", self.config_lines)
+            write_file("SpeciesIDs.txt", self.outprefix, None, self.species_id_lines)
+            write_file("SequenceIDs.txt", self.outprefix, None, self.sequence_id_lines)
+        write_file("config.txt", self.outprefix, "#IDX,TAXON", self.config_lines)
 
 
 if __name__ == "__main__":
     __version__ = 0.2
 
     args = docopt(__doc__)
-    fasta_dir = args['--fasta_dir']
-    outprefix = args['--outprefix']
-    orthofinder_flag = args['orthofinder']
-    config_flag = args['config']
+    fasta_dir = args["--fasta_dir"]
+    outprefix = args["--outprefix"]
+    orthofinder_flag = args["orthofinder"]
+    config_flag = args["config"]
     dataCollection = DataCollection(fasta_dir, outprefix, orthofinder_flag, config_flag)
