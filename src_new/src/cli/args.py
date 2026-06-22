@@ -370,49 +370,49 @@ def add_api_parser(subparsers):
     )
 
 
-def add_plot_parser(subparsers):
-    subparser = subparsers.add_parser(
-        "plot",
-        help="make plots based on output tables ",
-    )
-    subparser.add_argument(
-        "-f",
-        metavar="FILE",
-        type=existing_files,
-        nargs="*",
-        help="files to plot",
-    )
-    subparser.add_argument(
-        "-p",
-        metavar="PREFIX",
-        required=True,
-        type=str,
-        default="plot",
-        help="prefix for output file.",
-    )
-    subparser.add_argument(
-        "-d",
-        metavar="DIR",
-        required=False,
-        type=existing_dir,
-        help="Directory in which to look for plottable files",
-    )
-    subparser.add_argument(
-        "-X",
-        action="store_true",
-        help="Do not normalize X-axis in line plots",
-    )
-    subparser.add_argument(
-        "-Y",
-        action="store_true",
-        help="Do not normalize Y-axis in line plots",
-    )
-    subparser.add_argument(
-        "-M",
-        type=int_positive,
-        default=9,
-        help="Maximum number of taxon groups per plot (default: %(default)s)",
-    )
+# def add_plot_parser(subparsers):
+#     subparser = subparsers.add_parser(
+#         "plot",
+#         help="make plots based on output tables ",
+#     )
+#     subparser.add_argument(
+#         "-f",
+#         metavar="FILE",
+#         type=existing_files,
+#         nargs="*",
+#         help="files to plot",
+#     )
+#     subparser.add_argument(
+#         "-p",
+#         metavar="PREFIX",
+#         required=True,
+#         type=str,
+#         default="plot",
+#         help="prefix for output file.",
+#     )
+#     subparser.add_argument(
+#         "-d",
+#         metavar="DIR",
+#         required=False,
+#         type=existing_dir,
+#         help="Directory in which to look for plottable files",
+#     )
+#     subparser.add_argument(
+#         "-X",
+#         action="store_true",
+#         help="Do not normalize X-axis in line plots",
+#     )
+#     subparser.add_argument(
+#         "-Y",
+#         action="store_true",
+#         help="Do not normalize Y-axis in line plots",
+#     )
+#     subparser.add_argument(
+#         "-M",
+#         type=int_positive,
+#         default=9,
+#         help="Maximum number of taxon groups per plot (default: %(default)s)",
+#     )
 
 
 def add_preprocess_parser(subparsers):
@@ -606,7 +606,7 @@ def get_argparse():
     add_analysis_parser(subparsers)
     add_reps_parser(subparsers)
     add_api_parser(subparsers)
-    add_plot_parser(subparsers)
+    # add_plot_parser(subparsers)
     add_view_parser(subparsers)
     add_head_parser(subparsers)
     add_tail_parser(subparsers)
