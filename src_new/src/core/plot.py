@@ -40,9 +40,10 @@ line_style = {
 
 """
 [ToDo]
-- make -d an argument so user can point it to dir of interest and it does all the plots
 - export all plot parameters to config file in config/ so that they can be globally edited
 """
+
+VOLCANO_LINEWIDTH = 2
 
 
 def volcano(x, y, fn):
@@ -79,7 +80,7 @@ def volcano(x, y, fn):
     )
     axs["bottom"].axhline(
         y=0.05,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="orange",
         linestyle="--",
         label=f"{y_label} = 0.05",
@@ -87,7 +88,7 @@ def volcano(x, y, fn):
     )
     axs["bottom"].axhline(
         y=0.01,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="red",
         linestyle="--",
         label=f"{y_label} = 0.01",
@@ -95,7 +96,7 @@ def volcano(x, y, fn):
     )
     axs["bottom"].axvline(
         x=1.0,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="purple",
         linestyle="--",
         label=f"|{x_label}| = 1",
@@ -103,7 +104,7 @@ def volcano(x, y, fn):
     )
     axs["bottom"].axvline(
         x=-1.0,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="purple",
         linestyle="--",
         alpha=0.5,
@@ -111,7 +112,7 @@ def volcano(x, y, fn):
     log2fc_percentile = np.percentile(x, 95)
     axs["bottom"].axvline(
         x=log2fc_percentile,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="blue",
         linestyle="--",
         label=f"|log2FC-95%ile| = {log2fc_percentile:.3f}",
@@ -119,7 +120,7 @@ def volcano(x, y, fn):
     )
     axs["bottom"].axvline(
         x=-log2fc_percentile,
-        linewidth=1,
+        linewidth=VOLCANO_LINEWIDTH,
         color="blue",
         linestyle="--",
         alpha=0.5,
@@ -189,11 +190,10 @@ def lines(
                     _df[y],
                     alpha=0.9,
                     color=(
-                        plt.cm.gnuplot2(idx / max_lines)
-                        if len(dfs) >= 20
-                        else plt.cm.tab20(idx / 20)
-                        if len(dfs) > 10
-                        else default_colors[idx]
+                        # plt.cm.gnuplot2(idx / max_lines)
+                        # if len(dfs) >= 20
+                        # else plt.cm.tab20(idx / 20)
+                        plt.cm.tab20(idx / 20) if len(dfs) > 10 else default_colors[idx]
                     ),
                     label=tag,
                     lw=1.5,
