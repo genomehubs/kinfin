@@ -50,7 +50,7 @@ def volcano(x, y, fn):
     # P_VALUES_MIN = 0.0001
     x_label = "log2FC"
     y_label = "p-value"
-    # y = y.clip(lower=P_VALUES_MIN)
+    y = y.clip(lower=np.min(y.values[np.nonzero(y.values)]))
     fig, axs = plt.subplot_mosaic(
         [["top"], ["bottom"]],
         figsize=(12, 8),
