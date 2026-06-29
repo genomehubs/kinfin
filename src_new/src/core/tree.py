@@ -28,7 +28,9 @@ def get_tree(
         logger.info(f"parsing tree in {fn}")
         tree = ete4.Tree(fn)
         if outgroup:
-            logger.info(f"setting outgroup to {outgroup}")
+            logger.info(
+                f"setting the following sample ID(s) as outgroup(s): {','.join(outgroup)}"
+            )
             try:
                 tree.set_outgroup(tree.common_ancestor(outgroup))
             except KeyError as exc:
