@@ -1284,9 +1284,7 @@ def partition_lengths(task=None):
 
 
 def get_df_entropy(df_annotation, output_fmt="tsv"):
-    """
-    Entropy is correct. Previous KinFin implementation was off.
-    """
+    """Entropy is correct. Previous KinFin implementation was off."""
 
     def infer_entropy(values):
         signature_counter = collections.Counter([v for k, v in values.items()])
@@ -1496,19 +1494,6 @@ def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
 def compare(task):
     _COLUMNS = ["EC_TG1", "OT", "CT"]
     compare_rows = []
-    df_sampling = None
-    """
-    SummaryTask(
-    type='SummaryTask', 
-    labels=['sample_ids', 'phylum', 'order'], 
-    tags=[('all',), ('Nematoda',), ('Rhabditida',)], 
-    taxon_groups=(('CBRIG', 'DMEDI', 'LSIGM', 'AVITE', 'CELEG', 'EELAP', 'OOCHE2', 'OFLEX', 'LOA2', 'SLABI', 'BMALA', 'DIMMI', 'WBANC2', 'TCALL', 'OOCHE1', 'BPAHA', 'OVOLV', 'WBANC1', 'LOA1'),), output_fmt='tsv', plot_fmt='png', lengths_parsed=True)
-
-    SummaryTask(type='SummaryTask', 
-    labels=['sample_id'], 
-    tags=[('CBRIG', 'DMEDI', 'LSIGM', 'AVITE', 'CELEG', 'EELAP', 'OOCHE2', 'OFLEX', 'LOA2', 'SLABI', 'BMALA', 'DIMMI', 'WBANC2', 'TCALL', 'OOCHE1', 'BPAHA', 'OVOLV', 'WBANC1', 'LOA1')], 
-    taxon_groups=(('CBRIG',), ('DMEDI',), ('LSIGM',), ('AVITE',), ('CELEG',), ('EELAP',), ('OOCHE2',), ('OFLEX',), ('LOA2',), ('SLABI',), ('BMALA',), ('DIMMI',), ('WBANC2',), ('TCALL',), ('OOCHE1',), ('BPAHA',), ('OVOLV',), ('WBANC1',), ('LOA1',)), output_fmt='tsv', plot_fmt='png', lengths_parsed=True)
-    """
     if task.lengths_parsed:
         partition_lengths(task=task)
     for label, tags in zip(task.labels, task.tags):
