@@ -162,7 +162,7 @@ def process_tree(
         index=False,
     )
     df_nodes["OG_NT"] = "partial"
-    df_nodes["OG_NT"] = df_nodes["OG_NT"].where(df_nodes["OG_NP"] == 1, "complete")
+    df_nodes["OG_NT"] = df_nodes["OG_NT"].mask(df_nodes["OG_NP"] == 1, "complete")
     df_summary = df_nodes.groupby(
         [
             "node_id",
