@@ -1183,11 +1183,12 @@ def get_orthogroups(
         ),
         index=True,
     )
-    tally_counts(
-        output_fmt=output_fmt,
-        plot_fmt=plot_fmt,
-        do_plots=do_plots,
-    )
+    if do_plots:
+        tally_counts(
+            output_fmt=output_fmt,
+            plot_fmt=plot_fmt,
+            do_plots=do_plots,
+        )
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
