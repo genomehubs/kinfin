@@ -73,30 +73,25 @@ def run(args):
             ],
             do_replace=False,
         )
-    # [FASTA IDs]
-    if args.f:
+    if args.f:  # [FASTA IDs]
         core.analysis.get_elements(
             directory=args.f,
             sample_ids=list(df_config.sample_id),
             processes=args.p,
         )
         sample_ids_source = "fasta"
-    # [SEQUENCE/SPECIES IDs]
-    elif args.s and args.S:
+    elif args.s and args.S:  # [SEQUENCE/SPECIES IDs]
         core.analysis.get_ids(
             sequence_ids_fn=args.s,
             species_ids_fn=args.S,
             sample_ids=list(df_config.sample_id),
         )
         sample_ids_source = "sids"
-    # [INFER IDs FROM OGs]
-    elif args.P:
+    elif args.P:  # [INFER IDs FROM OGs]
         sample_ids_source = "parse"
     else:
         sys.exit(1)
-
-    # [ORTHOGRPUPS]
-    core.analysis.get_orthogroups(
+    core.analysis.get_orthogroups(  # [ORTHOGROUPS]
         args.g,
         sample_ids=list(df_config.sample_id),
         sample_ids_source=sample_ids_source,
@@ -105,8 +100,7 @@ def run(args):
         plot_fmt=args.l,
         do_plots=(not args.L),
     )
-    # [TREE]
-    if args.t:
+    if args.t:  # [TREE]
         core.tree.process_tree(
             tree_fn=args.t,
             outgroup=args.o,
@@ -114,8 +108,7 @@ def run(args):
             output_fmt=args.F,
         )
 
-    # [ANNOTATION]
-    if args.i or args.I:
+    if args.I:  # [ANNOTATION]
         core.analysis.analyse_interpro(
             directory=args.I,
             sample_ids=list(df_config.sample_id),
