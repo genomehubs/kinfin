@@ -691,7 +691,7 @@ def get_bed_counts(
             .unstack(fill_value=0)
         )
     except ValueError:
-        logger.error("BED counts coulf not be joined. Verify input files.")
+        logger.error("BED counts could not be joined. Verify input files.")
         sys.exit(1)
     for sample_id in sample_ids_missing:
         df_counts[sample_id] = 0
