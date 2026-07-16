@@ -508,34 +508,84 @@ def do_parse_repeatmasker_task(task):
         )
 
 
-def get_parse_repeats_tasks(
+def do_parse_bed_task(task):
+    use_cols = sorted(
+        task.params["name_idxs"] + []
+        if task.params["count_idx"] is None
+        else task.params["name_idxs"] + [task.params["count_idx"]]
+    )
+    success = False
+    try:
+        df_bed = pd.read_csv(
+            task.fn,
+            sep="\t",
+            header=None,
+            skiprows=(1 if task.params["has_header"] else 0),
+            usecols=use_cols,
+            dtype=str,
+        )
+        if task.params["count_idx"]:
+            df_bed_counts = (
+                pd.concat(
+                    [
+                        df_bed[task.params["name_idxs"]]
+                        .apply(task.params["name_sep"].join, axis=1)
+                        .to_frame("orthogroup_id"),
+                        df_bed[[task.params["count_idx"]]].astype(int),
+                    ],
+                    axis=1,
+                )
+                .rename(columns={task.params["count_idx"]: "count"})
+                .groupby("orthogroup_id")
+                .sum()
+            )
+        else:
+            df_bed_counts = (
+                df_bed[task.params["name_idxs"]]
+                .apply(task.params["name_sep"].join, axis=1)
+                .value_counts()
+                .to_frame("count")
+            )
+        df_bed_counts["sample_id"] = task.sample_id
+        core.utils.dump(
+            df_bed_counts.reset_index(),
+            fn=core.utils.format_fn(
+                fn=f"{task.sample_id}.{definitions.COUNTS_FN}",
+                prefix=core.utils.get_dir("TMP") / task.sample_id,
+            ),
+            index=True,
+        )
+        success = True
+    except Exception:
+        pass
+    return (task.fn, success)
+
+
+def get_parse_bed_tasks(
     directory=None,
-    file_type="repeatmasker",
     sample_ids=[],
-    min_div=0.0,
-    max_div=100.0,
+    count_idx=None,
+    name_idxs=[3],
+    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
+    has_header=False,
 ):
     extensions = []
-    if file_type == "repeatmasker":
-        extensions = [".out"]
-    if file_type == "earlgrey":
-        extensions = ["familyLevelCount.txt"]
-    if file_type == "bed":
-        extensions = [".bed"]
     tasks = get_parse_tasks(
         directory=directory,
-        type=file_type,
+        type="bed",
         sample_ids=sample_ids,
-        extensions=extensions,
+        extensions=definitions.SUPPORTED_BED_EXTENSIONS,
         params={
-            "min_div": min_div,
-            "max_div": max_div,
+            "count_idx": count_idx,
+            "name_idxs": name_idxs,
+            "name_sep": name_sep,
+            "has_header": has_header,
         },
     )
     sample_ids_found = [task.sample_id for task in tasks]
     if len(sample_ids_found) == 0:
         logger.warning(
-            f"no files with extension '{extensions.pop()}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
+            f"no files with extension '{extensions}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
         )
         sys.exit(1)
     if len(sample_ids_found) < len(sample_ids):
@@ -543,130 +593,159 @@ def get_parse_repeats_tasks(
         logger.warning(
             f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
         )
-        for sample_id in sample_ids_missing:
-            tasks.append(
-                ParseTask(
-                    type=file_type,
-                    sample_id=sample_id,
-                    fn=None,
-                    params={
-                        "min_div": min_div,
-                        "max_div": max_div,
-                    },
-                )
-            )
     return tasks
 
 
-def get_repeats(
-    directory=None,
-    repeat_type="repeatmasker",
+def process_bed(
+    directory="",
     sample_ids=[],
-    min_div=0.0,
-    max_div=100.0,
+    count_idx=None,
+    name_idxs=[3],
+    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
+    has_header=False,
+    output_fmt=definitions.STD_FORMAT,
+    plot_fmt=definitions.PLOT_FORMAT,
+    do_plots=False,
     processes=1,
 ):
-    parse_repeats(
+    parse_beds(
         directory=directory,
-        repeat_type=repeat_type,
         sample_ids=sample_ids,
-        min_div=min_div,
-        max_div=max_div,
+        count_idx=count_idx,
+        name_idxs=name_idxs,
+        name_sep=name_sep,
+        has_header=has_header,
         processes=processes,
     )
-    tally_repeats(
-        directory=directory,
-        repeat_type=repeat_type,
+    get_bed_counts(
         sample_ids=sample_ids,
+        output_fmt=output_fmt,
+        plot_fmt=plot_fmt,
+        do_plots=do_plots,
     )
 
 
-def tally_repeats(
+def parse_beds(
     directory=None,
-    repeat_type="",
-    sample_ids="",
-):
-    t_0 = time.monotonic()
-    logger.info("joining repeat data ...")
-    repeat_groups = ["repeat_family", "repeat_subclass", "repeat_class"]
-    with tqdm.tqdm(
-        total=len(sample_ids) * len(repeat_groups),
-        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
-        ncols=definitions.PROGRESS_NCOLS,
-    ) as pbar:
-        for repeat_group in repeat_groups:
-            df_repeats = []
-            sample_ids_missing = []
-            for sample_id in sample_ids:
-                df = core.utils.get_repeat_df(
-                    sample_id=sample_id,
-                    repeat_group=repeat_group,
-                )
-                if isinstance(df, pd.DataFrame):
-                    df_repeats.append(df)
-                else:
-                    sample_ids_missing.append(sample_id)
-                pbar.update()
-            df_repeats = (
-                (
-                    pd.concat(
-                        df_repeats,
-                        axis=0,
-                    )
-                )
-                .reset_index()
-                .groupby([repeat_group, "sample_id"], as_index=False)
-                .sum()
-                .set_index([repeat_group, "sample_id"])
-                .unstack(fill_value=0)
-            )
-            for sample_id in sample_ids_missing:
-                df_repeats[("count", sample_id)] = 0
-                # df_repeats[("span", sample_id)] = 0
-            core.utils.dump(
-                df_repeats["count"],
-                fn=core.utils.format_fn(
-                    f"{repeat_group}.count.{definitions.REPEATS_FN}",
-                    prefix=core.utils.get_dir("TMP"),
-                ),
-                index=True,
-            )
-            # core.utils.dump(
-            #    df_repeats["span"],
-            #    fn=core.utils.format_fn(
-            #        f"{repeat_group}.span.{definitions.REPEATS_FN}",
-            #        prefix=core.utils.get_dir("TMP"),
-            #    ),
-            #    index=True,
-            # )
-    logger.info("annotation data joined")
-    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-
-
-def parse_repeats(
-    directory=None,
-    repeat_type=None,
     sample_ids=[],
-    min_div=0.0,
-    max_div=100.0,
+    count_idx=None,
+    name_idxs=[3],
+    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
+    has_header=False,
     processes=1,
 ):
     t_0 = time.monotonic()
-    logger.info(f"parsing 'repeat' data in {directory}")
-    tasks = get_parse_repeats_tasks(
+    logger.info(f"parsing BED file(s) in {directory}")
+    tasks = get_parse_bed_tasks(
         directory=directory,
         sample_ids=sample_ids,
-        min_div=min_div,
-        max_div=max_div,
+        count_idx=count_idx,
+        name_idxs=name_idxs,
+        name_sep=name_sep,
+        has_header=has_header,
     )
     processes = 1 if len(tasks) == 1 else processes
     logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
-    do_tasks(
+    successes = do_tasks(
         tasks=tasks,
-        desc=definitions.PROGRESS_DESC_REPEATS,
+        desc=definitions.PROGRESS_DESC_BED,
         processes=processes,
-        collect_results=False,
+        collect_results=True,
     )
+    problematic_bed_string = "\n".join([success[0] for success in successes if not success[1]])
+    if problematic_bed_string:
+        logger.error(f"The following BED files could not be parsed. Verify format and use of option (-B):\n{problematic_bed_string}")
+        sys.exit(1)
+    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
+
+
+def get_bed_counts(
+    sample_ids=[],
+    output_fmt=definitions.STD_FORMAT,
+    plot_fmt=definitions.PLOT_FORMAT,
+    do_plots=True,
+):
+    t_0 = time.monotonic()
+    logger.info("joining BED data ...")
+    df_beds = []
+    sample_ids_missing = []
+    with tqdm.tqdm(
+        total=len(sample_ids),
+        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
+        ncols=definitions.PROGRESS_NCOLS,
+    ) as pbar:
+        for sample_id in sample_ids:
+            df_bed = core.utils.get_bed_df(
+                sample_id=sample_id,
+            )
+            if isinstance(df_bed, pd.DataFrame):
+                df_beds.append(df_bed)
+            else:
+                sample_ids_missing.append(sample_id)
+            pbar.update()
+    df_counts = pd.concat(df_beds, axis=0,).reset_index().set_index(["orthogroup_id", "sample_id"])["count"].unstack(fill_value=0)
+    for sample_id in sample_ids_missing:
+        df_counts[sample_id] = 0
+    # [DUMP COUNTS]
+    core.utils.dump(
+        df_counts,
+        fn=core.utils.format_fn(
+            fn=definitions.COUNTS_FN,
+            prefix=core.utils.get_dir("INPUT"),
+        ),
+        index=True,
+    )
+    core.utils.dump(
+        df_counts.replace(0, np.nan),
+        fn=core.utils.format_fn(
+            fn=definitions.COUNTS_NAN_FN,
+            prefix=core.utils.get_dir("TMP"),
+        ),
+        index=True,
+    )
+    if do_plots:
+        tally_counts(
+            output_fmt=output_fmt,
+            plot_fmt=plot_fmt,
+            do_plots=do_plots,
+        )
+    logger.info(
+        core.utils.format_elapsed(time.monotonic() - t_0),
+    )
+
+    # df_repeats = (
+    #     (
+    #         pd.concat(
+    #             df_repeats,
+    #             axis=0,
+    #         )
+    #     )
+    #     .reset_index()
+    #     .groupby([repeat_group, "sample_id"], as_index=False)
+    #     .sum()
+    #     .set_index([repeat_group, "sample_id"])
+    #     .unstack(fill_value=0)
+    # )
+    # for sample_id in sample_ids_missing:
+    #     df_repeats[("count", sample_id)] = 0
+    #     # df_repeats[("span", sample_id)] = 0
+    # core.utils.dump(
+    #     df_repeats["count"],
+    #     fn=core.utils.format_fn(
+    #         f"{repeat_group}.count.{definitions.REPEATS_FN}",
+    #         prefix=core.utils.get_dir("TMP"),
+    #     ),
+    #     index=True,
+    # )
+    # # core.utils.dump(
+    # #    df_repeats["span"],
+    # #    fn=core.utils.format_fn(
+    # #        f"{repeat_group}.span.{definitions.REPEATS_FN}",
+    # #        prefix=core.utils.get_dir("TMP"),
+    # #    ),
+    # #    index=True,
+    # # )
+    logger.info("annotation data joined")
     logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
 
 
@@ -1570,7 +1649,8 @@ def compare(task):
                 categorical=["OT"],
             )
             if task.plot_fmt is not None:
-                line_plot_data.append([tag, SC_TG, df_sampling])
+                if not df_sampling.empty:
+                    line_plot_data.append([tag, SC_TG, df_sampling])
             core.utils.dump(
                 df_sampling,
                 fn=core.utils.format_fn(
@@ -1821,6 +1901,8 @@ def do_task(task):
         return do_parse_repeatmasker_task(task)
     elif task.type == "earlgrey":
         return do_parse_earlgrey_task(task)
+    elif task.type == "bed":
+        return do_parse_bed_task(task)
     else:
         raise ValueError(f"unknown task type: {task}")
 

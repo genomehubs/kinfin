@@ -47,6 +47,40 @@ def int_zero_or_positive(value):
     raise argparse.ArgumentTypeError(msg)
 
 
+def int_zero_or_positive_or_none(value):
+    msg = f"must be zero or positive integer or None (not '{value}')"
+    try:
+        if value is None:
+            return value
+        else:
+            number = int(value)
+            if number >= 0:
+                return number
+    except Exception:
+        raise argparse.ArgumentTypeError(msg)
+    raise argparse.ArgumentTypeError(msg)
+
+
+# def ints_zero_or_positive(values):
+#     values_invalid = []
+#     values_valid = []
+#     print(f"{values=}")
+#     for value in values:
+#         try:
+#             value = int(value)
+#             if value >= 0:
+#                 values_valid.append(value)
+#             else:
+#                 values_invalid.append(value)
+#         except ValueError:
+#             values_invalid.append(value)
+#     if values_invalid:
+#         raise argparse.ArgumentTypeError(
+#             f"must be zero or positive integers. Invalid values: '{values_invalid}'"
+#         )
+#     return values_valid
+
+
 def float_proportion(value):
     msg = f"must be a value between 0.0 and 1.0 (not '{value}')"
     try:
@@ -58,10 +92,10 @@ def float_proportion(value):
     raise argparse.ArgumentTypeError(msg)
 
 
-def add_reps_parser(subparsers):
+def add_bed_parser(subparsers):
     subparser = subparsers.add_parser(
-        "reps",
-        help="start KinFin analysis of repeat/TE data",
+        "bed",
+        help="start KinFin analysis of BED data",
     )
     subparser._optionals.title = "[optional]"
     subparser_required = subparser.add_argument_group("[essential]")
@@ -74,34 +108,41 @@ def add_reps_parser(subparsers):
         help="Config file in CSV or JSON",
     )
     subparser_required.add_argument(
+        "-b",
+        metavar="BED_DIR",
+        required=True,
+        type=existing_dir,
+        help="Directory containing BED files to parse",
+    )
+    subparser_required.add_argument(
+        "-B",
+        action="store_true",
+        help="BED file(s) include(s) header row (will be ignored)",
+    )
+    subparser_parameters.add_argument(
+        "-C",
+        metavar="COUNT_IDX",
+        required=False,
+        type=int_zero_or_positive_or_none,
+        default=None,
+        help="Index of count column in BED file (0-based) or 'None'. If 'None', each individual row in BED file counts as 1 element. (default: '%(default)s')",
+    )
+    subparser_parameters.add_argument(
         "-e",
-        metavar="REPEATMASKER_DIR",
+        metavar="NAME_IDXS",
         required=False,
-        type=existing_dir,
-        help="Directory containing Repeatmasker (*.out) files to parse",
+        nargs="*",
+        type=int_zero_or_positive,
+        default=[3],
+        help="Index of name column(s) in BED file (0-based). Fields will be concatenated (using '-s') in that order. Counts will be summed for each name. (default: '%(default)s')",
     )
-    subparser_required.add_argument(
-        "-m",
-        metavar="MIN_DIV",
+    subparser_parameters.add_argument(
+        "-s",
+        metavar="NAME_SEP",
         required=False,
-        type=float,
-        default=0.0,
-        help="Minimum divergence when filtering Repeatmasker (*.out) files (default: %(default)s)",
-    )
-    subparser_required.add_argument(
-        "-M",
-        metavar="MAX_DIV",
-        required=False,
-        type=float,
-        default=100.0,
-        help="Maximum divergence when filtering Repeatmasker (*.out) files (default: %(default)s)",
-    )
-    subparser_required.add_argument(
-        "-E",
-        metavar="EARLGREY_DIR",
-        required=False,
-        type=existing_dir,
-        help="Directory containing Earlgrey (*.familyLevelCount.txt) files to parse",
+        type=str,
+        default=definitions.DEFAULT_BED_NAME_SEPARATOR,
+        help="Separator used to concatenate name columns in BED file. (default: '%(default)s')",
     )
     subparser_parameters.add_argument(
         "-t",
@@ -127,6 +168,38 @@ def add_reps_parser(subparsers):
         nargs="*",
         default=definitions.ARGS_TAXONOMY_RANKS_DEFAULT,
         help=f"Taxonomic ranks to be inferred from NCBI 'taxids' column in config file (or None to ignore) (default: {' '.join(definitions.ARGS_TAXONOMY_RANKS_DEFAULT)})",
+    )
+    subparser_parameters.add_argument(
+        "-n",
+        metavar="COG_COUNT_T",
+        required=False,
+        type=int_positive,
+        default=1,
+        help="Target count of COGs (Copy-OrthoGroups) (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-x",
+        metavar="COG_COUNT_P",
+        required=False,
+        type=float_proportion,
+        default=0.75,
+        help="Minimum proportion of Sample IDs at COG_COUNT_TARGET (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-m",
+        metavar="COG_COUNT_MIN",
+        required=False,
+        type=int_zero_or_positive,
+        default=0,
+        help="Minimum count per Sample IDs outside (!) of COG_COUNT_FRACTION (default: %(default)s)",
+    )
+    subparser_parameters.add_argument(
+        "-M",
+        metavar="COG_COUNT_MAX",
+        required=False,
+        type=int_positive,
+        default=1,
+        help="Maximum count per Sample IDs outside (!) of COG_COUNT_FRACTION (default: %(default)s)",
     )
     subparser_parameters.add_argument(
         "-d",
@@ -604,7 +677,7 @@ def get_argparse():
         dest="command",
     )
     add_analysis_parser(subparsers)
-    add_reps_parser(subparsers)
+    add_bed_parser(subparsers)
     add_api_parser(subparsers)
     # add_plot_parser(subparsers)
     add_view_parser(subparsers)
@@ -626,14 +699,10 @@ def get_argparse():
             subparser.error(
                 "must specify options (-f) or (-P) or (-s/-S) depending on your data"
             )
-    if args.command == "reps":
+    if args.command == "bed":
         subparser = subparsers.choices[args.command]
-        if (args.E and args.e) or not (args.E or args.e):
-            subparser.error("must specify either (-e) or (-E)")
-        if args.m >= args.M:
-            subparser.error(
-                f"value for '-m' must be smaller than '-M' (not {args.m} >= {args.M}) !",
-            )
+        if args.b and not args.n:
+            subparser.error("if specifying (-b) must specify (-n)")
     if args.command == "preprocess":
         subparser = subparsers.choices[args.command]
         if args.i and args.e:
