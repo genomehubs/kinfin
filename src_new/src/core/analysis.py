@@ -509,11 +509,10 @@ def do_parse_repeatmasker_task(task):
 
 
 def do_parse_bed_task(task):
-    use_cols = sorted(
-        task.params["name_idxs"] + []
-        if task.params["count_idx"] is None
-        else task.params["name_idxs"] + [task.params["count_idx"]]
-    )
+    use_cols = list(task.params["name_idxs"])
+    if task.params["count_idx"] is not None:
+        use_cols.append(task.params["count_idx"])
+
     success = False
     try:
         df_bed = pd.read_csv(
@@ -569,7 +568,6 @@ def get_parse_bed_tasks(
     name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
     has_header=False,
 ):
-    extensions = []
     tasks = get_parse_tasks(
         directory=directory,
         type="bed",
@@ -585,7 +583,7 @@ def get_parse_bed_tasks(
     sample_ids_found = [task.sample_id for task in tasks]
     if len(sample_ids_found) == 0:
         logger.warning(
-            f"no files with extension '{extensions}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
+            f"no files with extension '{definitions.SUPPORTED_BED_EXTENSIONS}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
         )
         sys.exit(1)
     if len(sample_ids_found) < len(sample_ids):
@@ -646,15 +644,17 @@ def parse_beds(
     )
     processes = 1 if len(tasks) == 1 else processes
     logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
-    successes = do_tasks(
+    results = do_tasks(
         tasks=tasks,
         desc=definitions.PROGRESS_DESC_BED,
         processes=processes,
         collect_results=True,
     )
-    problematic_bed_string = "\n".join([success[0] for success in successes if not success[1]])
+    problematic_bed_string = "\n".join([fn for fn, success in results if not success])
     if problematic_bed_string:
-        logger.error(f"The following BED files could not be parsed. Verify format and use of option (-B):\n{problematic_bed_string}")
+        logger.error(
+            f"The following BED files could not be parsed. Verify format and use of option (-B):\n{problematic_bed_string}"
+        )
         sys.exit(1)
     logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
 
@@ -683,7 +683,12 @@ def get_bed_counts(
             else:
                 sample_ids_missing.append(sample_id)
             pbar.update()
-    df_counts = pd.concat(df_beds, axis=0,).reset_index().set_index(["orthogroup_id", "sample_id"])["count"].unstack(fill_value=0)
+    df_counts = (
+        pd.concat(df_beds, axis=0)
+        .reset_index()
+        .set_index(["orthogroup_id", "sample_id"])["count"]
+        .unstack(fill_value=0)
+    )
     for sample_id in sample_ids_missing:
         df_counts[sample_id] = 0
     # [DUMP COUNTS]
@@ -712,41 +717,6 @@ def get_bed_counts(
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
-
-    # df_repeats = (
-    #     (
-    #         pd.concat(
-    #             df_repeats,
-    #             axis=0,
-    #         )
-    #     )
-    #     .reset_index()
-    #     .groupby([repeat_group, "sample_id"], as_index=False)
-    #     .sum()
-    #     .set_index([repeat_group, "sample_id"])
-    #     .unstack(fill_value=0)
-    # )
-    # for sample_id in sample_ids_missing:
-    #     df_repeats[("count", sample_id)] = 0
-    #     # df_repeats[("span", sample_id)] = 0
-    # core.utils.dump(
-    #     df_repeats["count"],
-    #     fn=core.utils.format_fn(
-    #         f"{repeat_group}.count.{definitions.REPEATS_FN}",
-    #         prefix=core.utils.get_dir("TMP"),
-    #     ),
-    #     index=True,
-    # )
-    # # core.utils.dump(
-    # #    df_repeats["span"],
-    # #    fn=core.utils.format_fn(
-    # #        f"{repeat_group}.span.{definitions.REPEATS_FN}",
-    # #        prefix=core.utils.get_dir("TMP"),
-    # #    ),
-    # #    index=True,
-    # # )
-    logger.info("annotation data joined")
-    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
 
 
 def parse_interpro(
