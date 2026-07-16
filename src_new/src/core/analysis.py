@@ -683,12 +683,16 @@ def get_bed_counts(
             else:
                 sample_ids_missing.append(sample_id)
             pbar.update()
-    df_counts = (
-        pd.concat(df_beds, axis=0)
-        .reset_index()
-        .set_index(["orthogroup_id", "sample_id"])["count"]
-        .unstack(fill_value=0)
-    )
+    try:
+        df_counts = (
+            pd.concat(df_beds, axis=0)
+            .reset_index()
+            .set_index(["orthogroup_id", "sample_id"])["count"]
+            .unstack(fill_value=0)
+        )
+    except ValueError:
+        logger.error("BED counts coulf not be joined. Verify input files.")
+        sys.exit(1)
     for sample_id in sample_ids_missing:
         df_counts[sample_id] = 0
     # [DUMP COUNTS]
