@@ -172,6 +172,8 @@ def lines(
     plot_fmt=definitions.PLOT_FORMAT,
 ):
     df_chunks, tags_chunks = [], []
+    # print(f"{label=}, {tags=}")
+    # print(dfs)
     for i in range(0, len(dfs), max_lines):
         j = i + max_lines
         df_chunks.append(dfs[i:j])

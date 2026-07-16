@@ -127,36 +127,5 @@ def run(args):
         plot_fmt=args.l if not args.L else None,
         processes=args.p,
     )
-    # tasks = core.analysis.get_comparison_tasks(
-    #     df_config=df_config,
-    #     count_target=args.n,
-    #     count_min=args.m,
-    #     count_max=args.M,
-    #     count_fraction=args.x,
-    #     output_fmt=args.F,
-    #     ignore_sample_comparisons=args.X,
-    # )
-    # logger.info(
-    #     f"calculating {len(tasks)} comparisons between taxon-groups using {args.p} process(es)"
-    # )
-    # core.analysis.do_tasks(
-    #     tasks,
-    #     desc=definitions.PROGRESS_DESC_PARTITIONING,
-    #     processes=args.p,
-    # )
-    # tasks = core.analysis.get_summary_tasks(
-    #     df_config=df_config,
-    #     output_fmt=args.F,
-    #     ignore_sample_comparisons=args.X,
-    #     plot_fmt=args.l if not args.L else None,
-    # )
-    # logger.info(
-    #     f"calculating summary metrics for {len(tasks)} labels using {args.p} process(es)"
-    # )
-    # core.analysis.do_tasks(
-    #     tasks,
-    #     desc=definitions.PROGRESS_DESC_PARTITIONING,
-    #     processes=args.p,
-    # )
     logger.info(core.utils.format_elapsed(time.monotonic() - t_0))
     sys.exit(0)

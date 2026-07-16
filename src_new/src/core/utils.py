@@ -134,17 +134,13 @@ def get_signature_summary_df(sample_id=None):
     )
 
 
-def get_repeat_df(sample_id=None, repeat_group=None):
+def get_bed_df(sample_id=None):
     if sample_id is not None:
         return load(
-            fn=get_dir("TMP")
-            / sample_id
-            / f"{sample_id}.{repeat_group}.count.{definitions.REPEATS_FN}"
+            fn=get_dir("TMP") / sample_id / f"{sample_id}.{definitions.COUNTS_FN}",
         )
     else:
-        return load(
-            fn=get_dir("TMP") / f"{repeat_group}.count.{definitions.REPEATS_FN}"
-        )
+        return load(fn=get_dir("TMP") / definitions.COUNTS_FN)
 
 
 def get_annotation_df(sample_id=None, output_fmt=definitions.STD_FORMAT, delete=False):
@@ -251,6 +247,20 @@ def mkdir(name, subdirs=[], do_replace=False):
                     get_dir("TMP"),
                     get_dir("PLOTS"),
                     get_dir("ANNOTATION"),
+                    get_dir("TREE"),
+                    get_dir("PARTITION"),
+                ]:
+                    mkdir(subdir)
+            if subdirs == "initbed":
+                set_dir("INPUT", output_dir / "input")
+                set_dir("TMP", output_dir / ".tmp")
+                set_dir("PLOTS", output_dir / "plot")
+                set_dir("TREE", output_dir / "tree")
+                set_dir("PARTITION", output_dir / "partition")
+                for subdir in [
+                    get_dir("INPUT"),
+                    get_dir("TMP"),
+                    get_dir("PLOTS"),
                     get_dir("TREE"),
                     get_dir("PARTITION"),
                 ]:

@@ -1,5 +1,6 @@
 import pathlib
 
+DEFAULT_BED_NAME_SEPARATOR = "_"
 ARGS_SUPPORTED_PLOT_FORMATS = ["png", "jpeg", "pdf"]
 ARGS_SUPPORTED_OUTPUT_FORMATS = ["tsv", "parquet", "feather"]
 ARGS_SUPPORTED_OUTPUT_FORMATS_CONFIG = ["csv", "json"]
@@ -51,7 +52,7 @@ ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
 SUPPORTED_INTERPRO_EXTENSIONS = [".tsv"]
-
+SUPPORTED_BED_EXTENSIONS = [".bed"]
 CONFIG_MIN_SAMPLE_IDS = 2  # at least one group in comparisons needs to be of length 2
 
 PROGRESS_NCOLS = 0
@@ -60,7 +61,7 @@ PROGRESS_DESC_ORTHOGROUPS_PARSE = f"[{'ORTHOGROUPS'.center(23, '.')}]"
 PROGRESS_DESC_FASTA = f"[{'FASTAS'.center(23, '.')}]"
 PROGRESS_DESC_ORTHOGROUPS_ADD_SAMPLE = f"[{'SAMPLEIDS'.center(23, '.')}]"
 PROGRESS_DESC_INTERPRO = f"[{'INTERPRO PARSING'.center(23, '.')}]"
-PROGRESS_DESC_REPEATS = f"[{'REPEATS PARSING'.center(23, '.')}]"
+PROGRESS_DESC_BED = f"[{'BED PARSING'.center(23, '.')}]"
 PROGRESS_DESC_SIGNATURES = f"[{'SIGNATURES 1/2'.center(23, '.')}]"
 PROGRESS_DESC_SIGNATURES_COUNTING = f"[{'SIGNATURES 2/2'.center(23, '.')}]"
 PROGRESS_DESC_ANNOTATION_TASK_PREP = f"[{'CHUNKING ANNOTATION'.center(23, '.')}]"

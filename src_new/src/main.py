@@ -7,8 +7,8 @@ if __name__ == "__main__":
     if not args.command == "serve":
         if args.command == "analysis":
             cli.analyse.run(args)
-        elif args.command == "reps":
-            cli.reps.run(args)
+        elif args.command == "bed":
+            cli.bed.run(args)
         elif args.command == "plot":
             cli.plot.run(args)
         elif args.command == "view":

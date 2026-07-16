@@ -29,10 +29,9 @@ def run(args):
     t_0 = time.monotonic()
     # [ToDo] put everything 'setup' into one function
     # create basic DIRs (before core.log.init_logger!)
-    print("reps")
     core.utils.mkdir(
         name=args.d,
-        subdirs="init",
+        subdirs="initbed",
         do_replace=True,
     )
     core.log.init_logger(args)
@@ -66,44 +65,26 @@ def run(args):
             name=core.utils.get_dir("PLOTS"),
             subdirs=[
                 "/".join([d1, d2])
-                for d1 in ["curve"]
+                for d1 in ["curve", "volcano"]
                 for d2 in ["sample_ids"] + list(df_config.columns)
             ]
             + [
                 "tally",
-                "volcano",
             ],
             do_replace=False,
         )
-    # [repeatmasker]
-    if args.e:
-        core.analysis.get_repeats(
-            directory=args.e,
-            sample_ids=list(df_config.sample_id),
-            repeat_type="repeatmasker",
-            min_div=args.m,
-            max_div=args.M,
-            processes=args.p,
-        )
-    # [earlgrey]
-    elif args.E:
-        core.analysis.get_repeats(
-            directory=args.E,
-            sample_ids=list(df_config.sample_id),
-            repeat_type="earlgrey",
-            processes=args.p,
-        )
-    # [BED]
-    # elif args.b:
-    #     core.analysis.get_repeats(
-    #         directory=args.b,
-    #         sample_ids=list(df_config.sample_id),
-    #         repeat_type="bed",
-    #         processes=args.p,
-    #     )
-    else:
-        sys.exit(1)
-    sys.exit(1)
+    core.analysis.process_bed(
+        directory=args.b,
+        sample_ids=list(df_config.sample_id),
+        count_idx=args.C,
+        name_idxs=args.e,
+        name_sep=args.s,
+        has_header=args.B,
+        output_fmt=args.F,
+        plot_fmt=args.l,
+        do_plots=(not args.L),
+        processes=args.p,
+    )
     # [TREE]
     if args.t:
         core.tree.process_tree(
