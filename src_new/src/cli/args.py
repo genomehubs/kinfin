@@ -52,6 +52,8 @@ def int_zero_or_positive_or_none(value):
     try:
         if value is None:
             return value
+        elif value == "None":
+            return None
         else:
             number = int(value)
             if number >= 0:
