@@ -418,6 +418,11 @@ def add_analysis_parser(subparsers):
         help="No plots",
     )
     subparser_parameters.add_argument(
+        "-U",
+        action="store_true",
+        help="Ignore duplicated IDs in ORTHOGROUPS_FN. Use at own risk. Will drop duplicate located inside the smaller orthogroup.",
+    )
+    subparser_parameters.add_argument(
         "-l",
         metavar="PLOT_FMT",
         choices=definitions.ARGS_SUPPORTED_PLOT_FORMATS,

@@ -86,8 +86,6 @@ def poolcontext(*args, **kwargs):
 """
 
 [ToDo]
-- parse multicolumn TABLE_FN
-- think about whether to support other ways of linking element_id <-> sample_id (beside name-prefix)?
 [###] filenames vs pathlib-objects
 - use pathlib only for intial CLI args to get absolute paths easily
 - filename-strings are better for being passed to processes
@@ -125,6 +123,7 @@ def get_parse_tasks(
 
 # [DONE]
 def do_parse_fasta_task(task):
+    # fn, sample_id
     try:
         data = []
         for header, length in core.utils.iter_seq_length(task.fn):
@@ -196,6 +195,7 @@ def get_interpro_df_empty(sample_id):
 
 
 def do_parse_interpro_task(task):
+    # fn, sample_id
     analyses = []
     try:
         if task.fn is None:
@@ -329,24 +329,6 @@ def downcast(df, categorical=[], info=False):
 
 
 def do_parse_earlgrey_task(task):
-    """
-    ["family", "class", "subclass", "span", "count"]
-    # Earlgrey
-    ## TE Family   Coverage (bp)   Copy Number
-    ## {name}#{superfamily}/{family}
-    A-RICH#Low_complexity   27522   592
-    => ["A-RICH", "Other", "Low_complexity"]
-    RND-1_FAMILY-11#RC/Helitron 6212    29
-    => ["RND-1_FAMILY-11", "RC", "Helitron"]
-    RND-2_FAMILY-54#LINE/RTE-RTE    4389    19
-    => ["RND-2_FAMILY-54", "LINE", "RTE-RTE"]
-    (AAT)N#Simple_repeat    2530    59
-    => ["(AAT)N", "Other", "Simple_repeat"]
-    RND-1_FAMILY-6#Unknown  2488    7
-    => ["RND-1_FAMILY-6", "Other", "Unknown"]
-    RND-1_FAMILY-24#DNA/TcMar-Tc1   44617   42
-    => ["RND-1_FAMILY-24", "DNA", "TcMar-Tc1"]
-    """
     try:
         HEADER = [
             "te_family",
@@ -408,24 +390,6 @@ def do_parse_earlgrey_task(task):
 
 
 def do_parse_repeatmasker_task(task):
-    """
-    # RM
-    ["family", "class", "subclass", "span", "count"]
-    431  19.4  0.0  2.0  CM057379    10748   10847 (207354771) +  aSto-6.9027    LTR/ERV                897  994 (6786)     29
-    => ["aSto-6.9027", "LTR", "ERV", (10847-10748-1), 1]
-    401  38.6  8.0  0.5  CM057379    13000   13374 (207352244) C  LTR78B         LTR/ERV1             (576)  720    318     35
-    => ["LTR78B", "LTR", "ERV1", (13374-13000-1), 1]
-     21  15.2  1.4  9.2  CM057379    14076   14145 (207351473) +  (CCCGC)n       Simple_repeat            1   65    (0)     37
-    => ["(CCCGC)n", "Other", "Simple_repeat", (13374-13000-1), 1]
-    976   5.1  0.0  4.4  CM057379    14957   15099 (207350519) C  5S-Sauria      SINE/5S-Sauria-RTE   (211)  137      1     38
-    => ["5S-Sauria", "SINE", "5S-Sauria-RTE", (15099-14957-1), 1]
-     17  22.6  4.5  4.5  CM057379    15821   15887 (207349731) +  GA-rich        Low_complexity           1   67    (0)     40
-    => ["GA-rich", "Other", "Low_complexity", (15099-14957-1), 1]
-     14   4.9  0.0  0.0  CM057379    16566   16586 (207349032) +  (GCGG)n        Simple_repeat            1   21    (0)     43
-    => ["(GCGG)n", "Other", "Simple_repeat", (16586-16566-1), 1]
-    951   2.5  0.0  0.0  CM057379    16718   16838 (207348780) C  5S             rRNA/rRNA              (0)  121      1     45
-    => ["5S", "rRNA", "rRNA", (16838-16718-1), 1]
-    """
     HEADER = [
         "score",
         "div",
@@ -1109,21 +1073,57 @@ def get_orthogroups(
         data["sample_id"] = _sample_ids
         dtypes["sample_id"] = "category"
     df_orthogroups = pd.DataFrame.from_dict(data=data).astype(dtypes)
-    logger.info("orthogroups parsed")
+    logger.info(
+        f"{core.utils.format_number(df_orthogroups['orthogroup_id'].nunique())} orthogroup(s) parsed"
+    )
     duplicated_elements_count = int(
         (df_orthogroups["element_id"].value_counts() > 1).value_counts().get(True, 0)
     )
-    if not ignore_duplicated_elements:
-        if duplicated_elements_count > 0:
-            duplicated_element_ids = (
-                df_orthogroups["element_id"]
-                .value_counts()
-                .reset_index()
-                .query("count > 1")["element_id"]
-                .to_list()
+    if duplicated_elements_count > 0:
+        logger.warning(
+            f"{core.utils.format_number(duplicated_elements_count)} duplicated element(s) found"
+        )
+        df_orthogroups["OG_EC"] = df_orthogroups["orthogroup_id"].map(
+            df_orthogroups["orthogroup_id"].value_counts().to_dict()
+        )
+        df_dupes = df_orthogroups[
+            df_orthogroups.duplicated("element_id", keep=False)
+        ].sort_values(by=["element_id", "OG_EC"], ascending=False)
+        logger.warning(
+            f"writing duplicated element(s) to '{core.utils.get_dir('INPUT') / definitions.ORTHOGROUPS_DUPES_FN}'"
+        )
+        core.utils.dump(
+            df_dupes,
+            fn=core.utils.format_fn(
+                definitions.ORTHOGROUPS_DUPES_FN,
+                prefix=core.utils.get_dir("INPUT"),
+            ),
+            index=False,
+        )
+        if ignore_duplicated_elements:
+            # remove dupes with lower OG_EC (should be singletons)
+            logger.warning("removing duplicated element(s)")
+            df_orthogroups = (
+                df_orthogroups.loc[
+                    df_orthogroups.groupby(["element_id"])["OG_EC"].idxmax()
+                ]
+                .sort_index(ignore_index=True)
+                .drop(["OG_EC"], axis=1)
             )
-            logger.error(
-                f"{core.utils.format_number(duplicated_elements_count)} duplicated element(s) encountered in {orthogroup_fn}: {' '.join(duplicated_element_ids)}"
+            logger.warning(
+                f"{core.utils.format_number(df_orthogroups['orthogroup_id'].nunique())} orthogroup(s) remaining"
+            )
+        else:
+            logger.warning(
+                "can't proceed with duplicated elements. Either provide a different file or rerun with (-U)"
+            )
+            core.utils.dump(
+                df_orthogroups,
+                fn=core.utils.format_fn(
+                    definitions.ORTHOGROUPS_FN,
+                    prefix=core.utils.get_dir("INPUT"),
+                ),
+                index=False,
             )
             sys.exit(1)
     if not sample_ids_source == "parse":
@@ -1842,11 +1842,12 @@ def contrast(task):
         if task.plot_fmt is not None:
             df_volcano = df_partition[["l2m_TG1_TG2", "pvalue"]].dropna()
             if not df_volcano.empty:
+                prefix = core.utils.get_dir("PLOTS") / "volcano" / label
                 core.utils.dump(
                     df_volcano,
                     fn=core.utils.format_fn(
                         fn=(f"{fn}.volcano.{task.output_fmt}"),
-                        prefix=core.utils.get_dir("PLOTS") / "volcano" / label,
+                        prefix=prefix,
                     ),
                     index=True,
                 )
@@ -1855,7 +1856,7 @@ def contrast(task):
                     y=df_volcano["pvalue"],
                     fn=core.utils.format_fn(
                         fn=(f"{fn}.volcano.{task.plot_fmt}"),
-                        prefix=core.utils.get_dir("PLOTS") / "volcano" / label,
+                        prefix=prefix,
                     ),
                 )
 

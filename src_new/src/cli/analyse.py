@@ -99,6 +99,7 @@ def run(args):
         lengths_parsed=True if args.f else False,
         plot_fmt=args.l,
         do_plots=(not args.L),
+        ignore_duplicated_elements=args.U,
     )
     if args.t:  # [TREE]
         core.tree.process_tree(
