@@ -1,0 +1,119 @@
+tables:
+  summary:
+    columns:
+      label:
+        aliases:
+          - partition_id
+        description: The unique identifier for the partition set
+        name: Partition ID
+        default_visible: false
+        type: string
+      tag:
+        aliases:
+          - subset_id
+        description: The unique identifier for partiton subset
+        name: Subset ID
+        default_visible: true
+        type: string
+      SC:
+        aliases:
+          - sample_count
+        description: The number of samples in the partition subset
+        name: Sample Count
+        default_visible: true
+        type: integer
+      OC:
+        aliases:
+          - orthogroup_count
+        description: The number of orthogroups in the partition subset
+        name: Orthogroup Count
+        default_visible: true
+        type: integer
+      EC:
+        aliases:
+          - element_count
+          - cluster_protein_count
+        description: The number of elements in the partition subset
+        name: Element Count
+        default_visible: true
+        type: integer
+      OC_singleton:
+        aliases:
+          - orthogroup_singleton_count
+        description: The number of singleton orthogroups in the partition subset
+        name: Singleton Orthogroup Count
+        default_visible: true
+        type: integer
+      EC_singleton:
+        aliases:
+          - element_singleton_count
+          - cluster_protein_singleton_count
+        description: The number of singleton elements in the partition subset
+        name: Singleton Element Count
+        default_visible: false
+        type: integer
+      OC_specific:
+        aliases:
+          - orthogroup_specific_count
+        description: The number of orthogroups specific to the partition subset
+        name: Specific Orthogroup Count
+        default_visible: true
+        type: integer
+      EC_specific:
+        aliases:
+          - element_specific_count
+          - cluster_protein_specific_count
+        description: The number of elements in orthogroups specific to the partition subset
+        name: Specific Element Count
+        default_visible: false
+        type: integer
+      OC_shared:
+        aliases:
+          - orthogroup_shared_count
+        description: The number of orthogroups shared with other partition subsets
+        name: Shared Orthogroup Count
+        default_visible: true
+        type: integer
+      EC_shared:
+        aliases:
+          - element_shared_count
+          - cluster_protein_shared_count
+        description: The number of elements in orthogroups shared with other partition subsets
+        name: Shared Element Count
+        default_visible: false
+        type: integer
+      OC_absent:
+        aliases:
+          - orthogroup_absent_count
+        description: The number of orthogroups absent from the partition subset
+        name: Absent Orthogroup Count
+        default_visible: false
+        type: integer
+      OC_specific_COG_true:
+        aliases:
+          - orthogroup_specific_COG_true_count
+        description: The number of orthogroups specific to the partition subset that are annotated with a COG
+        name: Specific Orthogroup COG True Count
+        default_visible: false
+        type: integer
+      OC_specific_COG_fuzzy:
+        aliases:
+          - orthogroup_specific_COG_fuzzy_count
+        description: The number of orthogroups specific to the partition subset that are annotated with a fuzzy COG
+        name: Specific Orthogroup COG Fuzzy Count
+        default_visible: false
+        type: integer
+      OC_shared_COG_true:
+        aliases:
+          - orthogroup_shared_COG_true_count
+        description: The number of orthogroups shared with other partition subsets that are annotated with a COG
+        name: Shared Orthogroup COG True Count
+        default_visible: false
+        type: integer
+      OC_shared_COG_fuzzy:
+        aliases:
+          - orthogroup_shared_COG_fuzzy_count
+        description: The number of orthogroups shared with other partition subsets that are annotated with a fuzzy COG
+        name: Shared Orthogroup COG Fuzzy Count
+        default_visible: false
+        type: integer

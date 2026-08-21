@@ -1,14 +1,50 @@
 [
   {
-    "id": "155a0782-2203-4168-b002-8ebc5ccaea7c",
+    "id": "nematodes_v1.0",
     "name": "Nematodes",
     "version": "v1.0",
     "date": "2025-05-10",
     "description": "Clustering of all nematodes proteomes using standard parameters.",
-    "path": "nematodes"
+    "status_root": ".",
+    "artifact_root": "~/data/nems",
+    "artifacts": {
+      "partition": "partition",
+      "curve": "plot/curve",
+      "tally": "plot/tally",
+      "tree": "tree",
+      "volcano": "plot/volcano"
+    },
+    "default_partition_id": "6f1aa0cc7b32cba2",
+    "default_partition_set": {
+      "out": ["CBRIG", "CELEG"],
+      "n11": ["DMEDI", "OOCHE2", "SLABI", "DIMMI", "TCALL", "OOCHE1", "WBANC1"],
+      "n15": ["LOA2", "BMALA", "BPAHA", "WBANC2"],
+      "n16": ["LSIGM", "AVITE", "EELAP"]
+    },
+    "valid_members": [
+      "CBRIG",
+      "CELEG",
+      "DMEDI",
+      "OOCHE2",
+      "SLABI",
+      "DIMMI",
+      "TCALL",
+      "OOCHE1",
+      "WBANC1",
+      "LOA2",
+      "BMALA",
+      "BPAHA",
+      "WBANC2",
+      "LSIGM",
+      "AVITE",
+      "EELAP",
+      "OFLEX",
+      "OVOLV",
+      "LOA1"
+    ]
   },
   {
-    "id": "f259e2ec-9080-46ca-9f03-4f290cb8d39d",
+    "id": "molluscs_v1.1",
     "name": "All Molluscs - Filtered",
     "version": "v1.1",
     "date": "2025-06-01",

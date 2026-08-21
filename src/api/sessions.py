@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger("kinfin_logger")
@@ -61,14 +62,17 @@ class QueryManager:
             tuple: The session ID and the session directory path.
         """
         session_id = self.get_session_id(query)
-        session_dir = os.path.join(self.results_base_dir, session_id)
+        if not self.results_base_dir or session_id is None:
+            raise ValueError("RESULTS_BASE_DIR is not set or session_id is None.")
+
+        session_dir = Path(self.results_base_dir) / session_id
 
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
         else:
             os.utime(session_dir, None)
 
-        return session_id, session_dir
+        return session_id, str(session_dir)
 
     def get_session_dir(self, session_id: str) -> Optional[str]:
         """
@@ -80,10 +84,12 @@ class QueryManager:
         Returns:
             str: The session directory path, or None if the session does not exist.
         """
-        session_dir = os.path.join(self.results_base_dir, session_id)
-        if os.path.exists(session_dir):
+        if not self.results_base_dir or session_id is None:
+            return None
+        session_dir = Path(self.results_base_dir) / session_id
+        if session_dir.exists():
             os.utime(session_dir, None)
-            return session_dir
+            return str(session_dir)
         return None
 
     def cleanup_loop(self) -> None:
@@ -96,7 +102,13 @@ class QueryManager:
         """Clean up sessions that have expired based on the expiration time."""
         now = datetime.now()
         for session_id in os.listdir(self.results_base_dir):
-            session_dir = os.path.join(self.results_base_dir, session_id)
+            if session_id.startswith("."):
+                continue
+            if not self.results_base_dir or session_id is None:
+                continue
+            session_dir = Path(self.results_base_dir) / session_id
+            if not session_dir.is_dir():
+                continue
             mod_time = datetime.fromtimestamp(os.path.getmtime(session_dir))
 
             if now - mod_time > timedelta(hours=self.expiration_hours):

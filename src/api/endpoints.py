@@ -8,12 +8,12 @@ import os
 import re
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -23,16 +23,26 @@ from api.fileparsers import (
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
+    read_table_file,
+    read_table_payload,
+    sort_and_paginate_table,
 )
 from api.sessions import query_manager
 from api.utils import (
     CLUSTERING_DATASETS,
+    derive_default_partition_id,
+    derive_run_status,
     extract_attributes_and_taxon_sets,
     flatten_dict,
+    get_partition_artifact_path,
+    normalise_field_list,
+    partition_selection_to_id,
     read_json_file,
+    read_run_status_file,
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    validate_partition_dict,
 )
 from core.utils import check_file
 
@@ -106,7 +116,7 @@ def check_kinfin_session(func):
             if not os.path.exists(status_file):
                 return JSONResponse(
                     content=ResponseSchema(
-                        status="success",
+                        status="error",
                         message="Kinfin analysis not initialized",
                         error="session_not_initialized",
                         query=str(request.url),
@@ -117,10 +127,10 @@ def check_kinfin_session(func):
             run_status = read_status(status_file)
             status = run_status.get("status")
 
-            if status in ["running", "pending"]:
+            if status in ["initialising", "running"]:
                 return JSONResponse(
                     content=ResponseSchema(
-                        status="success",
+                        status="error",
                         message="Kinfin analysis is still running. Please wait for analysis to complete",
                         data={"is_complete": False},
                         query=str(request.url),
@@ -133,7 +143,7 @@ def check_kinfin_session(func):
                         status="error",
                         message="Some error occurred during Kinfin analysis.",
                         error=run_status,
-                        data={"session_terminated_due_to_error"},
+                        data={"session_terminated_due_to_error": True},
                         query=str(request.url),
                     ).model_dump(),
                     status_code=400,
@@ -270,8 +280,8 @@ async def initialize(input_data: InputSchema, request: Request):
 
         command = [
             "python",
-            "src/main.py",
-            "analyse",
+            "src_new/src/main.py",
+            "analysis",
             "-g",
             cluster_f,
             "-c",
@@ -280,17 +290,17 @@ async def initialize(input_data: InputSchema, request: Request):
             sequence_ids_f,
             "-m",
             taxon_idx_mapping_file,
-            "-o",
+            "-d",
             result_dir,
-            "--plot_format",
+            "-l",
             "png",
         ]
         if (input_data.isAdvanced) :
             command.extend([
-                "-p", species_id,
-                "-a", fasta_dir,
+                "-S", species_id,
+                "-f", fasta_dir,
                 "-t", tree,
-                "-f", annotations,
+                "-a", annotations,
             ])
 
         status_file = os.path.join(result_dir, f"{session_id}.status")
@@ -823,9 +833,9 @@ async def get_valid_taxons_api(
     return JSONResponse(response.model_dump(), status_code=200)
 
 
-@router.get("/kinfin/clustering-sets", response_model=ResponseSchema)
+@router.get("/kinfin/clusterings", response_model=ResponseSchema)
 @limiter.limit(LIMIT_STANDARD)
-async def get_clustering_sets_api(
+async def get_clusterings_api(
     request: Request,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
@@ -878,6 +888,14 @@ async def get_clustering_sets_api(
     start = (page - 1) * size
     end = start + size
     paginated_data = clustering_data[start:end]
+
+    # TODO: validate current page clusterings and cache for future fetches
+    for clustering in paginated_data:
+        if clustering_id := clustering.get("id"):
+            default_status = derive_run_status(clustering_id)
+            clustering["status"] = default_status["state"]
+        else:
+            clustering["status"] = "unknown"
 
     response = ResponseSchema(
         status="success",
@@ -1453,3 +1471,275 @@ async def get_plot(
             ).model_dump(),
             status_code=500,
         )
+
+
+class PartitionResolveRequest(BaseModel):
+    clustering_id: str = Field(..., description="Clustering dataset id")
+    partition_set: Dict[str, List[str]] = Field(
+        ..., description="Dictionary mapping partition names to lists of cluster IDs"
+    )
+    validate: Optional[bool] = Field(True, description="Whether to validate the partition set before resolving")
+
+
+class PartitionStatusPayload(BaseModel):
+    clustering_id: str
+    partition_id: str
+    status: Literal["missing", "initialising", "ready", "error", "expired"]
+    message: str
+    updated_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    details: Dict[str, Any] = {}
+
+
+@router.post("/kinfin/partitions/resolve", response_model=ResponseSchema)
+async def resolve_partition_set(payload: PartitionResolveRequest, request: Request):
+    try:
+        clustering_id = payload.clustering_id
+        partition_set = payload.partition_set
+        validate = payload.validate if hasattr(payload, "validate") else True
+
+        if validate:
+            is_valid, error_message = validate_partition_dict(clustering_id, partition_set)
+            if not is_valid:
+                return JSONResponse(
+                    content=ResponseSchema(
+                        status="error",
+                        message="Invalid partition set",
+                        error=error_message,
+                        query=str(request.url),
+                    ).model_dump(),
+                    status_code=400,
+                )
+
+        partition_id, key_map = partition_selection_to_id(partition_set)
+        status = read_run_status_file(clustering_id, partition_id)
+
+        return JSONResponse(
+            content=ResponseSchema(
+                status="success",
+                message="Partition set resolved successfully.",
+                data={
+                    "clustering_id": clustering_id,
+                    "partition_id": partition_id,
+                    "key_map": key_map,
+                    "status": status.get("state", "missing"),
+                    "message": status.get("message", ""),
+                    "updated_at": status.get("updated_at"),
+                    "expires_at": status.get("expires_at"),
+                },
+                query=str(request.url),
+            ).model_dump(),
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                error=str(e),
+                query=str(request.url),
+            ).model_dump(),
+            status_code=500,
+        )
+
+
+@router.get(
+    "/kinfin/clusterings/{clustering_id}/partitions/{partition_id}/status",
+    response_model=ResponseSchema,
+)
+async def get_partition_status_by_id(
+    request: Request,
+    clustering_id: str,
+    partition_id: str,
+):
+    try:
+        status = read_run_status_file(clustering_id, partition_id)
+
+        if status.get("state", "missing") == "missing" and not status.get("run_exists", False):
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Partition not found for this clustering.",
+                    error="partition_not_found",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=404,
+            )
+
+        return JSONResponse(
+            content=ResponseSchema(
+                status="success",
+                message="Partition status retrieved successfully.",
+                data={
+                    "clustering_id": clustering_id,
+                    "partition_id": partition_id,
+                    "status": status.get("state", "missing"),
+                    "message": status.get("message", ""),
+                    "updated_at": status.get("updated_at"),
+                    "expires_at": status.get("expires_at"),
+                    "details": status.get("details", {}),
+                },
+                query=str(request.url),
+            ).model_dump(),
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                error=str(e),
+                query=str(request.url),
+            ).model_dump(),
+            status_code=500,
+        )
+
+
+class PartitionStatusBatchRequest(BaseModel):
+    clustering_id: str
+    partition_ids: List[str]
+
+
+@router.post("/kinfin/partitions/status", response_model=ResponseSchema)
+async def get_partition_statuses_batch(
+    payload: PartitionStatusBatchRequest,
+    request: Request,
+):
+    try:
+        clustering_id = payload.clustering_id
+        partition_ids = payload.partition_ids
+
+        statuses = {
+            partition_id: read_run_status_file(clustering_id, partition_id)
+            for partition_id in partition_ids
+        }
+        response = {
+            partition_id: {
+                "clustering_id": clustering_id,
+                "partition_id": partition_id,
+                "status": status.get("state", "missing"),
+                "message": status.get("message", ""),
+                "updated_at": status.get("updated_at"),
+                "expires_at": status.get("expires_at"),
+            }
+            for partition_id, status in statuses.items()
+        }
+
+        return JSONResponse(
+            content=ResponseSchema(
+                status="success",
+                message="Partition statuses retrieved successfully.",
+                data=response,
+                query=str(request.url),
+            ).model_dump(),
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message="Internal Server Error",
+                error=str(e),
+                query=str(request.url),
+            ).model_dump(),
+            status_code=500,
+        )
+
+
+@router.get("/kinfin/clusterings/{clustering_id}/summary", response_model=ResponseSchema)
+async def get_clustering_summary(
+    request: Request,
+    clustering_id: str,
+    fields: Optional[List[str]] = Query(default=None),
+    sort_by: Optional[str] = Query(default=None),
+    sort_order: str = Query(default="asc"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1),
+):
+    partition_id = derive_default_partition_id(clustering_id)
+    file_path = get_partition_artifact_path(
+        clustering_id=clustering_id,
+        partition_name=partition_id,
+        artifact_type="partition",
+        artifact_file="summary",
+        kind="table",
+    )
+
+    requested_fields = ["tag", *normalise_field_list(fields)]
+    df_rows, total_pages = read_table_payload(
+        file_path=file_path,
+        table_name="summary",
+        requested_fields=requested_fields,
+        filters=[],
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        size=size,
+    )
+
+    return JSONResponse(
+        content=ResponseSchema(
+            status="success",
+            message="Clustering summary retrieved successfully.",
+            data={
+                "clustering_id": clustering_id,
+                "partition_id": partition_id,
+                "summary": df_rows,
+                "current_page": page,
+                "total_pages": total_pages,
+            },
+            query=str(request.url),
+        ).model_dump(),
+        status_code=200,
+    )
+
+
+class ClusteringSummaryRequest(BaseModel):
+    clustering_id: str
+    fields: List[str] = Field(default_factory=list)
+    filters: List[dict[str, Any]] = Field(default_factory=list)
+    sort_by: Optional[str] = None
+    sort_order: str = "asc"
+    page: int = 1
+    size: int = 20
+
+
+@router.post("/kinfin/clusterings/summary", response_model=ResponseSchema)
+async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Request):
+    clustering_id = payload.clustering_id
+    partition_id = derive_default_partition_id(clustering_id)
+    file_path = get_partition_artifact_path(
+        clustering_id=clustering_id,
+        partition_name=partition_id,
+        artifact_type="partition",
+        artifact_file="summary",
+        kind="table",
+    )
+
+    requested_fields = ["tag", *normalise_field_list(payload.fields)]
+    df_rows, total_pages = read_table_payload(
+        file_path=file_path,
+        table_name="summary",
+        requested_fields=requested_fields,
+        filters=payload.filters,
+        sort_by=payload.sort_by,
+        sort_order=payload.sort_order,
+        page=payload.page,
+        size=payload.size,
+    )
+
+    return JSONResponse(
+        content=ResponseSchema(
+            status="success",
+            message="Clustering summary retrieved successfully.",
+            data={
+                "clustering_id": clustering_id,
+                "partition_id": partition_id,
+                "summary": df_rows,
+                "current_page": payload.page,
+                "total_pages": total_pages,
+            },
+            query=str(request.url),
+        ).model_dump(),
+        status_code=200,
+    )

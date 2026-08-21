@@ -1,14 +1,96 @@
-import csv
 import json
+from pathlib import Path
 from typing import Optional, Set, Union
 
+import pandas as pd
 
-def read_tsv_file(filepath: str, delimiter: str = "\t"):
-    try:
-        with open(filepath, "r", newline="") as file:
-            yield from csv.DictReader(file, delimiter=delimiter)
-    except csv.Error as e:
-        raise ValueError(f"Error reading CSV file: {e}") from e
+from api.utils import (
+    apply_filters_to_frame,
+    normalise_filter_specs,
+    resolve_requested_columns,
+)
+
+
+def read_table_file(filepath: str, *, columns=None, **kwargs):
+    path = Path(filepath)
+    suffix = path.suffix.lower().lstrip(".")
+
+    if suffix == "feather":
+        return pd.read_feather(path, columns=columns, use_threads=True)
+
+    if suffix == "parquet":
+        return pd.read_parquet(path, columns=columns, use_threads=True)
+
+    if suffix in {"tsv", "csv"}:
+        sep = "\t" if suffix == "tsv" else ","
+        return pd.read_csv(path, sep=sep, usecols=columns, **kwargs)
+
+    raise ValueError(f"Unsupported table format: {suffix}")
+
+
+def sort_and_paginate_table(
+    df: pd.DataFrame,
+    *,
+    sort_by: str | None,
+    sort_order: str = "asc",
+    page: int = 1,
+    size: int = 20,
+) -> tuple[pd.DataFrame, int]:
+    if sort_by:
+        keys = [k.strip() for k in sort_by.split(",") if k.strip()]
+        for key in reversed(keys):
+            df = df.sort_values(
+                by=key, ascending=(sort_order == "asc"), na_position="last"
+            )
+    total_pages = max(1, int((len(df) + size - 1) / size))
+    start = (page - 1) * size
+    end = start + size
+    return df.iloc[start:end].copy(), total_pages
+
+
+def read_table_payload(
+    file_path: str,
+    *,
+    table_name: str,
+    requested_fields: list[str] | None = None,
+    filters: list[dict] | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+    page: int = 1,
+    size: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Reads a table file, applies filters, sorts, and paginates the data.
+
+    Parameters:
+    - file_path [str]: Path to the table file.
+    - table_name [str]: Name of the table (used for validation).
+    - requested_fields [list[str] | None]: List of fields to include in the output.
+    - filters [list[dict] | None]: List of filter specifications.
+    - sort_by [str | None]: Field(s) to sort by.
+    - sort_order [str]: Sort order ('asc' or 'desc').
+    - page [int]: Page number for pagination.
+    - size [int]: Number of records per page.
+
+    Returns:
+    - tuple[list[dict], int]: A tuple containing the list of records and total pages.
+    """
+    requested_columns = resolve_requested_columns(table_name, requested_fields)
+    df = read_table_file(file_path, columns=requested_columns)
+    if filters:
+        normalised_filters = normalise_filter_specs(table_name, filters)
+        df = apply_filters_to_frame(
+            df, table_name=table_name, filters=normalised_filters
+        )
+    df_paginated, total_pages = sort_and_paginate_table(
+        df, sort_by=sort_by, sort_order=sort_order, page=page, size=size
+    )
+    return df_paginated.to_dict(orient="records"), total_pages
+
+
+def read_tsv_file(filepath: str):
+    data = read_table_file(filepath)
+    yield from data.to_dict(orient="records")
 
 
 def split_to_set(value: Optional[str]) -> Optional[Set[str]]:
@@ -72,6 +154,20 @@ def parse_taxon_counts_file(
             result[cluster_id] = filtered_values
 
     return result
+
+
+def parse_clustering_summary_file(filepath: str):
+    """
+    Parses a clustering summary JSON file and returns a dictionary of clustering summary entries.
+
+    Args:
+        filepath (str): The path to the clustering summary JSON file.
+
+    Returns:
+        dict: A dictionary containing clustering summary entries.
+    """
+    table = read_table_file(filepath)
+    return table.to_dict(orient="records")
 
 
 def parse_cluster_summary_file(

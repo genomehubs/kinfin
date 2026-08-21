@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_name": "default",
+  "partition_id": "6f1aa0cc7b32cba2",
+  "state": "completed",
+  "message": "Default analysis completed successfully.",
+  "started_at": "2026-08-18T12:00:00Z",
+  "updated_at": "2026-08-18T12:05:00Z",
+  "expires_at": "3026-08-19T12:08:32Z",
+  "finished_at": "2026-08-18T12:10:00Z",
+  "error": null,
+  "output_name": "clade"
+}
