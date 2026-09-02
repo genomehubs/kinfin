@@ -173,6 +173,12 @@ def set_dir(name, value):
 
 
 def get_dir(name):
+    """
+    [ToDo]
+    try loading TMP_PATHS_FILE from outdir in case it already exists.
+    if so, then copy/move? that to TMP_PATHS_FILE.
+    except:
+    """
     return load(definitions.TMP_PATHS_FILE).get(name, None)
 
 
