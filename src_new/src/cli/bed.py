@@ -4,6 +4,7 @@ import sys
 import time
 
 import core.analysis
+import core.bed
 import core.log
 import core.tree
 import definitions
@@ -44,7 +45,7 @@ def run(args):
         keep_dir=args.N,
     )
     # get config
-    df_config = core.analysis.get_config(
+    df_config = core.analysis.process_config(
         config_fn=args.c,
         taxonomic_ranks=args.r,
     )
@@ -73,7 +74,7 @@ def run(args):
             ],
             do_replace=False,
         )
-    core.analysis.process_bed(
+    core.bed.process_bed(
         directory=args.b,
         sample_ids=list(df_config.sample_id),
         count_idx=args.C,
@@ -124,6 +125,6 @@ def run(args):
         desc=definitions.PROGRESS_DESC_PARTITIONING,
         processes=args.p,
     )
-    logger.info("done")
+    logger.info("SUCCESS.")
     logger.info(core.utils.format_elapsed(time.monotonic() - t_0))
     sys.exit(0)

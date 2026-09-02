@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import os
+import pathlib
 
 import definitions
 
 
 def existing_file(infile):
-    if not os.path.isfile(infile):
+    infile = pathlib.Path(infile)
+    if not pathlib.Path.is_file(infile):
         raise argparse.ArgumentTypeError(f"file '{infile}' does not exist")
     return infile
 
@@ -20,7 +21,8 @@ def existing_files(infiles):
 
 
 def existing_dir(directory):
-    if not os.path.isdir(directory):
+    directory = pathlib.Path(directory)
+    if not pathlib.Path.is_dir(directory):
         raise argparse.ArgumentTypeError(f"directory '{directory}' does not exist")
     return directory
 

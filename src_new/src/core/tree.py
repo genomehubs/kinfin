@@ -25,8 +25,7 @@ def get_tree(
         logger.info("no tree provided")
         tree = None
     else:
-        logger.info(f"parsing tree in {fn}")
-        tree = ete4.Tree(fn)
+        tree = ete4.Tree(str(fn))
         if outgroup:
             logger.info(
                 f"setting the following sample ID(s) as outgroup(s): {','.join(outgroup)}"
@@ -99,6 +98,7 @@ def process_tree(
     - EC: ElementCount
     """
     t_0 = time.monotonic()
+    logger.info(f"processing tree in {tree_fn}")
     tree = get_tree(
         fn=tree_fn,
         sample_ids=sample_ids,

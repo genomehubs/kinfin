@@ -4,9 +4,9 @@ import sys
 import time
 
 import core.analysis
+import core.interpro
 import core.log
 import core.tree
-import definitions
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ def cleanup(keep_dir=False, verbose=False):
             tmp_dir,
             ignore_errors=True,
         )
-    logger.debug(f"\tdeleting file {definitions.TMP_PATHS_FILE}")
-    definitions.TMP_PATHS_FILE.unlink()
+    # logger.debug(f"\tdeleting file {definitions.TMP_PATHS_FILE}")
+    # definitions.TMP_PATHS_FILE.unlink()
     logger.info("done")
 
 
@@ -44,7 +44,7 @@ def run(args):
         keep_dir=args.N,
     )
     # get config
-    df_config = core.analysis.get_config(
+    df_config = core.analysis.process_config(
         config_fn=args.c,
         taxonomic_ranks=args.r,
     )
@@ -74,7 +74,7 @@ def run(args):
             do_replace=False,
         )
     if args.f:  # [FASTA IDs]
-        core.analysis.get_elements(
+        core.analysis.process_elements(
             directory=args.f,
             sample_ids=list(df_config.sample_id),
             processes=args.p,
@@ -91,7 +91,7 @@ def run(args):
         sample_ids_source = "parse"
     else:
         sys.exit(1)
-    core.analysis.get_orthogroups(  # [ORTHOGROUPS]
+    core.analysis.process_orthogroups(  # [ORTHOGROUPS]
         args.g,
         sample_ids=list(df_config.sample_id),
         sample_ids_source=sample_ids_source,
@@ -110,7 +110,7 @@ def run(args):
         )
 
     if args.I:  # [ANNOTATION]
-        core.analysis.analyse_interpro(
+        core.interpro.process_interpro(
             directory=args.I,
             sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
@@ -128,5 +128,6 @@ def run(args):
         plot_fmt=args.l if not args.L else None,
         processes=args.p,
     )
+    logger.info("SUCCESS.")
     logger.info(core.utils.format_elapsed(time.monotonic() - t_0))
     sys.exit(0)

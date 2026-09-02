@@ -3,12 +3,10 @@ import contextlib
 import glob
 import itertools
 import logging
-import math
 import multiprocessing
 import pathlib
 import sys
 import time
-import traceback
 
 import core.log
 import core.plot
@@ -30,7 +28,7 @@ logger = logging.getLogger(__name__)
 ComparisonTask = collections.namedtuple(
     "ComparisonTask",
     [
-        "type",
+        "func",
         "labels",
         "tags",
         "taxon_groups",
@@ -46,7 +44,7 @@ ComparisonTask = collections.namedtuple(
 SummaryTask = collections.namedtuple(
     "SummaryTask",
     [
-        "type",
+        "func",
         "labels",
         "tags",
         "taxon_groups",
@@ -59,19 +57,10 @@ SummaryTask = collections.namedtuple(
 ParseTask = collections.namedtuple(
     "ParseTask",
     [
-        "type",
+        "func",
         "sample_id",
         "fn",
         "params",
-    ],
-)
-
-VolcanoTask = collections.namedtuple(
-    "VolcanoTask",
-    [
-        "type",
-        "fn",
-        "label",
     ],
 )
 
@@ -99,7 +88,7 @@ def poolcontext(*args, **kwargs):
 # [DONE]
 def get_parse_tasks(
     directory=None,
-    type="",
+    func=None,
     sample_ids=[],
     extensions=[],
     params={},
@@ -112,7 +101,7 @@ def get_parse_tasks(
             if sample_id in _SAMPLE_IDS:
                 tasks.append(
                     ParseTask(
-                        type=type,
+                        func=func,
                         sample_id=sample_id,
                         fn=fn,
                         params=params,
@@ -122,7 +111,7 @@ def get_parse_tasks(
 
 
 # [DONE]
-def do_parse_fasta_task(task):
+def do_parse_fasta(task):
     # fn, sample_id
     try:
         data = []
@@ -134,7 +123,7 @@ def do_parse_fasta_task(task):
         if df_fasta.empty:
             logger.warning(f"no sequences found in {task.fn}")
         else:
-            df_fasta = downcast(
+            df_fasta = core.utils.downcast(
                 df_fasta,
                 categorical=["sample_id"],
             )
@@ -149,783 +138,6 @@ def do_parse_fasta_task(task):
     except Exception as exc:
         logger.error(f"problem reading {task.fn} - {exc}")
     return None
-
-
-# [DONE]
-def get_parse_interpro_tasks(
-    directory=None,
-    sample_ids=[],
-):
-    tasks = get_parse_tasks(
-        directory=directory,
-        type="interpro",
-        sample_ids=sample_ids,
-        extensions=definitions.SUPPORTED_INTERPRO_EXTENSIONS,
-    )
-    sample_ids_found = [task.sample_id for task in tasks]
-    if len(sample_ids_found) < len(sample_ids):
-        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
-        logger.warning(
-            f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
-        )
-        for sample_id in sample_ids_missing:
-            tasks.append(
-                ParseTask(
-                    type="interpro",
-                    sample_id=sample_id,
-                    fn=None,
-                )
-            )
-    return tasks
-
-
-def get_interpro_df_empty(sample_id):
-    return (
-        core.utils.get_orthogroups_df(filters=[("sample_id", "==", sample_id)])
-        .set_index("orthogroup_id")
-        .join(
-            core.utils.get_counts_df(
-                columns=[sample_id],
-            ),
-            how="right",
-        )
-        .assign(**{"signature_id": np.nan, "analysis": np.nan})
-        .reset_index()
-    ).drop(columns=[sample_id])
-
-
-def do_parse_interpro_task(task):
-    # fn, sample_id
-    analyses = []
-    try:
-        if task.fn is None:
-            # fake df_annotation for sample_ids without interpro file
-            df_annotation = get_interpro_df_empty(task.sample_id)
-        else:
-            df_interpro = core.utils.load(
-                task.fn,
-                names=definitions.INTERPRO_TSV_COLUMNS,
-            )[definitions.INTERPRO_TSV_COLUMNS_VALID].set_index("element_id")
-            # add orthorgoups information
-            df_annotation = downcast(
-                df_interpro.join(
-                    core.utils.get_orthogroups_df(
-                        filters=[("sample_id", "==", task.sample_id)],
-                    ).set_index("element_id"),
-                    how="outer",
-                )
-            )
-            # remove annotations of E's not in OG's
-            df_annotation = df_annotation[~df_annotation["orthogroup_id"].isnull()]
-            if df_annotation.empty:
-                df_annotation = get_interpro_df_empty(task.sample_id)
-            else:
-                df_signatures = (
-                    df_annotation[
-                        [
-                            "signature_id",
-                            "analysis",
-                            "signature_desc",
-                            "interpro_id",
-                            "interpro_desc",
-                            "go_annotation",
-                        ]
-                    ]
-                    .set_index("signature_id")
-                    .drop_duplicates()
-                    .dropna(subset=["analysis"])
-                )
-                analyses = df_signatures["analysis"].unique()
-                _ = core.utils.dump(
-                    df_signatures,
-                    fn=core.utils.format_fn(
-                        f"{task.sample_id}.{definitions.SIGNATURES_FN}",
-                        prefix=core.utils.get_dir("TMP") / task.sample_id,
-                    ),
-                    index=True,
-                )
-                df_annotation = df_annotation[
-                    [
-                        "orthogroup_id",
-                        "signature_id",
-                        "analysis",
-                    ]
-                ].reset_index()
-    except Exception as exc:
-        logger.error(f"{exc}")
-        logger.error(f"{traceback.format_exc()}")
-        sys.exit(1)
-    dump_signature_summary(
-        df=df_annotation,
-        analyses=analyses,
-        sample_id=task.sample_id,
-    )
-    df_annotation = (
-        downcast(df_annotation)
-        .groupby(
-            ["orthogroup_id", "analysis", "signature_id"],
-            dropna=False,
-        )
-        .agg(sample=("element_id", "nunique"))
-        .rename(columns={"sample": task.sample_id})
-    )
-    df_annotation = df_annotation.loc[(df_annotation != 0).any(axis=1)]
-    core.utils.dump(
-        df_annotation,
-        fn=core.utils.format_fn(
-            f"{task.sample_id}.{definitions.ANNOTATION_FN}",
-            prefix=core.utils.get_dir("TMP") / task.sample_id,
-        ),
-        index=True,
-    )
-
-
-def dump_signature_summary(df, analyses=[], sample_id=None):
-    df_counts = core.utils.get_counts_df(
-        columns=[sample_id],
-    )
-    EC = int(df_counts[sample_id].sum(axis=0))
-    rows = []
-    for analysis in analyses:
-        EC_AC = int(df[df["analysis"] == analysis]["element_id"].nunique())
-        rows.append((analysis, sample_id, EC, EC_AC, float(EC_AC / EC)))
-    EC_AC = int(df[df["analysis"].isna()]["element_id"].nunique(dropna=True))
-    rows.append(("not_annotated", sample_id, EC, EC_AC, float(EC_AC / EC)))
-    core.utils.dump(
-        pd.DataFrame().from_records(
-            rows, columns=["analysis", "sample_id", "EC", "EC_AC", "EC_AP"]
-        ),
-        fn=core.utils.format_fn(
-            f"{sample_id}.{definitions.SIGNATURES_SUMMARY_FN}",
-            prefix=core.utils.get_dir("TMP") / sample_id,
-        ),
-        index=False,
-    )
-
-
-def downcast(df, categorical=[], info=False):
-    ints = []
-    floats = []
-    if info:
-        print("[+]\n")
-        df.info()
-    for column in df.columns:
-        if column in categorical:
-            df[column] = df[column].astype("category")
-        elif df[column].dtype == "float64":
-            floats.append(column)
-        elif df[column].dtype == "int64":
-            ints.append(column)
-        elif df[column].dtype == "category" and not categorical:
-            df[column] = df[column].astype(str)
-        else:
-            pass
-    df[ints] = df[ints].apply(pd.to_numeric, downcast="unsigned")
-    df[floats] = df[floats].apply(pd.to_numeric, downcast="float")
-    if info:
-        df.info()
-        print("[*]")
-    return df
-
-
-def do_parse_earlgrey_task(task):
-    try:
-        HEADER = [
-            "te_family",
-            "coverage",
-            "copies",
-        ]
-        HEADER_VALID = set(HEADER)
-        rows = []
-        with open(task.fn) as fh:
-            header = None
-            for line in fh:
-                if header is None:
-                    header = HEADER
-                else:
-                    row = {
-                        h: r for h, r in zip(header, line.split()) if h in HEADER_VALID
-                    }
-                    repeat_family, repeat_class_subclass = row["te_family"].split("#")
-                    repeat_class_subclass = repeat_class_subclass.split("/")
-                    rows.append(
-                        {
-                            "span": int(row["coverage"]),
-                            "count": int(row["copies"]),
-                            "repeat_family": repeat_family,
-                            "repeat_class": "Other"
-                            if len(repeat_class_subclass) == 1
-                            else repeat_class_subclass[0],
-                            "repeat_subclass": repeat_class_subclass[0]
-                            if len(repeat_class_subclass) == 1
-                            else repeat_class_subclass[1],
-                        }
-                    )
-        df_repeats = pd.DataFrame().from_dict(rows)
-        groups = ["repeat_class", "repeat_subclass", "repeat_family"]
-        for group in groups:
-            df_group = df_repeats.groupby(group).agg(
-                span=("span", "sum"),
-                count=("repeat_family", "sum"),
-            )
-            df_group["sample_id"] = task.sample_id
-            core.utils.dump(
-                df_group,
-                fn=core.utils.format_fn(
-                    f"{task.sample_id}.{group},{definitions.REPEATS_FN}",
-                    prefix=core.utils.get_dir("TMP") / task.sample_id,
-                ),
-                index=False,
-            )
-        core.utils.dump(
-            df_group,
-            fn=core.utils.format_fn(
-                f"{task.sample_id}.{definitions.REPEATS_FN}",
-                prefix=core.utils.get_dir("TMP") / task.sample_id,
-            ),
-            index=False,
-        )
-    except Exception as exc:
-        logger.error(f"problem reading {task.fn} - {exc}")
-
-
-def do_parse_repeatmasker_task(task):
-    HEADER = [
-        "score",
-        "div",
-        "del",
-        "ins",
-        "sequence",
-        "qstart",
-        "qend",
-        "qleft",
-        "C",
-        "repeat",
-        "family",
-        "mstart",
-        "mend",
-        "mleft",
-        "ID",
-        "last",
-    ]
-    HEADER_VALID = set(
-        [
-            "div",
-            "qstart",
-            "qend",
-            "repeat",
-            "family",
-        ]
-    )
-    rows = []
-    if task.fn is not None:
-        with open(task.fn) as fh:
-            header = None
-            for line in fh:
-                if header is None:
-                    header = HEADER
-                else:
-                    row = {
-                        h: r for h, r in zip(header, line.split()) if h in HEADER_VALID
-                    }
-                    if (
-                        task.params.get("min_div", 0.0)
-                        <= float(row["div"])
-                        <= task.params.get("max_div", 100.0)
-                    ):
-                        repeat_class_subclass = row["family"].split("/")
-                        rows.append(
-                            {
-                                # "span": int(row["qend"]) - int(row["qstart"]) + 1,
-                                "repeat_family": row["repeat"],
-                                "repeat_class": "Other"
-                                if len(repeat_class_subclass) == 1
-                                else repeat_class_subclass[0],
-                                "repeat_subclass": repeat_class_subclass[0]
-                                if len(repeat_class_subclass) == 1
-                                else repeat_class_subclass[1],
-                            }
-                        )
-        df_repeats = pd.DataFrame().from_dict(rows)
-        groups = ["repeat_class", "repeat_subclass", "repeat_family"]
-        for group in groups:
-            df_group = df_repeats.groupby(group).agg(
-                # span=("span", "sum"),
-                count=("repeat_family", "count"),
-            )
-            df_group["sample_id"] = task.sample_id
-            core.utils.dump(
-                df_group,
-                fn=core.utils.format_fn(
-                    f"{task.sample_id}.{group}.{definitions.REPEATS_FN}",
-                    prefix=core.utils.get_dir("TMP") / task.sample_id,
-                ),
-                index=False,
-            )
-        core.utils.dump(
-            df_group,
-            fn=core.utils.format_fn(
-                f"{task.sample_id}.{definitions.REPEATS_FN}",
-                prefix=core.utils.get_dir("TMP") / task.sample_id,
-            ),
-            index=False,
-        )
-
-
-def do_parse_bed_task(task):
-    use_cols = list(task.params["name_idxs"])
-    if task.params["count_idx"] is not None:
-        use_cols.append(task.params["count_idx"])
-
-    success = False
-    try:
-        df_bed = pd.read_csv(
-            task.fn,
-            sep="\t",
-            header=None,
-            skiprows=(1 if task.params["has_header"] else 0),
-            usecols=use_cols,
-            dtype=str,
-        )
-        if task.params["count_idx"]:
-            df_bed_counts = (
-                pd.concat(
-                    [
-                        df_bed[task.params["name_idxs"]]
-                        .apply(task.params["name_sep"].join, axis=1)
-                        .to_frame("orthogroup_id"),
-                        df_bed[[task.params["count_idx"]]].astype(int),
-                    ],
-                    axis=1,
-                )
-                .rename(columns={task.params["count_idx"]: "count"})
-                .groupby("orthogroup_id")
-                .sum()
-            )
-        else:
-            df_bed_counts = (
-                df_bed[task.params["name_idxs"]]
-                .apply(task.params["name_sep"].join, axis=1)
-                .value_counts()
-                .to_frame("count")
-            )
-        df_bed_counts["sample_id"] = task.sample_id
-        core.utils.dump(
-            df_bed_counts.reset_index(),
-            fn=core.utils.format_fn(
-                fn=f"{task.sample_id}.{definitions.COUNTS_FN}",
-                prefix=core.utils.get_dir("TMP") / task.sample_id,
-            ),
-            index=True,
-        )
-        success = True
-    except Exception:
-        pass
-    return (task.fn, success)
-
-
-def get_parse_bed_tasks(
-    directory=None,
-    sample_ids=[],
-    count_idx=None,
-    name_idxs=[3],
-    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
-    has_header=False,
-):
-    tasks = get_parse_tasks(
-        directory=directory,
-        type="bed",
-        sample_ids=sample_ids,
-        extensions=definitions.SUPPORTED_BED_EXTENSIONS,
-        params={
-            "count_idx": count_idx,
-            "name_idxs": name_idxs,
-            "name_sep": name_sep,
-            "has_header": has_header,
-        },
-    )
-    sample_ids_found = [task.sample_id for task in tasks]
-    if len(sample_ids_found) == 0:
-        logger.warning(
-            f"no files with extension '{definitions.SUPPORTED_BED_EXTENSIONS}' could be found in directory '{directory}' for the sample IDs: {', '.join(sample_ids)}"
-        )
-        sys.exit(1)
-    if len(sample_ids_found) < len(sample_ids):
-        sample_ids_missing = set(sample_ids) - set(sample_ids_found)
-        logger.warning(
-            f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
-        )
-    return tasks
-
-
-def process_bed(
-    directory="",
-    sample_ids=[],
-    count_idx=None,
-    name_idxs=[3],
-    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
-    has_header=False,
-    output_fmt=definitions.STD_FORMAT,
-    plot_fmt=definitions.PLOT_FORMAT,
-    do_plots=False,
-    processes=1,
-):
-    parse_beds(
-        directory=directory,
-        sample_ids=sample_ids,
-        count_idx=count_idx,
-        name_idxs=name_idxs,
-        name_sep=name_sep,
-        has_header=has_header,
-        processes=processes,
-    )
-    get_bed_counts(
-        sample_ids=sample_ids,
-        output_fmt=output_fmt,
-        plot_fmt=plot_fmt,
-        do_plots=do_plots,
-    )
-
-
-def parse_beds(
-    directory=None,
-    sample_ids=[],
-    count_idx=None,
-    name_idxs=[3],
-    name_sep=definitions.DEFAULT_BED_NAME_SEPARATOR,
-    has_header=False,
-    processes=1,
-):
-    t_0 = time.monotonic()
-    logger.info(f"parsing BED file(s) in {directory}")
-    tasks = get_parse_bed_tasks(
-        directory=directory,
-        sample_ids=sample_ids,
-        count_idx=count_idx,
-        name_idxs=name_idxs,
-        name_sep=name_sep,
-        has_header=has_header,
-    )
-    processes = 1 if len(tasks) == 1 else processes
-    logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
-    results = do_tasks(
-        tasks=tasks,
-        desc=definitions.PROGRESS_DESC_BED,
-        processes=processes,
-        collect_results=True,
-    )
-    problematic_bed_string = "\n".join([fn for fn, success in results if not success])
-    if problematic_bed_string:
-        logger.error(
-            f"The following BED files could not be parsed. Verify format and use of option (-B):\n{problematic_bed_string}"
-        )
-        sys.exit(1)
-    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-
-
-def get_bed_counts(
-    sample_ids=[],
-    output_fmt=definitions.STD_FORMAT,
-    plot_fmt=definitions.PLOT_FORMAT,
-    do_plots=True,
-):
-    t_0 = time.monotonic()
-    logger.info("joining BED data ...")
-    df_beds = []
-    sample_ids_missing = []
-    with tqdm.tqdm(
-        total=len(sample_ids),
-        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
-        ncols=definitions.PROGRESS_NCOLS,
-    ) as pbar:
-        for sample_id in sample_ids:
-            df_bed = core.utils.get_bed_df(
-                sample_id=sample_id,
-            )
-            if isinstance(df_bed, pd.DataFrame):
-                df_beds.append(df_bed)
-            else:
-                sample_ids_missing.append(sample_id)
-            pbar.update()
-    try:
-        df_counts = (
-            pd.concat(df_beds, axis=0)
-            .reset_index()
-            .set_index(["orthogroup_id", "sample_id"])["count"]
-            .unstack(fill_value=0)
-        )
-    except ValueError:
-        logger.error("BED counts could not be joined. Verify input files.")
-        sys.exit(1)
-    for sample_id in sample_ids_missing:
-        df_counts[sample_id] = 0
-    # [DUMP COUNTS]
-    core.utils.dump(
-        df_counts,
-        fn=core.utils.format_fn(
-            fn=definitions.COUNTS_FN,
-            prefix=core.utils.get_dir("INPUT"),
-        ),
-        index=True,
-    )
-    core.utils.dump(
-        df_counts.replace(0, np.nan),
-        fn=core.utils.format_fn(
-            fn=definitions.COUNTS_NAN_FN,
-            prefix=core.utils.get_dir("TMP"),
-        ),
-        index=True,
-    )
-    if do_plots:
-        tally_counts(
-            output_fmt=output_fmt,
-            plot_fmt=plot_fmt,
-            do_plots=do_plots,
-        )
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-
-
-def parse_interpro(
-    directory=None,
-    sample_ids=[],
-    output_fmt="tsv",
-    processes=1,
-):
-    t_0 = time.monotonic()
-    logger.info(f"parsing INTERPRO data in {directory}")
-    tasks = get_parse_interpro_tasks(
-        directory=directory,
-        sample_ids=sample_ids,
-    )
-    processes = 1 if len(tasks) == 1 else processes
-    logger.info(f"parsing {len(tasks)} file(s) using {processes} process(es)")
-    do_tasks(
-        tasks=tasks,
-        desc=definitions.PROGRESS_DESC_INTERPRO,
-        processes=processes,
-        collect_results=True,
-    )
-    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-
-
-def analyse_annotation(
-    sample_ids=[],
-    output_fmt="tsv",
-    processes=1,
-):
-
-    def get_EC_SC():
-        df_counts = core.utils.get_counts_df()
-        EC = df_counts.sum(axis=1).rename("EC")
-        SC = df_counts.ge(1).sum(axis=1).rename("SC")
-        return (EC, SC)
-
-    t_0 = time.monotonic()
-    logger.info("joining annotation data ...")
-    df_annotations = []
-    with tqdm.tqdm(
-        total=len(sample_ids),
-        desc=definitions.PROGRESS_DESC_ANNOTATION_TASK_RUN,
-        ncols=definitions.PROGRESS_NCOLS,
-    ) as pbar:
-        for sample_id in sample_ids:
-            df = core.utils.get_annotation_df(
-                sample_id=sample_id,
-                delete=False,
-            )
-            df_annotations.append(df)
-            pbar.update()
-    df_annotations = (
-        pd.concat(
-            df_annotations,
-            axis=1,
-        )
-        .dropna(
-            axis=0,
-            how="all",
-        )
-        .replace(
-            np.nan,
-            0,
-        )
-    )
-    logger.info("annotation data joined")
-    for column in df_annotations.columns:
-        df_annotations[column] = df_annotations[column].astype(int)
-    df_annotations = downcast(df_annotations)
-    columns = []
-    EC_AC = df_annotations.sum(axis=1).rename("EC_AC")
-    columns.append(EC_AC)
-    SC_AC = df_annotations.ge(1).sum(axis=1).rename("SC_AC")
-    columns.append(SC_AC)
-    EC, SC = get_EC_SC()
-    df_annotations = df_annotations.join(EC)
-    df_annotations = df_annotations.join(SC)
-    EC_AP = EC_AC.div(df_annotations["EC"]).rename("EC_AP")
-    columns.append(EC_AP)
-    SC_AP = SC_AC.div(df_annotations["SC"]).rename("SC_AP")
-    columns.append(SC_AP)
-    COLUMNS = [
-        "signature_desc",
-        "interpro_id",
-        "interpro_desc",
-        "go_annotation",
-        "SC",
-        "SC_AC",
-        "SC_AP",
-        "EC",
-        "EC_AC",
-        "EC_AP",
-    ]
-    df_annotations = df_annotations.join(
-        core.utils.get_signatures_df()
-        .reset_index()
-        .set_index(["analysis", "signature_id"]),
-    )
-    df_annotation = core.utils.downcast(
-        pd.concat(
-            [
-                df_annotations,
-                pd.concat(columns, axis=1),
-            ],
-            axis=1,
-        )
-    )[COLUMNS + [col for col in df_annotations.columns if col not in COLUMNS]].astype(
-        {
-            "signature_desc": "category",
-            "interpro_id": "category",
-            "interpro_desc": "category",
-            "go_annotation": "category",
-        }
-    )
-    core.utils.dump(
-        df_annotation,
-        fn=core.utils.format_fn(
-            f"{definitions.ANNOTATION_FN}",
-            prefix=core.utils.get_dir("ANNOTATION"),
-            suffix=f".{output_fmt}",
-        ),
-        index=True,
-    )
-    get_df_entropy(
-        df_annotation=df_annotation.copy(deep=True),
-        output_fmt=output_fmt,
-    )
-    logger.info(f"{core.utils.format_elapsed(time.monotonic() - t_0)}")
-
-
-def analyse_signatures(
-    sample_ids=[],
-    output_fmt="tsv",
-):
-    df_signatures = None
-    logger.info("collecting InterPro signatures ...")
-    with tqdm.tqdm(
-        total=len(sample_ids),
-        desc=definitions.PROGRESS_DESC_SIGNATURES,
-        ncols=definitions.PROGRESS_NCOLS,
-    ) as pbar:
-        for sample_id in sample_ids:
-            df_signatures_instance = core.utils.get_signatures_df(
-                sample_id=sample_id,
-            )
-            df_signatures = (
-                df_signatures_instance
-                if df_signatures is None
-                else pd.concat(
-                    [
-                        df_signatures,
-                        df_signatures_instance,
-                    ],
-                    axis=0,
-                ).drop_duplicates()
-            )
-            pbar.update()
-    if df_signatures is not None and not df_signatures.empty:
-        core.utils.dump(
-            df_signatures,
-            fn=core.utils.format_fn(
-                f"{definitions.SIGNATURES_FN}",
-                prefix=core.utils.get_dir("TMP"),
-            ),
-            index=True,
-        )
-    analyses = df_signatures["analysis"].unique()
-    logger.info("tallying InterPro signatures ...")
-    df_signature_summary = []
-    with tqdm.tqdm(
-        total=len(sample_ids),
-        desc=definitions.PROGRESS_DESC_SIGNATURES_COUNTING,
-        ncols=definitions.PROGRESS_NCOLS,
-    ) as pbar:
-        for sample_id in sample_ids:
-            df_signature_summary_instance = core.utils.get_signature_summary_df(
-                sample_id=sample_id,
-            )
-            if len(df_signature_summary_instance) == 1:
-                rows = []
-                for analysis in analyses:
-                    rows.append(
-                        {
-                            "sample_id": df_signature_summary_instance["sample_id"][0],
-                            "analysis": analysis,
-                            "EC": df_signature_summary_instance["EC"][0],
-                            "EC_AC": 0,
-                            "EC_AP": 0.0,
-                        }
-                    )
-                df_signature_summary_instance = pd.concat(
-                    [df_signature_summary_instance, pd.DataFrame.from_dict(rows)],
-                    ignore_index=True,
-                    axis=0,
-                )
-            df_signature_summary.append(df_signature_summary_instance)
-            pbar.update()
-        df_signature_summary = pd.concat(df_signature_summary, axis=0)[
-            [
-                "sample_id",
-                "analysis",
-                "EC",
-                "EC_AC",
-                "EC_AP",
-            ]
-        ]
-    for analysis in df_signature_summary["analysis"].unique():
-        core.utils.dump(
-            df_signature_summary[df_signature_summary["analysis"] == analysis],
-            fn=core.utils.format_fn(
-                f"interpro_signatures.{analysis}.summary.{output_fmt}",
-                prefix=core.utils.get_dir("ANNOTATION"),
-            ),
-            index=False,
-        )
-
-
-def analyse_interpro(
-    directory=None,
-    sample_ids=[],
-    output_fmt="tsv",
-    processes=1,
-):
-    t_0 = time.monotonic()
-    parse_interpro(
-        directory=directory,
-        sample_ids=sample_ids,
-        output_fmt=output_fmt,
-        processes=processes,
-    )
-    analyse_signatures(
-        sample_ids=sample_ids,
-        output_fmt=output_fmt,
-    )
-    analyse_annotation(
-        sample_ids=sample_ids,
-        processes=processes,
-        output_fmt=output_fmt,
-    )
-    logger.info(f"[elapsed: {time.monotonic() - t_0}")
 
 
 def get_ids(
@@ -966,7 +178,7 @@ def get_ids(
             )
             logger.info(f"{core.utils.format_number(len(df.index))} element IDs")
             return core.utils.dump(
-                downcast(df, categorical=["sample_id"]),
+                core.utils.downcast(df, categorical=["sample_id"]),
                 fn=core.utils.format_fn(
                     fn=definitions.ELEMENTS_FN,
                     prefix=core.utils.get_dir("INPUT"),
@@ -978,7 +190,7 @@ def get_ids(
     sys.exit(1)
 
 
-def get_elements(
+def process_elements(
     directory=None,
     sample_ids=[],
     processes=1,
@@ -986,7 +198,7 @@ def get_elements(
     t_0 = time.monotonic()
     tasks = get_parse_tasks(
         directory=directory,
-        type="ParseTask",
+        func=do_parse_fasta,
         sample_ids=sample_ids,
         extensions=definitions.SUPPORTED_FASTA_EXTENSIONS,
     )
@@ -1013,7 +225,7 @@ def get_elements(
         logger.error("Some Fasta files could not be parsed. Exiting.")
         sys.exit(1)
     core.utils.dump(
-        downcast(
+        core.utils.downcast(
             pd.concat([core.utils.load(df_fn) for df_fn in df_fns]),
         ),
         fn=core.utils.format_fn(
@@ -1026,7 +238,7 @@ def get_elements(
     return True
 
 
-def get_orthogroups(
+def process_orthogroups(
     orthogroup_fn,
     sample_ids=[],
     sample_ids_source="parse",
@@ -1074,7 +286,7 @@ def get_orthogroups(
         dtypes["sample_id"] = "category"
     df_orthogroups = pd.DataFrame.from_dict(data=data).astype(dtypes)
     logger.info(
-        f"{core.utils.format_number(df_orthogroups['orthogroup_id'].nunique())} orthogroup(s) parsed"
+        f"{core.utils.format_number(df_orthogroups['orthogroup_id'].nunique())} orthogroup(s) in file"
     )
     duplicated_elements_count = int(
         (df_orthogroups["element_id"].value_counts() > 1).value_counts().get(True, 0)
@@ -1139,7 +351,7 @@ def get_orthogroups(
             df_orthogroups.set_index("element_id"), how="outer"
         ).reset_index()
     orthogroups_count = df_orthogroups["orthogroup_id"].nunique()
-    logger.info(f"{core.utils.format_number(orthogroups_count)} orthogroup(s) in file")
+    logger.info(f"{core.utils.format_number(orthogroups_count)} orthogroup(s) parsed")
     elements_in_fasta_count = int(df_orthogroups["element_id"].count())
     elements_in_orthogroups_count = int(
         df_orthogroups[~df_orthogroups["orthogroup_id"].isna()]["element_id"].count()
@@ -1237,66 +449,11 @@ def get_orthogroups(
         index=True,
     )
     if do_plots:
-        tally_counts(
+        core.utils.get_tally(
             output_fmt=output_fmt,
             plot_fmt=plot_fmt,
             do_plots=do_plots,
         )
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-
-
-def tally_counts(
-    output_fmt=definitions.STD_FORMAT,
-    plot_fmt=definitions.PLOT_FORMAT,
-    do_plots=True,
-):
-    t_0 = time.monotonic()
-    df_counts = core.utils.get_counts_df()
-    df_EC = (
-        df_counts.sum(axis=1)
-        .value_counts(ascending=False)
-        .reset_index()
-        .rename(columns={"index": "EC"})
-        .sort_values(by=["EC"])
-    )
-    df_SC = (
-        df_counts.ge(1)
-        .sum(axis=1)
-        .value_counts(ascending=False)
-        .reset_index()
-        .rename(columns={"index": "SC"})
-        .sort_values(by=["SC"])
-    )
-    if do_plots:
-        core.plot.tally_plot(
-            df_EC=df_EC,
-            df_SC=df_SC,
-            fn=core.utils.format_fn(
-                fn="tally.plot",
-                prefix=core.utils.get_dir("PLOTS") / "tally",
-                suffix=f".{plot_fmt}",
-            ),
-        )
-    core.utils.dump(
-        df_EC,
-        fn=core.utils.format_fn(
-            fn=definitions.EC_TALLY_FN,
-            prefix=core.utils.get_dir("PLOTS") / "tally",
-            suffix=f".{output_fmt}",
-        ),
-        index=False,
-    )
-    core.utils.dump(
-        df_SC,
-        fn=core.utils.format_fn(
-            fn=definitions.SC_TALLY_FN,
-            prefix=core.utils.get_dir("PLOTS") / "tally",
-            suffix=f".{output_fmt}",
-        ),
-        index=False,
-    )
     logger.info(
         core.utils.format_elapsed(time.monotonic() - t_0),
     )
@@ -1335,158 +492,6 @@ def partition_lengths(task=None):
             ),
             index=True,
         )
-
-
-def get_df_entropy(df_annotation, output_fmt="tsv"):
-    """Entropy is correct. Previous KinFin implementation was off."""
-
-    def infer_entropy(values):
-        signature_counter = collections.Counter([v for k, v in values.items()])
-        return -sum(
-            [
-                i / signature_counter.total() * math.log2(i / signature_counter.total())
-                for i in list(signature_counter.values())
-            ]
-        )
-
-    def glue_strings(values):
-        signature_counter = collections.Counter(
-            [v for k, v in values.items() if isinstance(v, str)]
-        )
-        return (
-            "|".join([f"{k}:{v}" for k, v in signature_counter.most_common()])
-            if signature_counter
-            else np.nan
-        )
-
-    t_0 = time.monotonic()
-    # print(df_annotation)
-    df_annotation = df_annotation.reset_index()[
-        [
-            "orthogroup_id",
-            "analysis",
-            "signature_id",
-            "interpro_id",
-            "go_annotation",
-            "SC",
-            "SC_AP",
-            "EC",
-            "EC_AP",
-        ]
-    ]
-    for analysis in df_annotation["analysis"].unique():
-        if isinstance(analysis, str):
-            logger.info(f"calculating entropy for {analysis} annotations")
-            df_entropy = (
-                df_annotation[df_annotation["analysis"] == analysis]
-                .groupby("orthogroup_id", as_index=False)
-                .agg(
-                    **{
-                        f"{analysis}_entropy": pd.NamedAgg(
-                            column="signature_id",
-                            aggfunc=infer_entropy,
-                        ),
-                        f"{analysis}_ids": pd.NamedAgg(
-                            column="signature_id",
-                            aggfunc=glue_strings,
-                        ),
-                        f"{analysis}_SC": pd.NamedAgg(
-                            column="SC",
-                            aggfunc="max",
-                        ),
-                        f"{analysis}_SC_AP": pd.NamedAgg(
-                            column="SC_AP",
-                            aggfunc="max",
-                        ),
-                        f"{analysis}_EC": pd.NamedAgg(
-                            column="EC",
-                            aggfunc="max",
-                        ),
-                        f"{analysis}_EC_AP": pd.NamedAgg(
-                            column="EC_AP",
-                            aggfunc="max",
-                        ),
-                        "interpro_entropy": pd.NamedAgg(
-                            column="interpro_id",
-                            aggfunc=infer_entropy,
-                        ),
-                        "interpro_ids": pd.NamedAgg(
-                            column="interpro_id",
-                            aggfunc=glue_strings,
-                        ),
-                        "go_entropy": pd.NamedAgg(
-                            column="go_annotation",
-                            aggfunc=infer_entropy,
-                        ),
-                        "go_ids": pd.NamedAgg(
-                            column="go_annotation",
-                            aggfunc=glue_strings,
-                        ),
-                    }
-                )
-                .set_index("orthogroup_id")
-            )
-            core.utils.dump(
-                df_entropy[
-                    [
-                        f"{analysis}_SC",
-                        f"{analysis}_SC_AP",
-                        f"{analysis}_EC",
-                        f"{analysis}_EC_AP",
-                        f"{analysis}_entropy",
-                        f"{analysis}_ids",
-                        "interpro_entropy",
-                        "interpro_ids",
-                        "go_entropy",
-                        "go_ids",
-                    ]
-                ],
-                fn=core.utils.format_fn(
-                    fn=f"{definitions.ENTROPY_FN}.{analysis}.{output_fmt}",
-                    prefix=core.utils.get_dir("ANNOTATION"),
-                ),
-                index=True,
-            )
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
-
-    # def get_df_table(fn, df_orthogroups):
-    #     # [ToDo]
-    #     # - finish thinking about this
-    #     # - decide how to expose to user. Args-config-json as mentioned by RC
-    #     # - drop as table
-    #     t_0 = time.monotonic()
-    #     logger.info(f"parsing '{fn}'")
-    #     df_table = core.utils.load(fn)
-    #     try:
-    #         annotations_valid = df_table["element_id"].isin(df_orthogroups["element_id"])
-    #         annotations_valid_count = int(annotations_valid.value_counts().get(True, 0))
-    #         annotations_orphan_count = int(annotations_valid.value_counts().get(False, 0))
-    #         if annotations_orphan_count:
-    #             logger.warning(
-    #                 f"found {core.utils.format_number(annotations_orphan_count)} orphan annotation(s). Not part of any Orthogroup"
-    #             )
-    #             core.utils.dump(
-    #                 df_table[~annotations_valid],
-    #                 fn=core.utils.format_fn(fn, suffix=".orphans.tsv"),
-    #                 index=False,
-    #             )
-    #         if annotations_valid_count:
-    #             logger.info(
-    #                 f"found {core.utils.format_number(annotations_valid_count)} annotation(s) of elements in Orthogroups"
-    #             )
-    #             core.utils.dump(
-    #                 df_table[annotations_valid],
-    #                 fn=core.utils.format_fn(fn, suffix=".filtered.tsv"),
-    #                 index=False,
-    #             )
-    #     except NameError:
-    #         logger.error("missing column 'element_id'")
-    #     logger.info(
-    #         core.utils.format_elapsed(time.monotonic() - t_0),
-    #     )
-    #     return df_table[annotations_valid]
 
 
 def analyse_orthogroups(
@@ -1536,16 +541,7 @@ def analyse_orthogroups(
     )
 
 
-def infer_cog_type(values, count_target, count_min, count_max, count_fraction):
-    if np.all(values == count_target):
-        return "true_cog"
-    elif np.mean((values >= count_min) & (values <= count_max)) >= count_fraction:
-        return "fuzzy_cog"
-    else:
-        return "no_cog"
-
-
-def compare(task):
+def summary_function(task):
     _COLUMNS = ["EC_TG1", "OT", "CT"]
     compare_rows = []
     if task.lengths_parsed:
@@ -1610,7 +606,7 @@ def compare(task):
             df_sampling["EC"] = df_sampling["EC"].cumsum()
             df_sampling["ECn"] = df_sampling["EC"].div(EC_TG)
             df_sampling["OCn"] = df_sampling["OC"].div(OC)
-            df_sampling = downcast(
+            df_sampling = core.utils.downcast(
                 df_sampling[
                     [
                         "OT",
@@ -1685,7 +681,7 @@ def compare(task):
                 plot_fmt=task.plot_fmt,
             )
         core.utils.dump(
-            downcast(pd.DataFrame.from_dict(compare_rows)),
+            core.utils.downcast(pd.DataFrame.from_dict(compare_rows)),
             fn=core.utils.format_fn(
                 fn=f"{label}.summary.{task.output_fmt}",
                 prefix=core.utils.get_dir("PARTITION") / label,
@@ -1695,7 +691,7 @@ def compare(task):
     return True
 
 
-def contrast(task):
+def comparison_function(task):
     TG_1, TG_2 = task.taxon_groups
     df_counts = core.utils.get_counts_df(
         columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
@@ -1864,22 +860,7 @@ def contrast(task):
 
 
 def do_task(task):
-    if task.type == "SummaryTask":
-        return compare(task)
-    elif task.type == "ComparisonTask":
-        return contrast(task)
-    elif task.type == "ParseTask":
-        return do_parse_fasta_task(task)
-    elif task.type == "interpro":
-        return do_parse_interpro_task(task)
-    elif task.type == "repeatmasker":
-        return do_parse_repeatmasker_task(task)
-    elif task.type == "earlgrey":
-        return do_parse_earlgrey_task(task)
-    elif task.type == "bed":
-        return do_parse_bed_task(task)
-    else:
-        raise ValueError(f"unknown task type: {task}")
+    return task.func(task)
 
 
 def do_tasks(
@@ -1888,7 +869,6 @@ def do_tasks(
     processes=1,
     collect_results=False,
 ):
-    t_0 = time.monotonic()
     _TOTAL = len(tasks)
     _DESC = desc
     _NCOLS = definitions.PROGRESS_NCOLS
@@ -1905,9 +885,6 @@ def do_tasks(
             _ = do_task(task)
             if collect_results:
                 results.append(_)
-    logger.info(
-        core.utils.format_elapsed(time.monotonic() - t_0),
-    )
     return results
 
 
@@ -1936,7 +913,7 @@ def get_summary_tasks(
         tags = [label[1:] for label in v]
         tasks.append(
             SummaryTask(
-                type="SummaryTask",
+                func=summary_function,
                 taxon_groups=taxon_groups,
                 labels=labels,
                 tags=tags,
@@ -1978,7 +955,7 @@ def get_comparison_tasks(
         labels = [label[0] for label in v]
         tags = [label[1:] for label in v]
         task = ComparisonTask(
-            type="ComparisonTask",
+            func=comparison_function,
             taxon_groups=taxon_groups,
             labels=labels,
             tags=tags,
@@ -2089,7 +1066,7 @@ def get_taxonomy(
     return df_config.drop(["taxid"], axis=1)
 
 
-def get_config(
+def process_config(
     config_fn,
     taxonomic_ranks=[
         "genus",

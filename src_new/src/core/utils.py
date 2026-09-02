@@ -9,6 +9,7 @@ import signal
 import sys
 import traceback
 
+import core.plot
 import definitions
 import pandas as pd
 import requests
@@ -68,16 +69,18 @@ def iter_seq_length(fn):
 def download(url, dest_fn):
     response = requests.get(url, stream=True)
     try:
-        with tqdm.tqdm(
-            total=int(response.headers.get("content-length", 0)),
-            unit="B",
-            desc=f"[{dest_fn}]",
-            unit_scale=True,
-        ) as p:
-            with open(str(dest_fn), "wb") as fh:
-                for data in response.iter_content(1024):
-                    p.update(len(data))
-                    fh.write(data)
+        with (
+            tqdm.tqdm(
+                total=int(response.headers.get("content-length", 0)),
+                unit="B",
+                desc=f"[{dest_fn}]",
+                unit_scale=True,
+            ) as p,
+            open(str(dest_fn), "wb") as fh,
+        ):
+            for data in response.iter_content(1024):
+                p.update(len(data))
+                fh.write(data)
     except Exception:
         return False
     return True
@@ -157,6 +160,10 @@ def get_annotation_df(sample_id=None, output_fmt=definitions.STD_FORMAT, delete=
 
 
 def set_dir(name, value):
+    """
+    - set_dir only acts on definitions.TMP_PATHS_FILE in CWD
+    - when testament/teardown is reached, definitions.TMP_PATHS_FILE is saved within outdir
+    """
     tmp_paths_dict = {}
     if not definitions.TMP_PATHS_FILE.exists():
         dump(tmp_paths_dict, definitions.TMP_PATHS_FILE)
@@ -199,7 +206,8 @@ def downcast(df, categorical=[], info=False):
                 floats.append(column)
             elif df[column].dtype == "int64":
                 ints.append(column)
-            elif df[column].dtype == "category":
+            # elif df[column].dtype == "category":
+            elif df[column].dtype == "category" and not categorical:
                 df[column] = df[column].astype(str)
             else:
                 pass
@@ -269,6 +277,57 @@ def mkdir(name, subdirs=[], do_replace=False):
         logger.exception("failed creating directory")
         return False
     return True
+
+
+def get_tally(
+    output_fmt=definitions.STD_FORMAT,
+    plot_fmt=definitions.PLOT_FORMAT,
+    do_plots=True,
+):
+    df_counts = get_counts_df()
+    df_EC = (
+        df_counts.sum(axis=1)
+        .value_counts(ascending=False)
+        .reset_index()
+        .rename(columns={"index": "EC"})
+        .sort_values(by=["EC"])
+    )
+    df_SC = (
+        df_counts.ge(1)
+        .sum(axis=1)
+        .value_counts(ascending=False)
+        .reset_index()
+        .rename(columns={"index": "SC"})
+        .sort_values(by=["SC"])
+    )
+    if do_plots:
+        core.plot.tally_plot(
+            df_EC=df_EC,
+            df_SC=df_SC,
+            fn=format_fn(
+                fn="tally.plot",
+                prefix=get_dir("PLOTS") / "tally",
+                suffix=f".{plot_fmt}",
+            ),
+        )
+    dump(
+        df_EC,
+        fn=format_fn(
+            fn=definitions.EC_TALLY_FN,
+            prefix=get_dir("PLOTS") / "tally",
+            suffix=f".{output_fmt}",
+        ),
+        index=False,
+    )
+    dump(
+        df_SC,
+        fn=format_fn(
+            fn=definitions.SC_TALLY_FN,
+            prefix=get_dir("PLOTS") / "tally",
+            suffix=f".{output_fmt}",
+        ),
+        index=False,
+    )
 
 
 def load(fn, columns=None, names=None, filters=None):
