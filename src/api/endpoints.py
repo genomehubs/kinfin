@@ -23,9 +23,7 @@ from api.fileparsers import (
     parse_pairwise_file,
     parse_taxon_counts_file,
     parse_valid_proteome_ids_file,
-    read_table_file,
     read_table_payload,
-    sort_and_paginate_table,
 )
 from api.sessions import query_manager
 from api.utils import (
@@ -34,6 +32,7 @@ from api.utils import (
     derive_run_status,
     extract_attributes_and_taxon_sets,
     flatten_dict,
+    get_common_artifact_path,
     get_partition_artifact_path,
     normalise_field_list,
     partition_selection_to_id,
@@ -1665,11 +1664,10 @@ async def get_clustering_summary(
         kind="table",
     )
 
-    requested_fields = ["tag", *normalise_field_list(fields)]
     df_rows, total_pages = read_table_payload(
         file_path=file_path,
         table_name="summary",
-        requested_fields=requested_fields,
+        requested_fields=fields,
         filters=[],
         sort_by=sort_by,
         sort_order=sort_order,
@@ -1696,6 +1694,7 @@ async def get_clustering_summary(
 
 class ClusteringSummaryRequest(BaseModel):
     clustering_id: str
+    partition_id: Optional[str] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
     sort_by: Optional[str] = None
@@ -1707,7 +1706,10 @@ class ClusteringSummaryRequest(BaseModel):
 @router.post("/kinfin/clusterings/summary", response_model=ResponseSchema)
 async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Request):
     clustering_id = payload.clustering_id
-    partition_id = derive_default_partition_id(clustering_id)
+    partition_id = payload.partition_id if hasattr(payload, "partition_id") else None
+    if not partition_id or partition_id == "default":
+        partition_id = derive_default_partition_id(clustering_id)
+    print(f"Fetching summary for clustering_id: {clustering_id}, partition_id: {partition_id}")
     file_path = get_partition_artifact_path(
         clustering_id=clustering_id,
         partition_name=partition_id,
@@ -1716,11 +1718,10 @@ async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Re
         kind="table",
     )
 
-    requested_fields = ["tag", *normalise_field_list(payload.fields)]
     df_rows, total_pages = read_table_payload(
         file_path=file_path,
         table_name="summary",
-        requested_fields=requested_fields,
+        requested_fields=payload.fields,
         filters=payload.filters,
         sort_by=payload.sort_by,
         sort_order=payload.sort_order,
@@ -1736,6 +1737,130 @@ async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Re
                 "clustering_id": clustering_id,
                 "partition_id": partition_id,
                 "summary": df_rows,
+                "current_page": payload.page,
+                "total_pages": total_pages,
+            },
+            query=str(request.url),
+        ).model_dump(),
+        status_code=200,
+    )
+
+
+@router.get("/kinfin/clusterings/{clustering_id}/tally", response_model=ResponseSchema)
+async def get_clustering_tally(
+    request: Request,
+    clustering_id: str,
+    tally_field: str = Query(default="EC"),
+    sort_by: Optional[str] = Query(default=None),
+    sort_order: str = Query(default="asc"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1),
+):
+    if tally_field not in ["EC", "SC"]:
+        return JSONResponse(
+            content=ResponseSchema(
+                status="error",
+                message=f"Invalid tally field: {tally_field}. Must be one of ['EC', 'SC'].",
+                error="invalid_tally_field",
+                query=str(request.url),
+            ).model_dump(),
+            status_code=400,
+        )
+
+    file_path = get_common_artifact_path(
+        clustering_id=clustering_id,
+        artifact_type="tally",
+        artifact_file=f"orthogroups.{tally_field}.tally",
+        kind="table",
+    )
+
+    df_rows, total_pages = read_table_payload(
+        file_path=file_path,
+        table_name="tally",
+        requested_fields=[tally_field],
+        filters=[],
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        size=size,
+    )
+
+    return JSONResponse(
+        content=ResponseSchema(
+            status="success",
+            message="Clustering tally retrieved successfully.",
+            data={
+                "clustering_id": clustering_id,
+                "tally": df_rows,
+                "current_page": page,
+                "total_pages": total_pages,
+            },
+            query=str(request.url),
+        ).model_dump(),
+        status_code=200,
+    )
+
+
+class ClusteringTableRequest(BaseModel):
+    clustering_id: str
+    table_name: str = "summary"
+    partition_id: Optional[str] = None
+    subset: Optional[List[str]] = None
+    fields: List[str] = Field(default_factory=list)
+    filters: List[dict[str, Any]] = Field(default_factory=list)
+    sort_by: Optional[str] = None
+    sort_order: str = "asc"
+    page: int = 1
+    size: int = 20
+
+
+@router.post("/kinfin/clusterings/table", response_model=ResponseSchema)
+async def post_clustering_table(payload: ClusteringTableRequest, request: Request):
+    clustering_id = payload.clustering_id
+    partition_id = payload.partition_id if hasattr(payload, "partition_id") else None
+    if not partition_id or partition_id == "default":
+        partition_id = derive_default_partition_id(clustering_id)
+    table_name = payload.table_name if hasattr(payload, "table_name") else "summary"
+    if table_name == "partition":
+        if not payload.subset or not isinstance(payload.subset, list) or len(payload.subset) != 2:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Subset of cluster IDs must be provided for 'partition' table.",
+                    error="missing_subset",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+        table_name = f"{'_vs_'.join(payload.subset)}.partition"
+    print(f"Fetching table for clustering_id: {clustering_id}, partition_id: {partition_id}")
+    file_path = get_partition_artifact_path(
+        clustering_id=clustering_id,
+        partition_name=partition_id,
+        artifact_type="partition",
+        artifact_file=table_name,
+        kind="table",
+    )
+
+    df_rows, total_pages = read_table_payload(
+        file_path=file_path,
+        table_name=payload.table_name,
+        requested_fields=payload.fields,
+        filters=payload.filters,
+        sort_by=payload.sort_by,
+        sort_order=payload.sort_order,
+        page=payload.page,
+        size=payload.size,
+    )
+
+    return JSONResponse(
+        content=ResponseSchema(
+            status="success",
+            message="Clustering table retrieved successfully.",
+            data={
+                "clustering_id": clustering_id,
+                "partition_id": partition_id,
+                "table": df_rows,
                 "current_page": payload.page,
                 "total_pages": total_pages,
             },

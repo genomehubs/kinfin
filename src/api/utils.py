@@ -196,22 +196,28 @@ def canonicalise_column_names(
     - ValueError: If the table or column is not found in the registry.
     """
     registry = load_column_registry(table_name)
-    for canonical_name, details in registry.items():
-        if isinstance(column_names, str):
-            if canonical_name == column_names or column_names in details.get(
-                "aliases", []
-            ):
-                return canonical_name
-        else:
-            for i, col in enumerate(column_names):
-                if canonical_name == col or col in details.get("aliases", []):
-                    column_names[i] = canonical_name
     if isinstance(column_names, str):
+        column_names = [col.strip() for col in column_names.split(",")]
+    elif isinstance(column_names, list):
+        expanded_columns = []
+        for col in column_names:
+            expanded_columns.extend([c.strip() for c in col.split(",")])
+        column_names = expanded_columns
+    canonicalised_columns = []
+    for canonical_name, details in registry.get("columns", {}).items():
+        lc_canonical_name = canonical_name.lower()
+        for col in column_names:
+            col_lower = col.lower()
+            aliases_lower = [alias.lower() for alias in details.get("aliases", [])]
+            if lc_canonical_name == col_lower or col_lower in aliases_lower:
+                canonicalised_columns.append(canonical_name)
+                column_names.remove(col)
+                break
+    if not canonicalised_columns:
         raise ValueError(
             f"Column '{column_names}' not found in the registry for table '{table_name}'."
         )
-    else:
-        return column_names
+    return canonicalised_columns
 
 
 def get_column_metadata(
@@ -232,11 +238,11 @@ def get_column_metadata(
     - ValueError: If the table or column is not found in the registry.
     """
     registry = load_column_registry(table_name)
-    if column_name not in registry:
+    if column_name not in registry.get("columns", {}):
         raise ValueError(
             f"Column '{column_name}' not found in the registry for table '{table_name}'."
         )
-    return registry[column_name]
+    return registry["columns"][column_name]
 
 
 def get_default_visible_columns(table_name: str) -> list[str]:
@@ -252,8 +258,26 @@ def get_default_visible_columns(table_name: str) -> list[str]:
     registry = load_column_registry(table_name)
     return [
         col_name
-        for col_name, details in registry.items()
+        for col_name, details in registry.get("columns", {}).items()
         if details.get("default_visible", False)
+    ]
+
+
+def get_always_visible_columns(table_name: str) -> list[str]:
+    """
+    Get the always visible columns for a specific table.
+
+    Parameters:
+    - table_name [str]: The name of the table.
+
+    Returns:
+    - list[str]: A list of always visible column names for the specified table.
+    """
+    registry = load_column_registry(table_name)
+    return [
+        col_name
+        for col_name, details in registry.get("columns", {}).items()
+        if details.get("always_visible", False)
     ]
 
 
@@ -271,11 +295,20 @@ def resolve_requested_columns(
     Returns:
     - list[str]: A list of resolved and canonicalised column names for the specified table.
     """
-    if requested_columns is None:
-        return get_default_visible_columns(table_name)
+    always_visible_columns = get_always_visible_columns(table_name)
+    if requested_columns is None or requested_columns in ["default", ["default"]]:
+        return get_default_visible_columns(table_name) + always_visible_columns
+    if not requested_columns or requested_columns == [""]:
+        return always_visible_columns or None
+    if requested_columns in ["all", ["all"]]:
+        return list(load_column_registry(table_name).get("columns", {}).keys())
     columns = canonicalise_column_names(table_name, requested_columns)
     if isinstance(columns, str):
         columns = [columns]
+    # Ensure always visible columns are included
+    for col in always_visible_columns:
+        if col not in columns:
+            columns.append(col)
     return columns
 
 
@@ -301,7 +334,7 @@ def build_filter_spec(
     - ValueError: If the table or field is not found in the registry.
     """
     registry = load_column_registry(table_name)
-    if field not in registry:
+    if field not in registry.get("columns", {}):
         raise ValueError(
             f"Field '{field}' not found in the registry for table '{table_name}'."
         )
@@ -309,7 +342,7 @@ def build_filter_spec(
         "field": field,
         "op": op,
         "value": value,
-        "type": registry[field].get("type", "string"),
+        "type": registry["columns"][field].get("type", "string"),
     }
 
 
@@ -357,12 +390,12 @@ def check_operation_validity(
     - ValueError: If the table or field is not found in the registry.
     """
     registry = load_column_registry(table_name)
-    if field not in registry:
+    if field not in registry.get("columns", {}):
         raise ValueError(
             f"Field '{field}' not found in the registry for table '{table_name}'."
         )
     # use field type to determine valid operations
-    field_type = registry[field].get("type", "string")
+    field_type = registry["columns"][field].get("type", "string")
     if field_type == "string":
         return op in {"eq", "ne", "in", "not_in", "contains", "not_contains"}
     elif field_type in ["integer", "float"]:
@@ -389,36 +422,39 @@ def apply_filters_to_frame(
     """
     for f in filters:
         field = f["field"]
+        normalised_field = canonicalise_column_names(table_name, field)
+        if isinstance(normalised_field, list):
+            normalised_field = normalised_field[0]
         op = f["op"]
-        if not check_operation_validity(table_name, field, op):
+        if not check_operation_validity(table_name, normalised_field, op):
             raise ValueError(
                 f"Operation '{op}' is not valid for field '{field}' in table '{table_name}'."
             )
         value = f["value"]
         if op == "eq":
-            df = df[df[field] == value]
+            df = df[df[normalised_field] == value]
         elif op == "lt":
-            df = df[df[field] < value]
+            df = df[df[normalised_field] < value]
         elif op == "gt":
-            df = df[df[field] > value]
+            df = df[df[normalised_field] > value]
         elif op == "ne":
-            df = df[df[field] != value]
+            df = df[df[normalised_field] != value]
         elif op == "in":
-            df = df[df[field].isin(value)]
+            df = df[df[normalised_field].isin(value)]
         elif op == "not_in":
-            df = df[~df[field].isin(value)]
+            df = df[~df[normalised_field].isin(value)]
         elif op == "contains":
-            df = df[df[field].str.contains(value)]
+            df = df[df[normalised_field].str.contains(value)]
         elif op == "not_contains":
-            df = df[~df[field].str.contains(value)]
+            df = df[~df[normalised_field].str.contains(value)]
         elif op == "gte":
-            df = df[df[field] >= value]
+            df = df[df[normalised_field] >= value]
         elif op == "lte":
-            df = df[df[field] <= value]
+            df = df[df[normalised_field] <= value]
         elif op == "is_null":
-            df = df[df[field].isnull()]
+            df = df[df[normalised_field].isnull()]
         elif op == "not_null":
-            df = df[df[field].notnull()]
+            df = df[df[normalised_field].notnull()]
 
     return df
 
@@ -464,7 +500,8 @@ def get_clustering_root() -> str:
 
     Checks the RESULTS_BASE_DIR environment variable first. If not set, defaults to the current working directory.
     """
-    return os.getenv("RESULTS_BASE_DIR", os.getcwd())
+    # convert to absolute path
+    return os.path.abspath(os.getenv("RESULTS_BASE_DIR", os.getcwd()))
 
 
 def get_clustering_artifact_root(clustering_id: str) -> str:
@@ -500,9 +537,14 @@ def get_clustering_status_dir(clustering_id: str) -> str:
     Returns:
     - str: The path to the status directory for the specified clustering dataset.
     """
-    root_dir = os.path.join(
-        get_clustering_root(),
-        CLUSTERING_DATASETS.get(clustering_id, {}).get("status_root", "."),
+    # Determine the root directory for the clustering dataset's status
+    # handle relative paths in status_root by joining with the clustering root directory
+    # avoid encoving /./ or /../ in the path by using os.path.join and os.path.normpath
+    root_dir = os.path.normpath(
+        os.path.join(
+            get_clustering_root(),
+            CLUSTERING_DATASETS.get(clustering_id, {}).get("status_root", "."),
+        )
     )
     return os.path.join(root_dir, clustering_id)
 
@@ -647,6 +689,26 @@ def get_partition_artifact_path(
     )
 
 
+def get_common_artifact_path(
+    clustering_id: str,
+    artifact_type: str | None = "tally",
+    artifact_file: str = "tally",
+    kind: str | None = "table",
+) -> str:
+    artifact_dir = get_partition_artifact_dir(
+        clustering_id, partition_name=None, artifact_type=artifact_type
+    )
+    suffix_order = preferred_suffix_order(kind=kind)
+    for suffix in suffix_order:
+        candidate = f"{artifact_file}.{suffix}"
+        candidate_path = os.path.join(artifact_dir, candidate)
+        if os.path.exists(candidate_path):
+            return candidate_path
+    raise FileNotFoundError(
+        f"No artifact file found for '{artifact_file}' with preferred suffixes {suffix_order} in directory '{artifact_dir}'."
+    )
+
+
 def list_partition_status_dirs(clustering_id: str) -> list:
     """
     Lists all partition status directories for a specific clustering dataset.
@@ -714,6 +776,7 @@ def read_run_status_file(clustering_id: str, partition_name: str | None = None) 
     - dict: A dictionary containing the status information.
     """
     status_path = get_partition_status_path(clustering_id, partition_name)
+    print(f"Reading run status from: {status_path}")
 
     if os.path.exists(status_path):
         return read_status(status_path)
@@ -879,13 +942,13 @@ def get_clustering_readiness(clustering_id: str) -> bool:
 
 def canonicalise_list(partition_list: list[str]) -> list[str]:
     """
-    Canonicalizes a list of entity names by converting to lowercase,removing duplicates and sorting them.
+    Canonicalises a list of entity names by converting to lowercase,removing duplicates and sorting them.
 
     Parameters:
     - partition_list [list[str]]: A list of entity names.
 
     Returns:
-    - list[str]: A canonicalized list of unique, sorted entity names.
+    - list[str]: A canonicalised list of unique, sorted entity names.
     """
     return sorted({entity.lower() for entity in partition_list})
 
@@ -949,15 +1012,15 @@ def canonicalise_partition_dict(
     partition_dict: dict[str, list[str]],
 ) -> tuple[dict[str, list[str]], dict[str, str]]:
     """
-    Canonicalizes a dictionary of entity names by converting to lowercase, removing duplicates and sorting them.
-    Converts the keys to standardised single letter keys (e.g., "A", "B", "C") and returns the canonicalized dictionary.
+    Canonicalises a dictionary of entity names by converting to lowercase, removing duplicates and sorting them.
+    Converts the keys to standardised single letter keys (e.g., "A", "B", "C") and returns the canonicalised dictionary.
     Also returns a mapping of the original keys to the new canonical keys.
 
     Parameters:
     - partition_dict [dict[str, list[str]]]: A dictionary where keys are entity names and values are lists of associated names.
 
     Returns:
-    - dict[str, list[str]]: A canonicalized dictionary with unique, sorted entity names.
+    - dict[str, list[str]]: A canonicalised dictionary with unique, sorted entity names.
     - dict[str, str]: A mapping of original keys to canonical keys.
     """
     canonical_dict = {}
@@ -976,8 +1039,8 @@ def partition_selection_to_id(
     partition_dict: dict[str, list[str]],
 ) -> Tuple[str, dict[str, str]]:
     """
-    Generates a unique hashed partition ID based on the canonicalized partition dictionary.
-    The partition ID is a string representation of the canonicalized dictionary.
+    Generates a unique hashed partition ID based on the canonicalised partition dictionary.
+    The partition ID is a string representation of the canonicalised dictionary.
 
     Parameters:
     - partition_dict [dict[str, list[str]]]: A dictionary where keys are entity names and values are lists of associated names.

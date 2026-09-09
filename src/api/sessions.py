@@ -113,7 +113,8 @@ class QueryManager:
 
             if now - mod_time > timedelta(hours=self.expiration_hours):
                 logger.info(f"Cleaning up expired session: {session_id}")
-                shutil.rmtree(session_dir)
+                # disable cleanup for dev
+                # shutil.rmtree(session_dir)
 
     def __exit__(self, _, __) -> None:
         """Cleanup all sessions when exiting due to signal"""

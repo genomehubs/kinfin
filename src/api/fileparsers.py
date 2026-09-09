@@ -76,7 +76,11 @@ def read_table_payload(
     - tuple[list[dict], int]: A tuple containing the list of records and total pages.
     """
     requested_columns = resolve_requested_columns(table_name, requested_fields)
+    print(
+        f"Reading table file: {file_path} with columns: {requested_columns}"
+    )  # --- IGNORE ---
     df = read_table_file(file_path, columns=requested_columns)
+    print(df.describe())  # --- IGNORE ---
     if filters:
         normalised_filters = normalise_filter_specs(table_name, filters)
         df = apply_filters_to_frame(
@@ -85,6 +89,8 @@ def read_table_payload(
     df_paginated, total_pages = sort_and_paginate_table(
         df, sort_by=sort_by, sort_order=sort_order, page=page, size=size
     )
+    # Convert pandas missing values to JSON-safe Python None.
+    df_paginated = df_paginated.astype(object).where(pd.notna(df_paginated), None)
     return df_paginated.to_dict(orient="records"), total_pages
 
 

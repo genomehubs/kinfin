@@ -1,4 +1,52 @@
 tables:
+  lengths:
+    columns:
+      EL_mean:
+        aliases: []
+        description: The mean length of sequences in the partition subset
+        name: Mean Length
+        default_visible: true
+        type: float
+      EL_sd:
+        aliases: []
+        description: The standard deviation of the length of sequences in the partition subset
+        name: Length Standard Deviation
+        default_visible: true
+        type: float
+      # File also has <partition>_EL_min and <partition>_EL_max columns, but these are not included in the column registry as they are not used in the API.
+  partition:
+    columns:
+      # {"orthogroup_id":"OG0000000","OT":"shared","SC":10,"SC_TG1":2,"SP_TG1":1.0,"SC_TG2":8,"SP_TG2":0.800000011920929,"EC":608,"EC_TG1":10,"EC_TG2":598,"EC_mean":60.79999923706055,"EC_mean_TG1":5.0,"EC_mean_TG2":74.75,"l2m_TG1_TG2":-3.902073621749878,"pvalue":0.04949123039841652,"EC_median":37.5,"EC_median_TG1":5.0,"EC_median_TG2":41.0,"CT":"no_cog","CSP":0.0,"CSP_TG1":0.0}
+      orthogroup_id:
+        aliases:
+          - OG
+        description: The unique identifier for the orthogroup
+        name: Orthogroup ID
+        default_visible: true
+        always_visible: true
+        type: string
+      OT:
+        aliases:
+          - orthogroup_type
+        description: The type of orthogroup, either "shared" or "specific"
+        name: Orthogroup Type
+        default_visible: true
+        type: string
+      SC:
+        aliases:
+          - sample_count
+        description: The number of samples in the orthogroup
+        name: Sample Count
+        default_visible: true
+        type: integer
+      EC:
+        aliases:
+          - element_count
+          - cluster_protein_count
+        description: The number of elements in the orthogroup
+        name: Element Count
+        default_visible: true
+        type: integer
   summary:
     columns:
       label:
@@ -14,6 +62,7 @@ tables:
         description: The unique identifier for partiton subset
         name: Subset ID
         default_visible: true
+        always_visible: true
         type: string
       SC:
         aliases:
@@ -116,4 +165,27 @@ tables:
         description: The number of orthogroups shared with other partition subsets that are annotated with a fuzzy COG
         name: Shared Orthogroup COG Fuzzy Count
         default_visible: false
+        type: integer
+  tally:
+    columns:
+      EC:
+        aliases:
+          - element_count
+          - cluster_protein_count
+        description: The number of elements
+        name: Element Count
+        type: integer
+      SC:
+        aliases:
+          - sample_count
+        description: The number of samples
+        name: Sample Count
+        type: integer
+      count:
+        aliases:
+          - orthogroup_count
+        description: The number of orthogroups with the specified element count
+        name: Orthogroup Count
+        default_visible: true
+        always_visible: true
         type: integer
