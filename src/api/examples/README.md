@@ -25,8 +25,10 @@ API_URL=localhost:8000
 curl -X POST $API_URL/kinfin/partitions/resolve -d '{
     "clustering_id": "nematodes_v1.0",
     "partition_set": {
-        "blue": ["EELAP", "TCALL"],
-        "red": ["LSIGM", "DMEDI", "AVITE"]
+        "out": ["CBRIG", "CELEG"],
+        "n11": ["DMEDI", "OOCHE2", "SLABI", "DIMMI", "TCALL", "OOCHE1", "WBANC1"],
+        "n15": ["LOA2", "BMALA", "BPAHA", "WBANC2"],
+        "n16": ["LSIGM", "AVITE", "EELAP"]
     }
 }' -H 'Content-type: application/json'
 
@@ -35,12 +37,12 @@ curl -X POST $API_URL/kinfin/partitions/resolve -d '{
     "message": "Partition set resolved successfully.","query": "http://localhost:8000/kinfin/partitions/resolve",
     "data": {
         "clustering_id": "nematodes_v1.0",
-        "partition_id": "fb1a511e4761d2e9",
-        "key_map": {"red": 0, "blue": 1},
-        "status": "running",
-        "message": "Default analysis queued or running.",
+        "partition_id": "804b707a77993f0b",
+        "key_map": {"n16": 0, "n15": 1, "out": 2, "n11": 3},
+        "status": "completed",
+        "message": "Default analysis completed successfully.",
         "updated_at": "2026-08-18T12:05:00Z",
-        "expires_at": "2026-08-19T12:08:32Z"
+        "expires_at": "3026-08-19T12:08:32Z"
     },
     "timestamp": "2026-08-20T10:06:00.321952",
     "error":null,
@@ -55,7 +57,7 @@ Tip: pass `validate_partition_set: false` to skip validation when working with a
 Use `GET` endpoint to check status of a single partition:
 
 ```
-curl $API_URL/kinfin/clusterings/nematodes_v1.0/partitions/fb1a511e4761d2e9/status
+curl $API_URL/kinfin/clusterings/nematodes_v1.0/partitions/804b707a77993f0b/status
 ```
 
 Or use `POST` to check status for a list of partition IDs:
@@ -63,7 +65,7 @@ Or use `POST` to check status for a list of partition IDs:
 ```
 curl -X POST $API_URL/kinfin/partitions/status -d '{
     "clustering_id": "nematodes_v1.0",
-    "partition_ids": ["fb1a511e4761d2e9"]
+    "partition_ids": ["804b707a77993f0b"]
 }' -H 'Content-type: application/json'
 ```
 
