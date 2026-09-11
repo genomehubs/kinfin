@@ -1010,24 +1010,24 @@ def validate_partition_dict(
 
 def canonicalise_partition_dict(
     partition_dict: dict[str, list[str]],
-) -> tuple[dict[str, list[str]], dict[str, str]]:
+) -> tuple[dict[int, list[str]], dict[str, int]]:
     """
     Canonicalises a dictionary of entity names by converting to lowercase, removing duplicates and sorting them.
-    Converts the keys to standardised single letter keys (e.g., "A", "B", "C") and returns the canonicalised dictionary.
+    Converts the keys to standardised integer keys (e.g., 0, 1, 2) and returns the canonicalised dictionary.
     Also returns a mapping of the original keys to the new canonical keys.
 
     Parameters:
     - partition_dict [dict[str, list[str]]]: A dictionary where keys are entity names and values are lists of associated names.
 
     Returns:
-    - dict[str, list[str]]: A canonicalised dictionary with unique, sorted entity names.
-    - dict[str, str]: A mapping of original keys to canonical keys.
+    - dict[int, list[str]]: A canonicalised dictionary with unique, sorted entity names.
+    - dict[str, int]: A mapping of original keys to canonical keys.
     """
     canonical_dict = {}
     key_mapping = {}
     sorted_keys = sort_keys_by_values(partition_dict)
     for i, key in enumerate(sorted_keys):
-        canonical_key = chr(ord("A") + i)
+        canonical_key = i
         canonical_dict[canonical_key] = sorted(
             {entity.lower() for entity in partition_dict[key]}
         )
@@ -1037,7 +1037,7 @@ def canonicalise_partition_dict(
 
 def partition_selection_to_id(
     partition_dict: dict[str, list[str]],
-) -> Tuple[str, dict[str, str]]:
+) -> Tuple[str, dict[str, int]]:
     """
     Generates a unique hashed partition ID based on the canonicalised partition dictionary.
     The partition ID is a string representation of the canonicalised dictionary.
@@ -1047,7 +1047,7 @@ def partition_selection_to_id(
 
     Returns:
     - str: A unique partition ID.
-    - dict[str, str]: A mapping of original keys to canonical keys.
+    - dict[str, int]: A mapping of original keys to canonical keys.
     """
     canonical_dict, key_mapping = canonicalise_partition_dict(partition_dict)
     raw = json.dumps(canonical_dict, sort_keys=True)
