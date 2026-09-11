@@ -50,7 +50,7 @@ curl -X POST $API_URL/kinfin/partitions/resolve -d '{
 }
 ```
 
-Tip: pass `validate: false` to skip validation when working with a new clustering to identify the `default_partition_id` ahead of loading.
+Tip: pass `validate_partition_set: false` to skip validation when working with a new clustering to identify the `default_partition_id` ahead of loading. The legacy `validate: false` field is still accepted.
 
 Use `GET` endpoint to check status of a single partition:
 
