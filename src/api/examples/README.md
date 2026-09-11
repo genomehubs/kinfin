@@ -14,7 +14,7 @@ The example data consist of a set of clustering output directories named to matc
 
 Note that this is the structure required for the API to track analysis state, so the CLI must support this structure for logging run status, however it places no constraint on result file organisation or file paths.
 
-Each `partition-id` is based on a hashed dict of the canonicalised partition definition. Given a user supplied dict of partitions like `{"label_1": ["Taxon1", ...]}`, taxon names within a partition are converted to lower case and sorted alphanumerically, then partitions are sorted based on the first member taxon and keys for the sorted partitons are converted to `A`, `B`, `C`, etc. This cononicalised dict is hashed to generate a deterministic unique ID for the partition set to avoid redundant computation.
+Each `partition-id` is based on a hashed dict of the canonicalised partition definition. Given a user supplied dict of partitions like `{"label_1": ["Taxon1", ...]}`, taxon names within a partition are converted to lower case and sorted alphanumerically, then partitions are sorted based on the first member taxon and keys for the sorted partitions are converted to `0`, `1`, `2`, etc. This canonicalised dict is hashed to generate a deterministic unique ID for the partition set to avoid redundant computation.
 
 The API provides a function to perform this canonicalisation via the `/partitions/resolve` `POST` endpoint. This endpoint accepts a user specified partition dict and returns the partition ID and a mapping of canonical to user labels.
 
@@ -35,8 +35,8 @@ curl -X POST $API_URL/kinfin/partitions/resolve -d '{
     "message": "Partition set resolved successfully.","query": "http://localhost:8000/kinfin/partitions/resolve",
     "data": {
         "clustering_id": "nematodes_v1.0",
-        "partition_id": "96f78f92dc2313c5",
-        "key_map": {"red": "A", "blue": "B"},
+        "partition_id": "fb1a511e4761d2e9",
+        "key_map": {"red": 0, "blue": 1},
         "status": "running",
         "message": "Default analysis queued or running.",
         "updated_at": "2026-08-18T12:05:00Z",
@@ -55,7 +55,7 @@ Tip: pass `validate_partition_set: false` to skip validation when working with a
 Use `GET` endpoint to check status of a single partition:
 
 ```
-curl $API_URL/kinfin/clusterings/nematodes_v1.0/partitions/96f78f92dc2313c5/status
+curl $API_URL/kinfin/clusterings/nematodes_v1.0/partitions/fb1a511e4761d2e9/status
 ```
 
 Or use `POST` to check status for a list of partition IDs:
@@ -63,7 +63,7 @@ Or use `POST` to check status for a list of partition IDs:
 ```
 curl -X POST $API_URL/kinfin/partitions/status -d '{
     "clustering_id": "nematodes_v1.0",
-    "partition_ids": ["96f78f92dc2313c5"]
+    "partition_ids": ["fb1a511e4761d2e9"]
 }' -H 'Content-type: application/json'
 ```
 
