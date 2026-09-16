@@ -167,7 +167,7 @@ def get_ids(
                 f"none of the following IDs was found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids))}"
             )
             sys.exit(1)
-        elif not len(sample_ids) == len(sample_ids_found):
+        elif len(sample_ids) != len(sample_ids_found):
             logger.error(
                 f"the following IDs were not found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids - set(sample_ids_found.values())))}"
             )
@@ -618,9 +618,8 @@ def summary_function(task):
                 ],
                 categorical=["OT"],
             )
-            if task.plot_fmt is not None:
-                if not df_sampling.empty:
-                    line_plot_data.append([tag, SC_TG, df_sampling])
+            if task.plot_fmt is not None and not df_sampling.empty:
+                line_plot_data.append([tag, SC_TG, df_sampling])
             core.utils.dump(
                 df_sampling,
                 fn=core.utils.format_fn(
@@ -874,12 +873,14 @@ def do_tasks(
     _NCOLS = definitions.PROGRESS_NCOLS
     results = [] if collect_results else None
     if processes > 1:
-        with tqdm.tqdm(total=_TOTAL, desc=_DESC, ncols=_NCOLS) as t:
-            with poolcontext(processes=processes) as pool:
-                for _ in pool.imap_unordered(do_task, tasks):
-                    if collect_results:
-                        results.append(_)
-                    t.update()
+        with (
+            tqdm.tqdm(total=_TOTAL, desc=_DESC, ncols=_NCOLS) as t,
+            poolcontext(processes=processes) as pool,
+        ):
+            for _ in pool.imap_unordered(do_task, tasks):
+                if collect_results:
+                    results.append(_)
+                t.update()
     else:
         for task in tqdm.tqdm(tasks, total=_TOTAL, desc=_DESC, ncols=_NCOLS):
             _ = do_task(task)
@@ -903,9 +904,7 @@ def get_summary_tasks(
     )
     for key in taxon_groups:
         collector_key = tuple([tuple(TG) for TG in taxon_groups[key].values()])
-        collector_value = tuple(
-            [key] + [TG_label for TG_label in taxon_groups[key].keys()]
-        )
+        collector_value = tuple([key] + [TG_label for TG_label in taxon_groups[key]])
         collector[collector_key].append(collector_value)
     tasks = []
     for taxon_groups, v in collector.items():
@@ -1068,11 +1067,10 @@ def get_taxonomy(
 
 def process_config(
     config_fn,
-    taxonomic_ranks=[
-        "genus",
-        "species",
-    ],
+    taxonomic_ranks=None,
 ):
+    if taxonomic_ranks is None:
+        taxonomic_ranks = ["genus", "species"]
     df_config = core.utils.load(config_fn).convert_dtypes()
     if df_config.empty:
         logger.error("config is empty")
@@ -1152,12 +1150,10 @@ def get_combinations(taxon_groups, key):
                 (
                     tuple(sorted(TNs_1)),
                     tuple(sorted(TNs_2)),
-                    tuple(
-                        [
-                            key,
-                            label_1,
-                            label_2,
-                        ]
+                    (
+                        key,
+                        label_1,
+                        label_2,
                     ),
                 )
             )
@@ -1170,12 +1166,10 @@ def get_combinations(taxon_groups, key):
             (
                 tuple(sorted(TNs)),
                 tuple(sorted(TNs_remainder)),
-                tuple(
-                    [
-                        key,
-                        TNs_label,
-                        definitions.REMAINDER_LABEL,
-                    ]
+                (
+                    key,
+                    TNs_label,
+                    definitions.REMAINDER_LABEL,
                 ),
             )
         )
