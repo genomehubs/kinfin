@@ -203,7 +203,7 @@ def process_elements(
         extensions=definitions.SUPPORTED_FASTA_EXTENSIONS,
     )
     if len(tasks) < len(sample_ids):
-        sample_ids_missing = set(sample_ids) - set([task.sample_id for task in tasks])
+        sample_ids_missing = set(sample_ids) - {task.sample_id for task in tasks}
         logger.error(
             f"files for the following sample IDs could not be found: {', '.join(sorted(sample_ids_missing))}"
         )
