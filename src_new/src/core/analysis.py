@@ -690,7 +690,101 @@ def summary_function(task):
     return True
 
 
+def get_partition_metrics(
+    path="/Users/dom/data/testing/psyche.orthofinder.orthogroups.laurence.deduped/.tmp/orthogroups.counts.nan.parquet",
+    tg=[],
+    count_target=1,
+    count_min=0,
+    count_max=1,
+    count_fraction=0.75,
+):
+    """
+    task.taxongroup
+    task.count_target
+    """
+    # df_counts = core.utils.get_counts_df(nan=True)
+    df_counts = core.utils.load(path)
+    # df_counts_TG = df_counts.loc[:, task.taxongroup]
+    df_counts_TG = df_counts.loc[:, tg]
+
+    SC = df_counts.ge(1).sum(axis=1).rename("SC")
+    SC_TG = df_counts_TG.ge(1).sum(axis=1).rename("SC_TG")
+    # SP_TG = SC_TG.div(len(task.taxongroup)).rename("SP_TG")
+    SP_TG = SC_TG.div(len(tg)).rename("SP_TG")
+    EC = df_counts.sum(axis=1).astype(int).rename("EC")
+    EC_TG = df_counts_TG.sum(axis=1).astype(int).rename("EC_TG")
+    OT = pd.Series(
+        np.select(
+            condlist=[
+                (EC_TG == 0),
+                (EC_TG == 1),
+                (SC_TG == SC),
+            ],
+            choicelist=[
+                "absent",
+                "singleton",
+                "specific",
+            ],
+            default="shared",
+        ),
+        index=df_counts.index,
+    ).rename("OT")
+    # CSP = df_counts.eq(task.count_target).sum(axis=1).div(len(df_counts.columns)).rename("CSP")
+    CSP = (
+        df_counts.eq(count_target).sum(axis=1).div(len(df_counts.columns)).rename("CSP")
+    )
+    CSP_TG = (
+        # df_counts_TG.eq(task.count_target).sum(axis=1).div(len(task.taxongroup))
+        df_counts_TG.eq(count_target).sum(axis=1).div(len(tg))
+    ).rename("CSP_TG")
+    CT = pd.Series(
+        np.select(
+            condlist=[
+                # np.all(df_counts_TG.eq(task.count_target), axis=1),
+                np.all(df_counts_TG.eq(count_target), axis=1),
+                np.mean(
+                    # (df_counts_TG >= task.count_min) & (df_counts_TG <= task.count_max),
+                    (df_counts_TG >= count_min) & (df_counts_TG <= count_max),
+                    axis=1,
+                )
+                # >= task.count_fraction,
+                >= count_fraction,
+            ],
+            choicelist=[
+                "true_cog",
+                "fuzzy_cog",
+            ],
+            default="no_cog",
+        ),
+        index=df_counts.index,
+    ).rename("CT")
+    EC_mean = df_counts.mean(axis=1).rename("EC_mean")
+    EC_mean_TG = df_counts_TG.mean(axis=1).rename("EC_mean_TG")
+    EC_median = df_counts.median(axis=1, skipna=True).rename("EC_median")
+    EC_median_TG = df_counts_TG.median(axis=1, skipna=True).rename("EC_median_TG")
+    df_partition = pd.concat(
+        [
+            OT,
+            SC,
+            SC_TG,
+            SP_TG,
+            EC,
+            EC_TG,
+            EC_mean,
+            EC_mean_TG,
+            EC_median,
+            EC_median_TG,
+            CT,
+            CSP,
+            CSP_TG,
+        ],
+        axis=1,
+    )
+    return df_partition
+
+
 def comparison_function(task):
+    print(f"{task=}")
     TG_1, TG_2 = task.taxon_groups
     df_counts = core.utils.get_counts_df(
         columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
