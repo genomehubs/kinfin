@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -1477,7 +1477,12 @@ class PartitionResolveRequest(BaseModel):
     partition_set: Dict[str, List[str]] = Field(
         ..., description="Dictionary mapping partition names to lists of cluster IDs"
     )
-    validate: Optional[bool] = Field(True, description="Whether to validate the partition set before resolving")
+    validate_partition_set: Optional[bool] = Field(
+        True,
+        validation_alias=AliasChoices("validate_partition_set", "validate"),
+        serialization_alias="validate_partition_set",
+        description="Whether to validate the partition set before resolving",
+    )
 
 
 class PartitionStatusPayload(BaseModel):
@@ -1495,7 +1500,7 @@ async def resolve_partition_set(payload: PartitionResolveRequest, request: Reque
     try:
         clustering_id = payload.clustering_id
         partition_set = payload.partition_set
-        validate = payload.validate if hasattr(payload, "validate") else True
+        validate = payload.validate_partition_set
 
         if validate:
             is_valid, error_message = validate_partition_dict(clustering_id, partition_set)
