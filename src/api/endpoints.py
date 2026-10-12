@@ -73,7 +73,7 @@ CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
-    clusterId: str
+    dataset_id: str = Field(validation_alias=AliasChoices("dataset_id", "clusterId"))
     isAdvanced: bool
 
 
@@ -233,13 +233,14 @@ async def initialize(input_data: InputSchema, request: Request):
                 ).model_dump(),
                 status_code=400,
             )
-        cluster_info = DATASETS.get(input_data.clusterId)
+        dataset_id = input_data.dataset_id
+        cluster_info = DATASETS.get(dataset_id)
 
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusterId: {input_data.clusterId}",
+                    message=f"Invalid dataset_id: {dataset_id}",
                     error="Dataset not found",
                     query=str(request.url),
                 ).model_dump(),
@@ -743,17 +744,30 @@ async def get_available_attributes_and_taxon_sets(
 @limiter.limit(LIMIT_STANDARD)
 async def get_valid_taxons_api(
     request: Request,
-    clusterId: str,
+    dataset_id: str | None = Query(None),
+    clusterId: str | None = Query(None, include_in_schema=False),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
 ):
     try:
-        cluster_info = DATASETS.get(clusterId)
+        dataset_id = dataset_id or clusterId
+        if not dataset_id:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Missing dataset_id query parameter",
+                    error="Field required",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=422,
+            )
+
+        cluster_info = DATASETS.get(dataset_id)
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusterId: {clusterId}",
+                    message=f"Invalid dataset_id: {dataset_id}",
                     error="Dataset not found",
                     query=str(request.url),
                 ).model_dump(),
