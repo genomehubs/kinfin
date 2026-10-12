@@ -933,7 +933,7 @@ def get_dataset_readiness(dataset_id: str) -> bool:
     - dataset_id [str]: The ID of the dataset.
 
     Returns:
-    - dict: A dictionary containing readiness information.
+    - bool: True when the default partition is ready, otherwise False.
     """
     default_partition_id = derive_default_partition_id(dataset_id)
     run_status = derive_run_status(dataset_id, default_partition_id)
