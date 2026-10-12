@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -41,6 +41,7 @@ from api.utils import (
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    validate_key_map,
     validate_partition_dict,
 )
 from core.utils import check_file
@@ -1504,7 +1505,10 @@ def parse_key_map_query(key_map: Optional[str]) -> Optional[Dict[str, int | str]
         raise HTTPException(status_code=400, detail="key_map must be valid JSON") from e
     if not isinstance(parsed, dict):
         raise HTTPException(status_code=400, detail="key_map must be a JSON object")
-    return parsed
+    try:
+        return validate_key_map(parsed)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/kinfin/partitions/resolve", response_model=ResponseSchema)
@@ -1726,6 +1730,11 @@ class ClusteringSummaryRequest(BaseModel):
     page: int = 1
     size: int = 20
 
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
+
 
 @router.post("/kinfin/clusterings/summary", response_model=ResponseSchema)
 async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Request):
@@ -1838,6 +1847,11 @@ class ClusteringTableRequest(BaseModel):
     sort_order: str = "asc"
     page: int = 1
     size: int = 20
+
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
 
 
 @router.post("/kinfin/clusterings/table", response_model=ResponseSchema)

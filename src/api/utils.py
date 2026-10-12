@@ -10,6 +10,31 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import pandas as pd
 import yaml
 
+MAX_KEY_MAP_ENTRIES = 128
+MAX_KEY_MAP_LABEL_LENGTH = 128
+KEY_MAP_LABEL_COLUMNS = {
+    "label",
+    "tag",
+    "partition",
+    "partition_id",
+    "subset",
+    "subset_id",
+}
+FILTER_OPERATIONS = {
+    "eq",
+    "ne",
+    "lt",
+    "gt",
+    "lte",
+    "gte",
+    "in",
+    "not_in",
+    "contains",
+    "not_contains",
+    "is_null",
+    "not_null",
+}
+
 
 def read_status(status_file):
     status_info = {}
@@ -313,6 +338,64 @@ def resolve_requested_columns(
     return columns
 
 
+def validate_key_map(key_map: dict[str, int | str] | None) -> dict[str, int | str] | None:
+    if not key_map:
+        return None
+    if not isinstance(key_map, dict):
+        raise ValueError("key_map must be an object")
+    if len(key_map) > MAX_KEY_MAP_ENTRIES:
+        raise ValueError(
+            f"key_map must contain no more than {MAX_KEY_MAP_ENTRIES} entries"
+        )
+    normalised_key_map = {}
+    seen_canonical = set()
+    for user_label, canonical_label in key_map.items():
+        user_label = str(user_label)
+        canonical_label_text = str(canonical_label)
+        if not user_label or not canonical_label_text:
+            raise ValueError("key_map labels must be non-empty")
+        if (
+            len(user_label) > MAX_KEY_MAP_LABEL_LENGTH
+            or len(canonical_label_text) > MAX_KEY_MAP_LABEL_LENGTH
+        ):
+            raise ValueError(
+                f"key_map labels must be {MAX_KEY_MAP_LABEL_LENGTH} characters or fewer"
+            )
+        if canonical_label_text in seen_canonical:
+            raise ValueError("key_map canonical labels must be unique")
+        seen_canonical.add(canonical_label_text)
+        normalised_key_map[user_label] = canonical_label
+    return normalised_key_map
+
+
+def key_map_replacements(
+    key_map: dict[str, int | str] | None,
+    *,
+    reverse: bool = False,
+) -> dict[str, str]:
+    key_map = validate_key_map(key_map)
+    if not key_map:
+        return {}
+    if reverse:
+        return {
+            str(user_key): str(canonical_key)
+            for user_key, canonical_key in key_map.items()
+        }
+    return {
+        str(canonical_key): str(user_key)
+        for user_key, canonical_key in key_map.items()
+    }
+
+
+def replace_keymap_tokens(value: str, replacements: dict[str, str]) -> str:
+    if not replacements:
+        return value
+    pattern = re.compile(
+        rf"(?:(?<=_)|^)({'|'.join(re.escape(k) for k in replacements)})(?=_|$)"
+    )
+    return pattern.sub(lambda match: replacements[match.group(1)], value)
+
+
 def translate_keymap_labels(
     value: Any,
     key_map: dict[str, int | str] | None,
@@ -326,19 +409,9 @@ def translate_keymap_labels(
     By default this function translates canonical IDs back to user labels. With
     ``reverse=True`` it translates user labels to canonical IDs.
     """
-    if not key_map:
+    replacements = key_map_replacements(key_map, reverse=reverse)
+    if not replacements:
         return value
-
-    if reverse:
-        replacements = {
-            str(user_key): str(canonical_key)
-            for user_key, canonical_key in key_map.items()
-        }
-    else:
-        replacements = {
-            str(canonical_key): str(user_key)
-            for user_key, canonical_key in key_map.items()
-        }
 
     if isinstance(value, pd.DataFrame):
         translated = value.rename(
@@ -350,13 +423,9 @@ def translate_keymap_labels(
         label_columns = {
             column
             for column in translated.columns
-            if str(column).lower()
-            in {"label", "tag", "partition", "partition_id", "subset", "subset_id"}
+            if str(column).lower() in KEY_MAP_LABEL_COLUMNS
         }
-        value_columns = set(
-            translated.select_dtypes(include=["object", "string"]).columns
-        ) | label_columns
-        for column in value_columns:
+        for column in label_columns:
             translated[column] = translated[column].map(
                 lambda cell: translate_keymap_labels(
                     str(cell) if column in label_columns and pd.notna(cell) else cell,
@@ -387,16 +456,55 @@ def translate_keymap_labels(
     if not isinstance(value, str):
         return value
 
-    translated_value = value
-    for source, target in sorted(
-        replacements.items(), key=lambda item: len(item[0]), reverse=True
-    ):
-        translated_value = re.sub(
-            rf"(?:(?<=_)|^){re.escape(source)}(?=_|$)",
-            target,
-            translated_value,
-        )
-    return translated_value
+    return replace_keymap_tokens(value, replacements)
+
+
+def translate_keymap_field(
+    field_name: str,
+    key_map: dict[str, int | str] | None,
+    *,
+    reverse: bool = False,
+) -> str:
+    return translate_keymap_labels(field_name, key_map, reverse=reverse)
+
+
+def translate_keymap_fields(
+    field_names: list[str] | str | None,
+    key_map: dict[str, int | str] | None,
+    *,
+    reverse: bool = False,
+) -> list[str] | str | None:
+    if field_names is None:
+        return None
+    if isinstance(field_names, str):
+        return translate_keymap_field(field_names, key_map, reverse=reverse)
+    return [
+        translate_keymap_field(field_name, key_map, reverse=reverse)
+        for field_name in field_names
+    ]
+
+
+def dynamic_column_base(column_name: str, key_map: dict[str, int | str] | None) -> str | None:
+    replacements = key_map_replacements(key_map, reverse=True)
+    if not replacements or "_" not in column_name:
+        return None
+    canonical_name = replace_keymap_tokens(column_name, replacements)
+    if canonical_name == column_name:
+        return None
+    return canonical_name.split("_", 1)[0]
+
+
+def is_registered_or_keymap_dynamic_column(
+    table_name: str,
+    column_name: str,
+    key_map: dict[str, int | str] | None = None,
+) -> bool:
+    registry = load_column_registry(table_name).get("columns", {})
+    if column_name in registry:
+        return True
+    if base_column := dynamic_column_base(column_name, key_map):
+        return base_column in registry
+    return False
 
 
 def build_filter_spec(
@@ -484,11 +592,31 @@ def check_operation_validity(
     # use field type to determine valid operations
     field_type = registry["columns"][field].get("type", "string")
     if field_type == "string":
-        return op in {"eq", "ne", "in", "not_in", "contains", "not_contains"}
+        return op in {
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "contains",
+            "not_contains",
+            "is_null",
+            "not_null",
+        }
     elif field_type in ["integer", "float"]:
-        return op in {"eq", "ne", "lt", "gt", "lte", "gte", "in", "not_in"}
+        return op in {
+            "eq",
+            "ne",
+            "lt",
+            "gt",
+            "lte",
+            "gte",
+            "in",
+            "not_in",
+            "is_null",
+            "not_null",
+        }
     else:
-        return op in {"eq", "ne", "in", "not_in"}
+        return op in {"eq", "ne", "in", "not_in", "is_null", "not_null"}
 
 
 def apply_filters_to_frame(
@@ -518,19 +646,7 @@ def apply_filters_to_frame(
             if field not in df.columns:
                 raise
             normalised_field = field
-            if op not in {
-                "eq",
-                "ne",
-                "lt",
-                "gt",
-                "lte",
-                "gte",
-                "in",
-                "not_in",
-                "contains",
-                "not_contains",
-                "is_null",
-            }:
+            if op not in FILTER_OPERATIONS:
                 raise ValueError(
                     f"Operation '{op}' is not valid for field '{field}' in table '{table_name}'."
                 )
