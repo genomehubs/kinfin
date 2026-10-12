@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -41,6 +41,7 @@ from api.utils import (
     read_status,
     run_cli_command,
     sort_and_paginate_result,
+    validate_key_map,
     validate_partition_dict,
 )
 from core.utils import check_file
@@ -1495,6 +1496,21 @@ class PartitionStatusPayload(BaseModel):
     details: Dict[str, Any] = {}
 
 
+def parse_key_map_query(key_map: Optional[str]) -> Optional[Dict[str, int | str]]:
+    if not key_map:
+        return None
+    try:
+        parsed = json.loads(key_map)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="key_map must be valid JSON") from e
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=400, detail="key_map must be a JSON object")
+    try:
+        return validate_key_map(parsed)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 @router.post("/kinfin/partitions/resolve", response_model=ResponseSchema)
 async def resolve_partition_set(payload: PartitionResolveRequest, request: Request):
     try:
@@ -1655,11 +1671,16 @@ async def get_clustering_summary(
     request: Request,
     clustering_id: str,
     fields: Optional[List[str]] = Query(default=None),
+    key_map: Optional[str] = Query(
+        default=None,
+        description="JSON key map returned by /kinfin/partitions/resolve",
+    ),
     sort_by: Optional[str] = Query(default=None),
     sort_order: str = Query(default="asc"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1),
 ):
+    parsed_key_map = parse_key_map_query(key_map)
     partition_id = derive_default_partition_id(clustering_id)
     file_path = get_partition_artifact_path(
         clustering_id=clustering_id,
@@ -1678,6 +1699,7 @@ async def get_clustering_summary(
         sort_order=sort_order,
         page=page,
         size=size,
+        key_map=parsed_key_map,
     )
 
     return JSONResponse(
@@ -1700,12 +1722,18 @@ async def get_clustering_summary(
 class ClusteringSummaryRequest(BaseModel):
     clustering_id: str
     partition_id: Optional[str] = None
+    key_map: Optional[Dict[str, int | str]] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
     sort_by: Optional[str] = None
     sort_order: str = "asc"
     page: int = 1
     size: int = 20
+
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
 
 
 @router.post("/kinfin/clusterings/summary", response_model=ResponseSchema)
@@ -1732,6 +1760,7 @@ async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Re
         sort_order=payload.sort_order,
         page=payload.page,
         size=payload.size,
+        key_map=payload.key_map,
     )
 
     return JSONResponse(
@@ -1810,6 +1839,7 @@ class ClusteringTableRequest(BaseModel):
     clustering_id: str
     table_name: str = "summary"
     partition_id: Optional[str] = None
+    key_map: Optional[Dict[str, int | str]] = None
     subset: Optional[List[str]] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
@@ -1817,6 +1847,11 @@ class ClusteringTableRequest(BaseModel):
     sort_order: str = "asc"
     page: int = 1
     size: int = 20
+
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
 
 
 @router.post("/kinfin/clusterings/table", response_model=ResponseSchema)
@@ -1856,6 +1891,7 @@ async def post_clustering_table(payload: ClusteringTableRequest, request: Reques
         sort_order=payload.sort_order,
         page=payload.page,
         size=payload.size,
+        key_map=payload.key_map,
     )
 
     return JSONResponse(

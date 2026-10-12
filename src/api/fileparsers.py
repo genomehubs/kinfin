@@ -6,8 +6,13 @@ import pandas as pd
 
 from api.utils import (
     apply_filters_to_frame,
+    get_always_visible_columns,
+    is_registered_or_keymap_dynamic_column,
     normalise_filter_specs,
     resolve_requested_columns,
+    translate_keymap_fields,
+    translate_keymap_labels,
+    validate_key_map,
 )
 
 
@@ -48,6 +53,130 @@ def sort_and_paginate_table(
     return df.iloc[start:end].copy(), total_pages
 
 
+def split_requested_fields(fields: list[str] | str | None) -> list[str]:
+    if fields is None:
+        return []
+    if isinstance(fields, str):
+        fields = [fields]
+    result = []
+    for field in fields:
+        result.extend(part.strip() for part in field.split(",") if part.strip())
+    return result
+
+
+def split_sort_fields(sort_by: str | None) -> list[str]:
+    if not sort_by:
+        return []
+    return [field.strip() for field in sort_by.split(",") if field.strip()]
+
+
+def dedupe_columns(columns: list[str] | None) -> list[str] | None:
+    if columns is None:
+        return None
+    return list(dict.fromkeys(columns))
+
+
+def validate_table_fields(
+    table_name: str,
+    fields: list[str],
+    *,
+    key_map: dict[str, int | str] | None = None,
+) -> None:
+    invalid_fields = [
+        field
+        for field in fields
+        if not is_registered_or_keymap_dynamic_column(table_name, field, key_map)
+    ]
+    if invalid_fields:
+        raise ValueError(
+            f"Column(s) {invalid_fields} not found in table registry for '{table_name}'."
+        )
+
+
+def resolve_table_output_columns(
+    table_name: str,
+    requested_fields: list[str] | str | None,
+    *,
+    key_map: dict[str, int | str] | None = None,
+) -> list[str] | None:
+    if requested_fields in ["all", ["all"]]:
+        return dedupe_columns(
+            translate_keymap_fields(
+                resolve_requested_columns(table_name, requested_fields), key_map
+            )
+        )
+
+    if requested_fields is None or requested_fields in ["default", ["default"]]:
+        columns = resolve_requested_columns(table_name, requested_fields)
+        return dedupe_columns(translate_keymap_fields(columns, key_map))
+
+    requested = split_requested_fields(requested_fields)
+    if not requested:
+        columns = get_always_visible_columns(table_name) or []
+        return dedupe_columns(translate_keymap_fields(columns, key_map))
+
+    validate_table_fields(table_name, requested, key_map=key_map)
+    columns = requested.copy()
+    for column in translate_keymap_fields(get_always_visible_columns(table_name), key_map):
+        if column not in columns:
+            columns.append(column)
+    return dedupe_columns(columns)
+
+
+def resolve_table_read_columns(
+    table_name: str,
+    *,
+    requested_fields: list[str] | str | None,
+    filters: list[dict] | None,
+    sort_by: str | None,
+    key_map: dict[str, int | str] | None = None,
+) -> list[str] | None:
+    output_columns = resolve_table_output_columns(
+        table_name, requested_fields, key_map=key_map
+    )
+    if output_columns is None:
+        return None
+
+    read_columns = dedupe_columns(
+        list(translate_keymap_fields(output_columns, key_map, reverse=True))
+    )
+
+    extra_fields = split_sort_fields(sort_by)
+    if filters:
+        extra_fields.extend(
+            filter_spec.get("field")
+            for filter_spec in filters
+            if filter_spec.get("field")
+        )
+    if extra_fields:
+        validate_table_fields(table_name, extra_fields, key_map=key_map)
+    for field in translate_keymap_fields(extra_fields, key_map, reverse=True):
+        if field not in read_columns:
+            read_columns.append(field)
+    return read_columns
+
+
+def select_table_columns(
+    df: pd.DataFrame,
+    *,
+    table_name: str,
+    requested_fields: list[str] | None,
+    key_map: dict[str, int | str] | None = None,
+) -> pd.DataFrame:
+    selected_columns = resolve_table_output_columns(
+        table_name, requested_fields, key_map=key_map
+    )
+    if selected_columns is None:
+        return df
+
+    missing_columns = [column for column in selected_columns if column not in df.columns]
+    if missing_columns:
+        raise ValueError(
+            f"Column(s) {missing_columns} not found in table '{table_name}'."
+        )
+    return df[selected_columns]
+
+
 def read_table_payload(
     file_path: str,
     *,
@@ -58,6 +187,7 @@ def read_table_payload(
     sort_order: str = "asc",
     page: int = 1,
     size: int = 20,
+    key_map: dict[str, int | str] | None = None,
 ) -> tuple[list[dict], int]:
     """
     Reads a table file, applies filters, sorts, and paginates the data.
@@ -71,15 +201,26 @@ def read_table_payload(
     - sort_order [str]: Sort order ('asc' or 'desc').
     - page [int]: Page number for pagination.
     - size [int]: Number of records per page.
+    - key_map [dict[str, int | str] | None]: Partition label key map returned
+      by /kinfin/partitions/resolve.
 
     Returns:
     - tuple[list[dict], int]: A tuple containing the list of records and total pages.
     """
-    requested_columns = resolve_requested_columns(table_name, requested_fields)
+    key_map = validate_key_map(key_map)
+    requested_columns = resolve_table_read_columns(
+        table_name,
+        requested_fields=requested_fields,
+        filters=filters,
+        sort_by=sort_by,
+        key_map=key_map,
+    )
     print(
         f"Reading table file: {file_path} with columns: {requested_columns}"
     )  # --- IGNORE ---
     df = read_table_file(file_path, columns=requested_columns)
+    if key_map:
+        df = translate_keymap_labels(df, key_map)
     print(df.describe())  # --- IGNORE ---
     if filters:
         normalised_filters = normalise_filter_specs(table_name, filters)
@@ -89,6 +230,13 @@ def read_table_payload(
     df_paginated, total_pages = sort_and_paginate_table(
         df, sort_by=sort_by, sort_order=sort_order, page=page, size=size
     )
+    if key_map:
+        df_paginated = select_table_columns(
+            df_paginated,
+            table_name=table_name,
+            requested_fields=requested_fields,
+            key_map=key_map,
+        )
     # Convert pandas missing values to JSON-safe Python None.
     df_paginated = df_paginated.astype(object).where(pd.notna(df_paginated), None)
     return df_paginated.to_dict(orient="records"), total_pages
