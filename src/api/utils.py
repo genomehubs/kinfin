@@ -2,6 +2,7 @@ import asyncio
 import glob
 import json
 import os
+import re
 from collections import defaultdict
 from hashlib import sha256
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -312,6 +313,92 @@ def resolve_requested_columns(
     return columns
 
 
+def translate_keymap_labels(
+    value: Any,
+    key_map: dict[str, int | str] | None,
+    *,
+    reverse: bool = False,
+) -> Any:
+    """
+    Translate canonical partition labels to user labels using a partition key map.
+
+    The partition resolver returns maps in the form ``{"user_label": canonical_id}``.
+    By default this function translates canonical IDs back to user labels. With
+    ``reverse=True`` it translates user labels to canonical IDs.
+    """
+    if not key_map:
+        return value
+
+    if reverse:
+        replacements = {
+            str(user_key): str(canonical_key)
+            for user_key, canonical_key in key_map.items()
+        }
+    else:
+        replacements = {
+            str(canonical_key): str(user_key)
+            for user_key, canonical_key in key_map.items()
+        }
+
+    if isinstance(value, pd.DataFrame):
+        translated = value.rename(
+            columns={
+                column: translate_keymap_labels(column, key_map, reverse=reverse)
+                for column in value.columns
+            }
+        )
+        label_columns = {
+            column
+            for column in translated.columns
+            if str(column).lower()
+            in {"label", "tag", "partition", "partition_id", "subset", "subset_id"}
+        }
+        value_columns = set(
+            translated.select_dtypes(include=["object", "string"]).columns
+        ) | label_columns
+        for column in value_columns:
+            translated[column] = translated[column].map(
+                lambda cell: translate_keymap_labels(
+                    str(cell) if column in label_columns and pd.notna(cell) else cell,
+                    key_map,
+                    reverse=reverse,
+                )
+            )
+        return translated
+
+    if isinstance(value, list):
+        return [
+            translate_keymap_labels(item, key_map, reverse=reverse) for item in value
+        ]
+
+    if isinstance(value, tuple):
+        return tuple(
+            translate_keymap_labels(item, key_map, reverse=reverse) for item in value
+        )
+
+    if isinstance(value, dict):
+        return {
+            translate_keymap_labels(
+                k, key_map, reverse=reverse
+            ): translate_keymap_labels(v, key_map, reverse=reverse)
+            for k, v in value.items()
+        }
+
+    if not isinstance(value, str):
+        return value
+
+    translated_value = value
+    for source, target in sorted(
+        replacements.items(), key=lambda item: len(item[0]), reverse=True
+    ):
+        translated_value = re.sub(
+            rf"(?:(?<=_)|^){re.escape(source)}(?=_|$)",
+            target,
+            translated_value,
+        )
+    return translated_value
+
+
 def build_filter_spec(
     table_name: str,
     field: str,
@@ -422,14 +509,36 @@ def apply_filters_to_frame(
     """
     for f in filters:
         field = f["field"]
-        normalised_field = canonicalise_column_names(table_name, field)
-        if isinstance(normalised_field, list):
-            normalised_field = normalised_field[0]
         op = f["op"]
-        if not check_operation_validity(table_name, normalised_field, op):
-            raise ValueError(
-                f"Operation '{op}' is not valid for field '{field}' in table '{table_name}'."
-            )
+        try:
+            normalised_field = canonicalise_column_names(table_name, field)
+            if isinstance(normalised_field, list):
+                normalised_field = normalised_field[0]
+        except ValueError:
+            if field not in df.columns:
+                raise
+            normalised_field = field
+            if op not in {
+                "eq",
+                "ne",
+                "lt",
+                "gt",
+                "lte",
+                "gte",
+                "in",
+                "not_in",
+                "contains",
+                "not_contains",
+                "is_null",
+            }:
+                raise ValueError(
+                    f"Operation '{op}' is not valid for field '{field}' in table '{table_name}'."
+                )
+        else:
+            if not check_operation_validity(table_name, normalised_field, op):
+                raise ValueError(
+                    f"Operation '{op}' is not valid for field '{field}' in table '{table_name}'."
+                )
         value = f["value"]
         if op == "eq":
             df = df[df[normalised_field] == value]

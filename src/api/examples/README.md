@@ -69,6 +69,23 @@ curl -X POST $API_URL/kinfin/partitions/status -d '{
 }' -H 'Content-type: application/json'
 ```
 
+When requesting partition tables generated with canonical partition labels, pass the
+`key_map` returned by `/kinfin/partitions/resolve` so the API can translate
+headers and label values back to the user supplied labels before applying
+selection, filters and sorting:
+
+```bash
+curl -X POST $API_URL/kinfin/clusterings/table -d '{
+    "clustering_id": "nematodes_v1.0",
+    "partition_id": "804b707a77993f0b",
+    "table_name": "summary",
+    "key_map": {"n16": 0, "n15": 1, "out": 2, "n11": 3},
+    "fields": ["tag", "SC_n16"],
+    "filters": [{"field": "tag", "op": "eq", "value": "n16"}],
+    "sort_by": "SC_n16"
+}' -H 'Content-type: application/json'
+```
+
 ```bash
 curl -X POST $API_URL/kinfin/partitions/resolve -d '{
     "clustering_id": "nematodes_v1.0",
