@@ -1,7 +1,7 @@
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
-from api.utils import load_clustering_datasets, load_column_descriptions
+from api.utils import load_datasets, load_column_descriptions
 from core.input import ServeArgs
 
 from .core.limiter import limiter
@@ -40,7 +40,7 @@ def run_server(
     if not clustering_file_path:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         clustering_file_path = os.path.join(current_dir, "clustering.json")
-    load_clustering_datasets(clustering_file_path)
+    load_datasets(clustering_file_path)
     column_descriptions_file_path = os.getenv("KINFIN_COLUMN_DESCRIPTIONS_FILE")
     if not column_descriptions_file_path:
         current_dir = os.path.dirname(os.path.abspath(__file__))
