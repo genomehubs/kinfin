@@ -37,6 +37,8 @@ def get_tree(
                     f"setting outgroup to {outgroup} failed - {exc} not in tree"
                 )
                 sys.exit(1)
+            except AssertionError as exc:
+                logger.warning(f"outgroup {outgroup} already root - {exc}")
         else:
             logger.warning(
                 "no outgroup provided. No outgroup will be set. Verify tree topology"
