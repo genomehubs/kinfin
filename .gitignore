@@ -43,3 +43,6 @@ dist-ssr
 
 *storybook.log
 src_new/src/core/network_stuff.py
+
+.venv
+src_new

@@ -8,6 +8,7 @@ import os
 import re
 import shlex
 import sys
+import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Dict, List, Literal, Optional
@@ -36,7 +37,7 @@ from api.utils import (
     extract_attributes_and_taxon_sets,
     flatten_dict,
     get_common_artifact_path,
-    get_dataset_artifact_dir,
+    get_dataset_artifact_root,
     get_partition_artifact_path,
     get_partition_status_dir,
     get_partition_status_path,
@@ -215,11 +216,132 @@ def utc_timestamp() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
+def parse_utc_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def init_timeout_seconds() -> int:
+    return int(os.getenv("KINFIN_INIT_TIMEOUT_SECONDS", "86400"))
+
+
+def init_stale_seconds() -> int:
+    return int(os.getenv("KINFIN_INIT_STALE_SECONDS", str(init_timeout_seconds() + 300)))
+
+
+def status_age_seconds(status: dict) -> float | None:
+    timestamp = parse_utc_timestamp(status.get("updated_at") or status.get("started_at"))
+    if not timestamp:
+        return None
+    return (datetime.utcnow() - timestamp).total_seconds()
+
+
+def is_process_running(pid: int | None) -> bool:
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
 def write_partition_status_file(status_path: str, status: dict):
     os.makedirs(os.path.dirname(status_path), exist_ok=True)
-    with open(status_path, "w") as file:
+    tmp_path = f"{status_path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    with open(tmp_path, "w") as file:
         json.dump(status, file, indent=2)
         file.write("\n")
+    os.replace(tmp_path, status_path)
+
+
+def partition_lock_path(status_path: str) -> str:
+    return f"{status_path}.lock"
+
+
+def read_partition_lock(lock_path: str) -> dict:
+    try:
+        with open(lock_path, "r") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def acquire_partition_claim(status_path: str) -> str | None:
+    os.makedirs(os.path.dirname(status_path), exist_ok=True)
+    run_id = uuid.uuid4().hex
+    lock_path = partition_lock_path(status_path)
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return None
+    with os.fdopen(fd, "w") as file:
+        json.dump(
+            {
+                "run_id": run_id,
+                "created_at": utc_timestamp(),
+                "owner_pid": os.getpid(),
+            },
+            file,
+        )
+        file.write("\n")
+    return run_id
+
+
+def release_partition_claim(status_path: str, run_id: str):
+    lock_path = partition_lock_path(status_path)
+    lock = read_partition_lock(lock_path)
+    if lock.get("run_id") == run_id:
+        try:
+            os.unlink(lock_path)
+        except FileNotFoundError:
+            pass
+
+
+def partition_claim_is_active(status_path: str) -> bool:
+    lock_path = partition_lock_path(status_path)
+    if not os.path.exists(lock_path):
+        return False
+    lock = read_partition_lock(lock_path)
+    created_at = parse_utc_timestamp(lock.get("created_at"))
+    if created_at:
+        age = (datetime.utcnow() - created_at).total_seconds()
+        if age <= init_stale_seconds():
+            return True
+    try:
+        os.unlink(lock_path)
+    except FileNotFoundError:
+        pass
+    return False
+
+
+def initialising_status_is_active(status: dict) -> bool:
+    if normalise_run_state(status.get("state", "missing")) != "initialising":
+        return False
+    if is_process_running(status.get("worker_pid")):
+        return True
+    age = status_age_seconds(status)
+    return age is not None and age <= init_stale_seconds()
+
+
+def write_status_if_current_run(status_path: str, run_id: str, status: dict) -> bool:
+    current_status = {}
+    if os.path.exists(status_path):
+        try:
+            with open(status_path, "r") as file:
+                current_status = json.load(file)
+        except json.JSONDecodeError:
+            current_status = {}
+    if current_status.get("run_id") != run_id:
+        return False
+    write_partition_status_file(status_path, status)
+    return True
 
 
 def resolve_dataset_path(
@@ -378,7 +500,10 @@ async def run_dataset_init_command(
     status_path: str,
     dataset_id: str,
     partition_id: str,
+    run_id: str,
     output_name: str,
+    artifact_dir: str,
+    artifact_file_prefix: str,
     started_at: str,
 ):
     try:
@@ -387,19 +512,65 @@ async def run_dataset_init_command(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await process.communicate()
-        stdout = stdout.decode().strip()
-        stderr = stderr.decode().strip()
-        finished_at = utc_timestamp()
+        status = read_run_status_file(dataset_id, partition_id)
+        status.update(
+            {
+                "worker_pid": process.pid,
+                "updated_at": utc_timestamp(),
+            }
+        )
+        write_status_if_current_run(status_path, run_id, status)
 
-        if process.returncode == 0:
-            write_partition_status_file(
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=init_timeout_seconds()
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            stdout, stderr = await process.communicate()
+            finished_at = utc_timestamp()
+            write_status_if_current_run(
                 status_path,
+                run_id,
                 {
                     "schema_version": 1,
                     "run_name": "default",
                     "dataset_id": dataset_id,
                     "partition_id": partition_id,
+                    "run_id": run_id,
+                    "state": "error",
+                    "message": "Default partition analysis timed out.",
+                    "started_at": started_at,
+                    "updated_at": finished_at,
+                    "finished_at": finished_at,
+                    "error": {
+                        "code": "timeout",
+                        "message": (
+                            "CLI exceeded "
+                            f"KINFIN_INIT_TIMEOUT_SECONDS={init_timeout_seconds()}."
+                        ),
+                    },
+                    "output_name": output_name,
+                    "artifact_dir": artifact_dir,
+                    "artifact_file_prefix": artifact_file_prefix,
+                },
+            )
+            release_partition_claim(status_path, run_id)
+            return
+        stdout = stdout.decode().strip()
+        stderr = stderr.decode().strip()
+        finished_at = utc_timestamp()
+
+        if process.returncode == 0:
+            write_status_if_current_run(
+                status_path,
+                run_id,
+                {
+                    "schema_version": 1,
+                    "run_name": "default",
+                    "dataset_id": dataset_id,
+                    "partition_id": partition_id,
+                    "run_id": run_id,
                     "state": "ready",
                     "message": "Default partition analysis completed successfully.",
                     "started_at": started_at,
@@ -407,17 +578,22 @@ async def run_dataset_init_command(
                     "finished_at": finished_at,
                     "error": None,
                     "output_name": output_name,
+                    "artifact_dir": artifact_dir,
+                    "artifact_file_prefix": artifact_file_prefix,
                 },
             )
+            release_partition_claim(status_path, run_id)
             return
 
-        write_partition_status_file(
+        write_status_if_current_run(
             status_path,
+            run_id,
             {
                 "schema_version": 1,
                 "run_name": "default",
                 "dataset_id": dataset_id,
                 "partition_id": partition_id,
+                "run_id": run_id,
                 "state": "error",
                 "message": "Default partition analysis failed.",
                 "started_at": started_at,
@@ -433,17 +609,22 @@ async def run_dataset_init_command(
                     "stdout": stdout,
                 },
                 "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
             },
         )
+        release_partition_claim(status_path, run_id)
     except Exception as e:
         failed_at = utc_timestamp()
-        write_partition_status_file(
+        write_status_if_current_run(
             status_path,
+            run_id,
             {
                 "schema_version": 1,
                 "run_name": "default",
                 "dataset_id": dataset_id,
                 "partition_id": partition_id,
+                "run_id": run_id,
                 "state": "error",
                 "message": "Default partition analysis failed to start.",
                 "started_at": started_at,
@@ -454,8 +635,11 @@ async def run_dataset_init_command(
                     "message": str(e),
                 },
                 "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
             },
         )
+        release_partition_claim(status_path, run_id)
 
 
 @router.post("/kinfin/init", response_model=ResponseSchema)
@@ -1937,8 +2121,83 @@ async def initialize_dataset_default_partition(
                 status_code=400,
             )
 
+        try:
+            status_dir = get_partition_status_dir(dataset_id, partition_id)
+            status_path = get_partition_status_path(dataset_id, partition_id)
+            config_path = os.path.join(status_dir, "default_partition_config.json")
+            cli_output_dir = dataset_info.get("init_output_dir")
+            if cli_output_dir:
+                cli_output_dir = resolve_dataset_path(
+                    dataset_info, "init_output_dir"
+                )
+            else:
+                cli_output_dir = get_dataset_artifact_root(dataset_id)
+            artifact_file_prefix = dataset_info.get(
+                "default_artifact_file_prefix", "default_partition"
+            )
+            output_name = dataset_info.get("default_output_name", artifact_file_prefix)
+            artifact_dir = dataset_info.get("default_artifact_dir")
+            if artifact_dir:
+                artifact_dir = resolve_dataset_path(
+                    dataset_info, "default_artifact_dir"
+                )
+            else:
+                artifact_dir = os.path.join(
+                    cli_output_dir, "partition", artifact_file_prefix
+                )
+        except (FileNotFoundError, OSError, ValueError) as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Default partition analysis could not be queued.",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+
         status = read_run_status_file(dataset_id, partition_id)
         normalized_state = normalise_run_state(status.get("state", "missing"))
+        is_active = initialising_status_is_active(
+            status
+        ) or partition_claim_is_active(status_path)
+        if is_active:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="success",
+                    message="Default partition analysis is already queued.",
+                    data={
+                        "dataset_id": dataset_id,
+                        "partition_id": partition_id,
+                        "key_map": key_map,
+                        "status": "initialising",
+                        "message": status.get("message", ""),
+                        "updated_at": status.get("updated_at"),
+                    },
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=202,
+            )
+        if normalized_state == "initialising":
+            recovered_at = utc_timestamp()
+            write_partition_status_file(
+                status_path,
+                {
+                    **status,
+                    "state": "error",
+                    "message": "Default partition initialization was abandoned.",
+                    "updated_at": recovered_at,
+                    "finished_at": recovered_at,
+                    "error": {
+                        "code": "stale_initialising",
+                        "message": (
+                            "No live worker was found for this initialising run."
+                        ),
+                    },
+                },
+            )
+            release_partition_claim(status_path, status.get("run_id", ""))
+
         if normalized_state == "ready" and not force:
             return JSONResponse(
                 content=ResponseSchema(
@@ -1957,7 +2216,10 @@ async def initialize_dataset_default_partition(
                 ).model_dump(),
                 status_code=200,
             )
-        if normalized_state == "initialising" and not force:
+
+        run_id = acquire_partition_claim(status_path)
+        if not run_id:
+            latest_status = read_run_status_file(dataset_id, partition_id)
             return JSONResponse(
                 content=ResponseSchema(
                     status="success",
@@ -1966,45 +2228,15 @@ async def initialize_dataset_default_partition(
                         "dataset_id": dataset_id,
                         "partition_id": partition_id,
                         "key_map": key_map,
-                        "status": normalized_state,
-                        "message": status.get("message", ""),
-                        "updated_at": status.get("updated_at"),
+                        "status": normalise_run_state(
+                            latest_status.get("state", "initialising")
+                        ),
+                        "message": latest_status.get("message", ""),
+                        "updated_at": latest_status.get("updated_at"),
                     },
                     query=str(request.url),
                 ).model_dump(),
                 status_code=202,
-            )
-
-        try:
-            status_dir = get_partition_status_dir(dataset_id, partition_id)
-            status_path = get_partition_status_path(dataset_id, partition_id)
-            config_path = os.path.join(status_dir, "default_partition_config.json")
-            output_name = dataset_info.get("default_output_name", partition_id)
-            output_dir = os.path.join(
-                get_dataset_artifact_dir(dataset_id, "partition"), output_name
-            )
-            os.makedirs(status_dir, exist_ok=True)
-            os.makedirs(output_dir, exist_ok=True)
-            with open(config_path, "w") as file:
-                json.dump(default_partition_config_rows(partition_set), file, indent=2)
-                file.write("\n")
-            command = build_dataset_init_command(
-                dataset_id=dataset_id,
-                dataset_info=dataset_info,
-                partition_id=partition_id,
-                config_path=config_path,
-                output_dir=output_dir,
-                status_path=status_path,
-            )
-        except (FileNotFoundError, ValueError) as e:
-            return JSONResponse(
-                content=ResponseSchema(
-                    status="error",
-                    message="Default partition analysis could not be queued.",
-                    error=str(e),
-                    query=str(request.url),
-                ).model_dump(),
-                status_code=400,
             )
 
         started_at = utc_timestamp()
@@ -2015,12 +2247,84 @@ async def initialize_dataset_default_partition(
                 "run_name": "default",
                 "dataset_id": dataset_id,
                 "partition_id": partition_id,
+                "run_id": run_id,
+                "state": "initialising",
+                "message": "Default partition analysis has been claimed.",
+                "started_at": started_at,
+                "updated_at": started_at,
+                "error": None,
+                "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
+            },
+        )
+
+        try:
+            os.makedirs(status_dir, exist_ok=True)
+            os.makedirs(artifact_dir, exist_ok=True)
+            with open(config_path, "w") as file:
+                json.dump(default_partition_config_rows(partition_set), file, indent=2)
+                file.write("\n")
+            command = build_dataset_init_command(
+                dataset_id=dataset_id,
+                dataset_info=dataset_info,
+                partition_id=partition_id,
+                config_path=config_path,
+                output_dir=cli_output_dir,
+                status_path=status_path,
+            )
+        except (FileNotFoundError, OSError, ValueError) as e:
+            failed_at = utc_timestamp()
+            write_status_if_current_run(
+                status_path,
+                run_id,
+                {
+                    "schema_version": 1,
+                    "run_name": "default",
+                    "dataset_id": dataset_id,
+                    "partition_id": partition_id,
+                    "run_id": run_id,
+                    "state": "error",
+                    "message": "Default partition analysis setup failed.",
+                    "started_at": started_at,
+                    "updated_at": failed_at,
+                    "finished_at": failed_at,
+                    "error": {
+                        "code": "setup_failed",
+                        "message": str(e),
+                    },
+                    "output_name": output_name,
+                    "artifact_dir": artifact_dir,
+                    "artifact_file_prefix": artifact_file_prefix,
+                },
+            )
+            release_partition_claim(status_path, run_id)
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Default partition analysis could not be queued.",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+
+        write_partition_status_file(
+            status_path,
+            {
+                "schema_version": 1,
+                "run_name": "default",
+                "dataset_id": dataset_id,
+                "partition_id": partition_id,
+                "run_id": run_id,
                 "state": "initialising",
                 "message": "Default partition analysis has been queued.",
                 "started_at": started_at,
                 "updated_at": started_at,
                 "error": None,
                 "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
             },
         )
         asyncio.create_task(
@@ -2029,7 +2333,10 @@ async def initialize_dataset_default_partition(
                 status_path=status_path,
                 dataset_id=dataset_id,
                 partition_id=partition_id,
+                run_id=run_id,
                 output_name=output_name,
+                artifact_dir=artifact_dir,
+                artifact_file_prefix=artifact_file_prefix,
                 started_at=started_at,
             )
         )
@@ -2045,7 +2352,8 @@ async def initialize_dataset_default_partition(
                     "status": "initialising",
                     "status_path": status_path,
                     "config_path": config_path,
-                    "output_dir": output_dir,
+                    "output_dir": cli_output_dir,
+                    "artifact_dir": artifact_dir,
                 },
                 query=str(request.url),
             ).model_dump(),
