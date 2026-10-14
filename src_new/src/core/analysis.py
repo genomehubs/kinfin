@@ -192,10 +192,11 @@ def get_ids(
 
 def process_elements(
     directory=None,
-    sample_ids=[],
+    sample_ids=None,
     processes=1,
 ):
     t_0 = time.monotonic()
+    sample_ids = sample_ids or []
     tasks = get_parse_tasks(
         directory=directory,
         func=do_parse_fasta,
@@ -240,7 +241,7 @@ def process_elements(
 
 def process_orthogroups(
     orthogroup_fn,
-    sample_ids=[],
+    sample_ids=None,
     sample_ids_source="parse",
     output_fmt=definitions.STD_FORMAT,
     plot_fmt=definitions.PLOT_FORMAT,
@@ -251,6 +252,7 @@ def process_orthogroups(
     # [ToDo]
     # - make -P work when length is ALSO parsed from -f. Decide what happens if disagreement.
     # data = []
+    sample_ids = sample_ids or []
     t_0 = time.monotonic()
     logger.info(f"parsing {len(sample_ids)} samples from '{orthogroup_fn}'")
     rows = []
@@ -542,7 +544,7 @@ def analyse_orthogroups(
 
 
 def summary_function(task):
-    _COLUMNS = ["EC_TG1", "OT", "CT"]
+    _COLUMNS = ["SC_TG1", "EC_TG1", "OT_TG1", "CT"]
     compare_rows = []
     if task.lengths_parsed:
         partition_lengths(task=task)
@@ -558,11 +560,11 @@ def summary_function(task):
                 columns=_COLUMNS,
             )
             OC = len(df.index)
-            mask_absent = df["OT"] == "absent"
-            mask_present = df["OT"] != "absent"
-            mask_singleton = df["OT"] == "singleton"
-            mask_specific = df["OT"] == "specific"
-            mask_shared = df["OT"] == "shared"
+            mask_absent = df["SC_TG1"] == 0
+            mask_present = df["SC_TG1"] >= 1
+            mask_singleton = df["OT_TG1"] == "singleton"
+            mask_specific = df["OT_TG1"] == "specific"
+            mask_shared = df["OT_TG1"] == "shared"
             mask_cog_true = df["CT"] == "true_cog"
             mask_cog_fuzzy = df["CT"] == "fuzzy_cog"
             EC_TG = int(df[mask_present]["EC_TG1"].sum())
@@ -570,7 +572,7 @@ def summary_function(task):
             df_sampling = (
                 df[mask_present][
                     [
-                        "OT",
+                        "OT_TG1",
                         "EC_TG1",
                     ]
                 ]
@@ -578,7 +580,7 @@ def summary_function(task):
                 .rename(
                     columns={
                         "EC_TG1": "EC",
-                        "OT": "OT",
+                        "OT_TG1": "OT",
                     }
                 )
                 .replace(
@@ -618,9 +620,8 @@ def summary_function(task):
                 ],
                 categorical=["OT"],
             )
-            if task.plot_fmt is not None:
-                if not df_sampling.empty:
-                    line_plot_data.append([tag, SC_TG, df_sampling])
+            if task.plot_fmt is not None and not df_sampling.empty:
+                line_plot_data.append([tag, SC_TG, df_sampling])
             core.utils.dump(
                 df_sampling,
                 fn=core.utils.format_fn(
@@ -694,27 +695,30 @@ def summary_function(task):
 def comparison_function(task):
     TG_1, TG_2 = task.taxon_groups
     df_counts = core.utils.get_counts_df(
-        columns=sum([("orthogroup_id",), TG_1, TG_2], ()),
         nan=True,
     )
     df_counts_TG1 = df_counts.loc[:, TG_1]
     df_counts_TG2 = df_counts.loc[:, TG_2]
     df_partition_list = []
-    df_partition_list.append(df_counts.ge(1).sum(axis=1).rename("SC"))
-    df_partition_list.append(df_counts_TG1.ge(1).sum(axis=1).rename("SC_TG1"))
-    df_partition_list.append((df_partition_list[1] / len(TG_1)).rename("SP_TG1"))
-    df_partition_list.append(df_counts_TG2.ge(1).sum(axis=1).rename("SC_TG2"))
-    df_partition_list.append((df_partition_list[3] / len(TG_2)).rename("SP_TG2"))
-    df_partition_list.append(df_counts.sum(axis=1).astype(int).rename("EC"))
-    df_partition_list.append(df_counts_TG1.sum(axis=1).astype(int).rename("EC_TG1"))
-    df_partition_list.append(df_counts_TG2.sum(axis=1).astype(int).rename("EC_TG2"))
+    df_partition_list.append(df_counts.ge(1).sum(axis=1).rename("SC"))  # 0
+    df_partition_list.append(df_counts_TG1.ge(1).sum(axis=1).rename("SC_TG1"))  # 1
+    df_partition_list.append((df_partition_list[1] / len(TG_1)).rename("SP_TG1"))  # 2
+    df_partition_list.append(df_counts_TG2.ge(1).sum(axis=1).rename("SC_TG2"))  # 3
+    df_partition_list.append((df_partition_list[3] / len(TG_2)).rename("SP_TG2"))  # 4
+    df_partition_list.append(df_counts.sum(axis=1).astype(int).rename("EC"))  # 5
+    df_partition_list.append(
+        df_counts_TG1.sum(axis=1).astype(int).rename("EC_TG1")
+    )  # 6
+    df_partition_list.append(
+        df_counts_TG2.sum(axis=1).astype(int).rename("EC_TG2")
+    )  # 7
     df_partition_list.append(
         pd.Series(
             np.select(
                 condlist=[
                     (df_partition_list[6] == 0),
                     (df_partition_list[5] == 1),
-                    (df_partition_list[7] == 0),
+                    (df_partition_list[6] == df_partition_list[5]),
                 ],
                 choicelist=[
                     "absent",
@@ -724,7 +728,25 @@ def comparison_function(task):
                 default="shared",
             ),
             index=df_counts.index,
-        ).rename("OT")
+        ).rename("OT_TG1")
+    )
+    df_partition_list.append(
+        pd.Series(
+            np.select(
+                condlist=[
+                    (df_partition_list[7] == 0),
+                    (df_partition_list[5] == 1),
+                    (df_partition_list[7] == df_partition_list[5]),
+                ],
+                choicelist=[
+                    "absent",
+                    "singleton",
+                    "specific",
+                ],
+                default="shared",
+            ),
+            index=df_counts.index,
+        ).rename("OT_TG2")
     )
     df_partition_list.append(
         (df_counts.eq(task.count_target).sum(axis=1) / len(df_counts.columns)).rename(
@@ -788,10 +810,11 @@ def comparison_function(task):
     df_partition = pd.concat(df_partition_list, axis=1)
     df_partition = df_partition[
         [
-            "OT",
             "SC",
+            "OT_TG1",
             "SC_TG1",
             "SP_TG1",
+            "OT_TG2",
             "SC_TG2",
             "SP_TG2",
             "EC",
@@ -864,22 +887,26 @@ def do_task(task):
 
 
 def do_tasks(
-    tasks=[],
+    tasks=None,
     desc="",
     processes=1,
     collect_results=False,
 ):
+    if tasks is None:
+        tasks = []
     _TOTAL = len(tasks)
     _DESC = desc
     _NCOLS = definitions.PROGRESS_NCOLS
     results = [] if collect_results else None
     if processes > 1:
-        with tqdm.tqdm(total=_TOTAL, desc=_DESC, ncols=_NCOLS) as t:
-            with poolcontext(processes=processes) as pool:
-                for _ in pool.imap_unordered(do_task, tasks):
-                    if collect_results:
-                        results.append(_)
-                    t.update()
+        with (
+            tqdm.tqdm(total=_TOTAL, desc=_DESC, ncols=_NCOLS) as t,
+            poolcontext(processes=processes) as pool,
+        ):
+            for _ in pool.imap_unordered(do_task, tasks):
+                if collect_results:
+                    results.append(_)
+                t.update()
     else:
         for task in tqdm.tqdm(tasks, total=_TOTAL, desc=_DESC, ncols=_NCOLS):
             _ = do_task(task)
@@ -903,9 +930,7 @@ def get_summary_tasks(
     )
     for key in taxon_groups:
         collector_key = tuple([tuple(TG) for TG in taxon_groups[key].values()])
-        collector_value = tuple(
-            [key] + [TG_label for TG_label in taxon_groups[key].keys()]
-        )
+        collector_value = tuple([key] + [TG_label for TG_label in taxon_groups[key]])
         collector[collector_key].append(collector_value)
     tasks = []
     for taxon_groups, v in collector.items():
