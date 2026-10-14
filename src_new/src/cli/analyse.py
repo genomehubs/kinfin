@@ -64,7 +64,7 @@ def run(args):
         core.utils.mkdir(
             name=core.utils.get_dir("PLOTS"),
             subdirs=[
-                "/".join([d1, d2])
+                f"{d1}/{d2}"
                 for d1 in ["curve", "volcano"]
                 for d2 in ["sample_ids"] + list(df_config.columns)
             ]
@@ -96,7 +96,7 @@ def run(args):
         sample_ids=list(df_config.sample_id),
         sample_ids_source=sample_ids_source,
         output_fmt=args.F,
-        lengths_parsed=True if args.f else False,
+        lengths_parsed=bool(args.f),
         plot_fmt=args.l,
         do_plots=(not args.L),
         ignore_duplicated_elements=args.U,
@@ -123,7 +123,7 @@ def run(args):
         count_max=args.M,
         count_fraction=args.x,
         output_fmt=args.F,
-        lengths_parsed=True if args.f else False,
+        lengths_parsed=bool(args.f),
         ignore_sample_comparisons=args.X,
         plot_fmt=args.l if not args.L else None,
         processes=args.p,
