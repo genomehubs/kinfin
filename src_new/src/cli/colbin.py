@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import argparse
 import itertools
@@ -20,7 +19,7 @@ logging.basicConfig(
     stream=sys.stderr,
 )
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 EPILOG = """"""
 
@@ -181,7 +180,7 @@ def get_argparse():
                 invalid_values.append(value)
         if invalid_values:
             parser.error(
-                f"values for '-B' myst be between 0.0 and 1.0. The following values are invalid: {invalid_values}"
+                f"values for '-B' must be between 0.0 and 1.0. The following values are invalid: {invalid_values}"
             )
     return args
 
@@ -194,7 +193,7 @@ def label_results(
     n=False,
     a=False,
 ):
-    if not result.dtype == "category":
+    if result.dtype != "category":
         result = result.astype("category")
     interval_count = intervals if isinstance(intervals, int) else len(intervals)
     if n:
@@ -206,7 +205,7 @@ def label_results(
             for x in itertools.combinations_with_replacement(LETTERS, i)
         ][:interval_count]
     elif labels:
-        if not interval_count == len(labels):
+        if interval_count != len(labels):
             logger.error(
                 f"{interval_count} labels are needed. You provided {len(labels)} label(s)!"
             )
@@ -224,7 +223,7 @@ def process_file(args):
         df = pd.read_csv(args.f, sep=sep, header=None)
     except pd.errors.DtypeWarning:
         # skip first column if header
-        df = pd.read_csv(args.f, sep=sep, header=0)
+        df = pd.read_csv(args.f, sep=sep, header=0, low_memory=False)
     if not pd.api.types.is_numeric_dtype(df.iloc[:, args.c].dtype):
         # error if column is not numeric
         logger.error(
@@ -295,9 +294,14 @@ def process_file(args):
         summary.append(f"{label} := {interval} => {result[result == label].count()}")
     for line in summary:
         logger.info(line)
-    fn = f"{args.f.stem}.binned{args.f.suffix}"
+    print(args.f.suffix)
+    if args.f.suffix == ".gz":
+        fn = f"{args.f.stem}.binned.bed.gz"
+    else:
+        fn = f"{args.f.stem}.binned{args.f.suffix}"
+
     print(df)
-    df.to_csv(fn, sep=sep)
+    df.to_csv(fn, sep=sep, index=False)
     logger.info(f"wrote '{fn}'")
 
 
