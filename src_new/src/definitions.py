@@ -11,6 +11,7 @@ ARGS_TAXONOMY_RANKS_SUPPORTED = [
     "tribe",
     "subfamily",
     "family",
+    "suborder",
     "order",
     "class",
     "phylum",
@@ -53,7 +54,7 @@ ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
 SUPPORTED_INTERPRO_EXTENSIONS = [".tsv"]
-SUPPORTED_BED_EXTENSIONS = [".bed"]
+SUPPORTED_BED_EXTENSIONS = [".bed", ".bed.gz", ".bed.binned.gz"]
 CONFIG_MIN_SAMPLE_IDS = 2  # at least one group in comparisons needs to be of length 2
 
 PROGRESS_NCOLS = 0
