@@ -65,7 +65,7 @@ def run(args):
         core.utils.mkdir(
             name=core.utils.get_dir("PLOTS"),
             subdirs=[
-                "/".join([d1, d2])
+                f"{d1}/{d2}"
                 for d1 in ["curve", "volcano"]
                 for d2 in ["sample_ids"] + list(df_config.columns)
             ]
@@ -86,7 +86,7 @@ def run(args):
         do_plots=(not args.L),
         processes=args.p,
     )
-    # [TREE]
+    # # [TREE]
     if args.t:
         core.tree.process_tree(
             tree_fn=args.t,
