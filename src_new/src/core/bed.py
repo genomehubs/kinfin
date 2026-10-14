@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+import traceback
 
 import core.analysis
 import core.log
@@ -172,7 +173,8 @@ def do_parse_bed(task):
             skiprows=(1 if task.params["has_header"] else 0),
             usecols=use_cols,
             dtype=str,
-        )
+            low_memory=False,
+        ).fillna("NA")
         if task.params["count_idx"]:
             df_bed_counts = (
                 pd.concat(
@@ -197,7 +199,7 @@ def do_parse_bed(task):
             )
         df_bed_counts["sample_id"] = task.sample_id
         core.utils.dump(
-            df_bed_counts.reset_index(),
+            df_bed_counts.reset_index(names=["orthogroup_id"]),
             fn=core.utils.format_fn(
                 fn=f"{task.sample_id}.{definitions.COUNTS_FN}",
                 prefix=core.utils.get_dir("TMP") / task.sample_id,
@@ -205,8 +207,9 @@ def do_parse_bed(task):
             index=True,
         )
         success = True
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error(f"error reading {task.fn}: {exc} - {traceback.format_exc()}")
+        print(df_bed)
     return (task.fn, success)
 
 
