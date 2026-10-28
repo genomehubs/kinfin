@@ -141,14 +141,14 @@ def sort_and_paginate_result(
     return paginated_result, total_pages
 
 
-CLUSTERING_DATASETS: Dict[str, dict] = {}
+DATASETS: Dict[str, dict] = {}
 
 
-def load_clustering_datasets(json_path: str):
-    global CLUSTERING_DATASETS
+def load_datasets(json_path: str):
+    global DATASETS
     with open(json_path, "r") as f:
         datasets = json.load(f)
-        CLUSTERING_DATASETS = {item["id"]: item for item in datasets}
+        DATASETS = {item["id"]: item for item in datasets}
 
 
 COLUMN_DESCRIPTIONS: Dict[str, dict] = {}
@@ -494,9 +494,9 @@ def read_json_file(file_path: str) -> Any:
         return json.load(f)
 
 
-def get_clustering_root() -> str:
+def get_dataset_root() -> str:
     """
-    Returns the root directory for clustering datasets.
+    Returns the root directory for datasets.
 
     Checks the RESULTS_BASE_DIR environment variable first. If not set, defaults to the current working directory.
     """
@@ -504,142 +504,142 @@ def get_clustering_root() -> str:
     return os.path.abspath(os.getenv("RESULTS_BASE_DIR", os.getcwd()))
 
 
-def get_clustering_artifact_root(clustering_id: str) -> str:
+def get_dataset_artifact_root(dataset_id: str) -> str:
     """
-    Returns the artifact root directory for a specific clustering dataset.
+    Returns the artifact root directory for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
-    - str: The path to the artifact root directory for the specified clustering dataset.
+    - str: The path to the artifact root directory for the specified dataset.
     """
     if not (
-        root_dir := CLUSTERING_DATASETS.get(clustering_id, {}).get("artifact_root")
+        root_dir := DATASETS.get(dataset_id, {}).get("artifact_root")
     ):
         raise ValueError(
-            f"No artifact root found for clustering dataset '{clustering_id}'."
+            f"No artifact root found for dataset '{dataset_id}'."
         )
     if root_dir.startswith("~"):
         root_dir = os.path.expanduser(root_dir)
     if not os.path.isabs(root_dir):
-        root_dir = os.path.join(get_clustering_root(), root_dir)
+        root_dir = os.path.join(get_dataset_root(), root_dir)
     return root_dir
 
 
-def get_clustering_status_dir(clustering_id: str) -> str:
+def get_dataset_status_dir(dataset_id: str) -> str:
     """
-    Returns the status directory for a specific clustering dataset.
+    Returns the status directory for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
-    - str: The path to the status directory for the specified clustering dataset.
+    - str: The path to the status directory for the specified dataset.
     """
-    # Determine the root directory for the clustering dataset's status
-    # handle relative paths in status_root by joining with the clustering root directory
+    # Determine the root directory for the dataset's status
+    # handle relative paths in status_root by joining with the dataset root directory
     # avoid encoving /./ or /../ in the path by using os.path.join and os.path.normpath
     root_dir = os.path.normpath(
         os.path.join(
-            get_clustering_root(),
-            CLUSTERING_DATASETS.get(clustering_id, {}).get("status_root", "."),
+            get_dataset_root(),
+            DATASETS.get(dataset_id, {}).get("status_root", "."),
         )
     )
-    return os.path.join(root_dir, clustering_id)
+    return os.path.join(root_dir, dataset_id)
 
 
-# def get_default_run_dir(clustering_id: str) -> str:
+# def get_default_run_dir(dataset_id: str) -> str:
 #     """
-#     Returns the default run directory for a specific clustering dataset.
+#     Returns the default run directory for a specific dataset.
 
 #     Parameters:
-#     - clustering_id [str]: The ID of the clustering dataset.
+#     - dataset_id [str]: The ID of the dataset.
 
 #     Returns:
-#     - str: The path to the default run directory for the specified clustering dataset.
+#     - str: The path to the default run directory for the specified dataset.
 #     """
-#     output_dir = get_clustering_output_dir(clustering_id)
-#     default_partition_id = derive_default_partition_id(clustering_id)
+#     output_dir = get_dataset_output_dir(dataset_id)
+#     default_partition_id = derive_default_partition_id(dataset_id)
 #     if default_partition_id:
 #         return os.path.join(output_dir, "partitions", default_partition_id)
 #     else:
 #         raise ValueError(
-#             f"No default partition ID found for clustering dataset '{clustering_id}'."
+#             f"No default partition ID found for dataset '{dataset_id}'."
 #         )
 
 
-# def get_default_status_path(clustering_id: str) -> str:
+# def get_default_status_path(dataset_id: str) -> str:
 #     """
-#     Returns the path to the default status file for a specific clustering dataset.
+#     Returns the path to the default status file for a specific dataset.
 
 #     Parameters:
-#     - clustering_id [str]: The ID of the clustering dataset.
+#     - dataset_id [str]: The ID of the dataset.
 
 #     Returns:
-#     - str: The path to the default status file for the specified clustering dataset.
+#     - str: The path to the default status file for the specified dataset.
 #     """
-#     run_dir = get_default_run_dir(clustering_id)
+#     run_dir = get_default_run_dir(dataset_id)
 #     return os.path.join(run_dir, "status.json")
 
 
-def get_clustering_artifact_dir(
-    clustering_id: str, artifact_type: str | None = "partition"
+def get_dataset_artifact_dir(
+    dataset_id: str, artifact_type: str | None = "partition"
 ) -> str:
     """
-    Returns the artifact directory for a specific clustering dataset.
+    Returns the artifact directory for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - artifact_type [str, optional]: The type of artifact directory to return. Defaults to "partition".
 
     Returns:
-    - str: The path to the artifact directory for the specified clustering dataset.
+    - str: The path to the artifact directory for the specified dataset.
     """
-    root_dir = get_clustering_artifact_root(clustering_id)
+    root_dir = get_dataset_artifact_root(dataset_id)
     if artifact_path := (
-        CLUSTERING_DATASETS.get(clustering_id, {})
+        DATASETS.get(dataset_id, {})
         .get("artifacts", {})
         .get(artifact_type, "")
     ):
         return os.path.join(root_dir, artifact_path)
     else:
         raise ValueError(
-            f"No artifact path found for clustering dataset '{clustering_id}' and artifact type '{artifact_type}'."
+            f"No artifact path found for dataset '{dataset_id}' and artifact type '{artifact_type}'."
         )
 
 
 def get_partition_artifact_dir(
-    clustering_id: str,
+    dataset_id: str,
     partition_name: str | None = None,
     artifact_type: str | None = "partition",
 ) -> str:
     """
-    Returns the artifact directory for a specific partition of a clustering dataset.
+    Returns the artifact directory for a specific partition of a dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - partition_name [str, optional]: The name of the partition. If not provided, uses the default partition.
     - artifact_type [str, optional]: The type of artifact directory to return. Defaults to "partition".
 
     Returns:
     - str: The path to the artifact directory for the specified partition.
     """
-    artifact_dir = get_clustering_artifact_dir(clustering_id, artifact_type)
+    artifact_dir = get_dataset_artifact_dir(dataset_id, artifact_type)
     if not partition_name:
         return artifact_dir
-    status = read_run_status_file(clustering_id, partition_name)
+    status = read_run_status_file(dataset_id, partition_name)
     normalized_state = normalise_run_state(status.get("state", "unknown"))
 
     if normalized_state != "ready":
         raise ValueError(
-            f"Partition '{partition_name}' for clustering dataset '{clustering_id}' is not ready. Current state: {normalized_state}"
+            f"Partition '{partition_name}' for dataset '{dataset_id}' is not ready. Current state: {normalized_state}"
         )
     if output_name := status.get("output_name"):
         return os.path.join(artifact_dir, output_name)
     else:
         raise ValueError(
-            f"No output name found for partition '{partition_name}' of clustering dataset '{clustering_id}'."
+            f"No output name found for partition '{partition_name}' of dataset '{dataset_id}'."
         )
 
 
@@ -664,17 +664,17 @@ def preferred_suffix_order(kind: str | None = "table") -> list[str]:
 
 
 def get_partition_artifact_path(
-    clustering_id: str,
+    dataset_id: str,
     partition_name: str | None = None,
     artifact_type: str | None = "partition",
     artifact_file: str = "summary",
     kind: str | None = "table",
 ) -> str:
     artifact_dir = get_partition_artifact_dir(
-        clustering_id, partition_name=partition_name, artifact_type=artifact_type
+        dataset_id, partition_name=partition_name, artifact_type=artifact_type
     )
     if partition_name:
-        if output_name := read_run_status_file(clustering_id, partition_name).get(
+        if output_name := read_run_status_file(dataset_id, partition_name).get(
             "output_name"
         ):
             artifact_file = f"{output_name}.{artifact_file}"
@@ -690,13 +690,13 @@ def get_partition_artifact_path(
 
 
 def get_common_artifact_path(
-    clustering_id: str,
+    dataset_id: str,
     artifact_type: str | None = "tally",
     artifact_file: str = "tally",
     kind: str | None = "table",
 ) -> str:
     artifact_dir = get_partition_artifact_dir(
-        clustering_id, partition_name=None, artifact_type=artifact_type
+        dataset_id, partition_name=None, artifact_type=artifact_type
     )
     suffix_order = preferred_suffix_order(kind=kind)
     for suffix in suffix_order:
@@ -709,73 +709,73 @@ def get_common_artifact_path(
     )
 
 
-def list_partition_status_dirs(clustering_id: str) -> list:
+def list_partition_status_dirs(dataset_id: str) -> list:
     """
-    Lists all partition status directories for a specific clustering dataset.
+    Lists all partition status directories for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
-    - list: A list of paths to partition status directories for the specified clustering dataset.
+    - list: A list of paths to partition status directories for the specified dataset.
     """
-    output_dir = get_clustering_status_dir(clustering_id)
+    output_dir = get_dataset_status_dir(dataset_id)
     return glob.glob(os.path.join(output_dir, "partitions", "*"))
 
 
-def get_partition_status_dir(clustering_id: str, partition_name: str) -> str:
+def get_partition_status_dir(dataset_id: str, partition_name: str) -> str:
     """
-    Returns the directory for a specific partition of a clustering dataset.
+    Returns the directory for a specific partition of a dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - partition_name [str]: The name of the partition.
 
     Returns:
     - str: The path to the specified partition directory.
     """
-    output_dir = get_clustering_status_dir(clustering_id)
-    if partition_id := partition_name or derive_default_partition_id(clustering_id):
+    output_dir = get_dataset_status_dir(dataset_id)
+    if partition_id := partition_name or derive_default_partition_id(dataset_id):
         return os.path.join(output_dir, "partitions", partition_id)
     raise ValueError(
-        f"No partition ID found for clustering dataset '{clustering_id}' and partition '{partition_name}'."
+        f"No partition ID found for dataset '{dataset_id}' and partition '{partition_name}'."
     )
 
 
 def get_partition_status_path(
-    clustering_id: str, partition_name: str | None = None
+    dataset_id: str, partition_name: str | None = None
 ) -> str:
     """
-    Returns the path to the status file for a specific partition of a clustering dataset.
+    Returns the path to the status file for a specific partition of a dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - partition_name [str, optional]: The name of the partition. If not provided, uses the default partition.
 
     Returns:
     - str: The path to the status file for the specified partition.
     """
-    partition_id = partition_name or derive_default_partition_id(clustering_id)
+    partition_id = partition_name or derive_default_partition_id(dataset_id)
     if not partition_id:
         raise ValueError(
-            f"No partition ID found for clustering dataset '{clustering_id}' and partition '{partition_name}'."
+            f"No partition ID found for dataset '{dataset_id}' and partition '{partition_name}'."
         )
-    partition_dir = get_partition_status_dir(clustering_id, partition_id)
+    partition_dir = get_partition_status_dir(dataset_id, partition_id)
     return os.path.join(partition_dir, "status.json")
 
 
-def read_run_status_file(clustering_id: str, partition_name: str | None = None) -> dict:
+def read_run_status_file(dataset_id: str, partition_name: str | None = None) -> dict:
     """
-    Reads the status file for a specific clustering dataset or its partition.
+    Reads the status file for a specific dataset or its partition.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - partition_name [str, optional]: The name of the partition. If not provided, reads the default run status.
 
     Returns:
     - dict: A dictionary containing the status information.
     """
-    status_path = get_partition_status_path(clustering_id, partition_name)
+    status_path = get_partition_status_path(dataset_id, partition_name)
     print(f"Reading run status from: {status_path}")
 
     if os.path.exists(status_path):
@@ -820,45 +820,45 @@ def normalise_run_state(state: str) -> str:
     return state_mapping.get(state.lower(), "unknown")
 
 
-def derive_run_status(clustering_id: str, partition_name: str | None = None) -> dict:
+def derive_run_status(dataset_id: str, partition_name: str | None = None) -> dict:
     """
-    Derives the run status for a specific clustering dataset or its partition.
+    Derives the run status for a specific dataset or its partition.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
     - partition_name [str, optional]: The name of the partition. If not provided, derives the default run status.
 
     Returns:
     - dict: A dictionary containing the derived run status information.
     """
-    run_status = read_run_status_file(clustering_id, partition_name)
+    run_status = read_run_status_file(dataset_id, partition_name)
     normalized_state = normalise_run_state(run_status.get("state", "unknown"))
     run_status["state"] = normalized_state
     run_status["details"] = {
         "default_analysis_exists": os.path.exists(
-            get_partition_status_path(clustering_id)
+            get_partition_status_path(dataset_id)
         ),
         "status_file_exists": os.path.exists(
-            get_partition_status_path(clustering_id, partition_name)
+            get_partition_status_path(dataset_id, partition_name)
         ),
         "artifacts_exist": os.path.exists(
-            get_partition_artifact_dir(clustering_id, partition_name)
+            get_partition_artifact_dir(dataset_id, partition_name)
         ),
     }
     return run_status
 
 
-# def derive_default_status(clustering_id: str) -> dict:
+# def derive_default_status(dataset_id: str) -> dict:
 #     """
-#     Derives a default status dictionary for a clustering dataset.
+#     Derives a default status dictionary for a dataset.
 
 #     Parameters:
-#     - clustering_id [str]: The ID of the clustering dataset.
+#     - dataset_id [str]: The ID of the dataset.
 
 #     Returns:
 #     - dict: A dictionary containing the default status information.
 #     """
-#     default_partition_id = CLUSTERING_DATASETS.get(clustering_id, {}).get(
+#     default_partition_id = DATASETS.get(dataset_id, {}).get(
 #         "default_partition_id"
 #     )
 #     if not default_partition_id:
@@ -866,77 +866,77 @@ def derive_run_status(clustering_id: str, partition_name: str | None = None) -> 
 #             "schema_version": 1,
 #             "run_name": "default",
 #             "state": "missing",
-#             "message": "Default partition ID not found for this clustering dataset.",
+#             "message": "Default partition ID not found for this dataset.",
 #             "error": {
 #                 "code": "not_found",
-#                 "message": "Default partition ID not found for this clustering dataset.",
+#                 "message": "Default partition ID not found for this dataset.",
 #             },
 #         }
-#     run_status = derive_run_status(clustering_id, default_partition_id)
+#     run_status = derive_run_status(dataset_id, default_partition_id)
 #     normalized_state = normalise_run_state(run_status.get("state", "unknown"))
 #     run_status["state"] = normalized_state
 #     return run_status
 
 
-def count_partition_runs(clustering_id: str) -> int:
+def count_partition_runs(dataset_id: str) -> int:
     """
-    Counts the number of partition runs for a specific clustering dataset.
+    Counts the number of partition runs for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
     - int: The number of partition runs.
     """
-    partition_dirs = list_partition_status_dirs(clustering_id)
+    partition_dirs = list_partition_status_dirs(dataset_id)
     return len(partition_dirs)
 
 
-def count_completed_partition_runs(clustering_id: str) -> int:
+def count_completed_partition_runs(dataset_id: str) -> int:
     """
-    Counts the number of completed partition runs for a specific clustering dataset.
+    Counts the number of completed partition runs for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
     - int: The number of completed partition runs.
     """
-    partition_dirs = list_partition_status_dirs(clustering_id)
+    partition_dirs = list_partition_status_dirs(dataset_id)
     completed_count = 0
     for partition_dir in partition_dirs:
         partition_name = os.path.basename(partition_dir)
-        run_status = derive_run_status(clustering_id, partition_name)
+        run_status = derive_run_status(dataset_id, partition_name)
         if run_status.get("state") == "ready":
             completed_count += 1
     return completed_count
 
 
-def derive_default_partition_id(clustering_id: str) -> str | None:
+def derive_default_partition_id(dataset_id: str) -> str | None:
     """
-    Retrieves the default partition ID for a specific clustering dataset.
+    Retrieves the default partition ID for a specific dataset.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
     - str | None: The default partition ID, or None if not found.
     """
-    return CLUSTERING_DATASETS.get(clustering_id, {}).get("default_partition_id")
+    return DATASETS.get(dataset_id, {}).get("default_partition_id")
 
 
-def get_clustering_readiness(clustering_id: str) -> bool:
+def get_dataset_readiness(dataset_id: str) -> bool:
     """
-    Determines the readiness of a clustering dataset based on the default partition.
+    Determines the readiness of a dataset based on the default partition.
 
     Parameters:
-    - clustering_id [str]: The ID of the clustering dataset.
+    - dataset_id [str]: The ID of the dataset.
 
     Returns:
-    - dict: A dictionary containing readiness information.
+    - bool: True when the default partition is ready, otherwise False.
     """
-    default_partition_id = derive_default_partition_id(clustering_id)
-    run_status = derive_run_status(clustering_id, default_partition_id)
+    default_partition_id = derive_default_partition_id(dataset_id)
+    run_status = derive_run_status(dataset_id, default_partition_id)
     return run_status.get("state") == "ready"
 
 
@@ -981,7 +981,7 @@ def validate_partition_dict(
     Validates a dictionary of entity names to ensure that each key has a non-empty list of associated names.
 
     Parameters:
-    - cluster_id [str]: The ID of the clustering dataset.
+    - cluster_id [str]: The ID of the dataset.
     - partition_dict [dict[str, list[str]]]: A dictionary where keys are entity names and values are lists of associated names.
 
     Returns:
@@ -990,7 +990,7 @@ def validate_partition_dict(
     """
     valid_members = [
         name.lower()
-        for name in CLUSTERING_DATASETS.get(cluster_id, {}).get("valid_members", [])
+        for name in DATASETS.get(cluster_id, {}).get("valid_members", [])
     ]
     seen_ids = set()
     for _, values in partition_dict.items():

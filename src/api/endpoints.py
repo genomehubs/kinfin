@@ -27,7 +27,7 @@ from api.fileparsers import (
 )
 from api.sessions import query_manager
 from api.utils import (
-    CLUSTERING_DATASETS,
+    DATASETS,
     derive_default_partition_id,
     derive_run_status,
     extract_attributes_and_taxon_sets,
@@ -73,7 +73,7 @@ CODE_TO_FILETYPE = {item["code"]: item["file"] for item in COLUMN_DESCRIPTIONS}
 
 class InputSchema(BaseModel):
     config: List[Dict[str, str]]
-    clusterId: str
+    dataset_id: str = Field(validation_alias=AliasChoices("dataset_id", "clusterId"))
     isAdvanced: bool
 
 
@@ -233,14 +233,15 @@ async def initialize(input_data: InputSchema, request: Request):
                 ).model_dump(),
                 status_code=400,
             )
-        cluster_info = CLUSTERING_DATASETS.get(input_data.clusterId)
+        dataset_id = input_data.dataset_id
+        cluster_info = DATASETS.get(dataset_id)
 
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusterId: {input_data.clusterId}",
-                    error="Clustering not found",
+                    message=f"Invalid dataset_id: {dataset_id}",
+                    error="Dataset not found",
                     query=str(request.url),
                 ).model_dump(),
                 status_code=404,
@@ -265,7 +266,7 @@ async def initialize(input_data: InputSchema, request: Request):
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Missing clustering dataset file(s)",
+                    message="Missing dataset file(s)",
                     error=str(e),
                     query=str(request.url),
                 ).model_dump(),
@@ -743,18 +744,31 @@ async def get_available_attributes_and_taxon_sets(
 @limiter.limit(LIMIT_STANDARD)
 async def get_valid_taxons_api(
     request: Request,
-    clusterId: str,
+    dataset_id: str | None = Query(None),
+    clusterId: str | None = Query(None, include_in_schema=False),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
 ):
     try:
-        cluster_info = CLUSTERING_DATASETS.get(clusterId)
+        dataset_id = dataset_id or clusterId
+        if not dataset_id:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Missing dataset_id query parameter",
+                    error="Field required",
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=422,
+            )
+
+        cluster_info = DATASETS.get(dataset_id)
         if not cluster_info:
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message=f"Invalid clusterId: {clusterId}",
-                    error="Clustering not found",
+                    message=f"Invalid dataset_id: {dataset_id}",
+                    error="Dataset not found",
                     query=str(request.url),
                 ).model_dump(),
                 status_code=404,
@@ -769,7 +783,7 @@ async def get_valid_taxons_api(
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Missing clustering dataset file(s)",
+                    message="Missing dataset file(s)",
                     error=str(e),
                     query=str(request.url),
                 ).model_dump(),
@@ -832,9 +846,9 @@ async def get_valid_taxons_api(
     return JSONResponse(response.model_dump(), status_code=200)
 
 
-@router.get("/kinfin/clusterings", response_model=ResponseSchema)
+@router.get("/kinfin/datasets", response_model=ResponseSchema)
 @limiter.limit(LIMIT_STANDARD)
-async def get_clusterings_api(
+async def get_datasets_api(
     request: Request,
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
@@ -845,33 +859,33 @@ async def get_clusterings_api(
             current_dir = os.path.dirname(os.path.abspath(__file__))
             clustering_file_path = os.path.join(current_dir, "clustering.json")
 
-        clustering_data = await asyncio.to_thread(
+        dataset_data = await asyncio.to_thread(
             parse_clustering_file, clustering_file_path
         )
     except FileNotFoundError as e:
-        LOGGER.error("Clustering file not found", exc_info=True)
+        LOGGER.error("Dataset file not found", exc_info=True)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
-                message="Clustering file not found",
+                message="Dataset file not found",
                 query=str(request.url),
                 error=str(e),
             ).model_dump(),
             status_code=404,
         )
     except ValueError as e:
-        LOGGER.error("Error parsing clustering file", exc_info=True)
+        LOGGER.error("Error parsing dataset file", exc_info=True)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
-                message="Error parsing clustering file",
+                message="Error parsing dataset file",
                 query=str(request.url),
                 error=str(e),
             ).model_dump(),
             status_code=422,
         )
     except Exception as e:
-        LOGGER.error("Error fetching clustering sets", exc_info=True)
+        LOGGER.error("Error fetching datasets", exc_info=True)
         return JSONResponse(
             content=ResponseSchema(
                 status="error",
@@ -882,23 +896,23 @@ async def get_clusterings_api(
             status_code=500,
         )
 
-    total_items = len(clustering_data)
+    total_items = len(dataset_data)
     total_pages = (total_items + size - 1) // size
     start = (page - 1) * size
     end = start + size
-    paginated_data = clustering_data[start:end]
+    paginated_data = dataset_data[start:end]
 
-    # TODO: validate current page clusterings and cache for future fetches
-    for clustering in paginated_data:
-        if clustering_id := clustering.get("id"):
-            default_status = derive_run_status(clustering_id)
-            clustering["status"] = default_status["state"]
+    # TODO: validate current page datasets and cache for future fetches
+    for dataset in paginated_data:
+        if dataset_id := dataset.get("id"):
+            default_status = derive_run_status(dataset_id)
+            dataset["status"] = default_status["state"]
         else:
-            clustering["status"] = "unknown"
+            dataset["status"] = "unknown"
 
     response = ResponseSchema(
         status="success",
-        message="Clustering sets fetched successfully",
+        message="Datasets fetched successfully",
         data=paginated_data,
         query=str(request.url),
         current_page=page,
@@ -1473,7 +1487,7 @@ async def get_plot(
 
 
 class PartitionResolveRequest(BaseModel):
-    clustering_id: str = Field(..., description="Clustering dataset id")
+    dataset_id: str = Field(..., description="Dataset id")
     partition_set: Dict[str, List[str]] = Field(
         ..., description="Dictionary mapping partition names to lists of cluster IDs"
     )
@@ -1486,7 +1500,7 @@ class PartitionResolveRequest(BaseModel):
 
 
 class PartitionStatusPayload(BaseModel):
-    clustering_id: str
+    dataset_id: str
     partition_id: str
     status: Literal["missing", "initialising", "ready", "error", "expired"]
     message: str
@@ -1498,12 +1512,12 @@ class PartitionStatusPayload(BaseModel):
 @router.post("/kinfin/partitions/resolve", response_model=ResponseSchema)
 async def resolve_partition_set(payload: PartitionResolveRequest, request: Request):
     try:
-        clustering_id = payload.clustering_id
+        dataset_id = payload.dataset_id
         partition_set = payload.partition_set
         validate = payload.validate_partition_set
 
         if validate:
-            is_valid, error_message = validate_partition_dict(clustering_id, partition_set)
+            is_valid, error_message = validate_partition_dict(dataset_id, partition_set)
             if not is_valid:
                 return JSONResponse(
                     content=ResponseSchema(
@@ -1516,14 +1530,14 @@ async def resolve_partition_set(payload: PartitionResolveRequest, request: Reque
                 )
 
         partition_id, key_map = partition_selection_to_id(partition_set)
-        status = read_run_status_file(clustering_id, partition_id)
+        status = read_run_status_file(dataset_id, partition_id)
 
         return JSONResponse(
             content=ResponseSchema(
                 status="success",
                 message="Partition set resolved successfully.",
                 data={
-                    "clustering_id": clustering_id,
+                    "dataset_id": dataset_id,
                     "partition_id": partition_id,
                     "key_map": key_map,
                     "status": status.get("state", "missing"),
@@ -1548,22 +1562,22 @@ async def resolve_partition_set(payload: PartitionResolveRequest, request: Reque
 
 
 @router.get(
-    "/kinfin/clusterings/{clustering_id}/partitions/{partition_id}/status",
+    "/kinfin/datasets/{dataset_id}/partitions/{partition_id}/status",
     response_model=ResponseSchema,
 )
 async def get_partition_status_by_id(
     request: Request,
-    clustering_id: str,
+    dataset_id: str,
     partition_id: str,
 ):
     try:
-        status = read_run_status_file(clustering_id, partition_id)
+        status = read_run_status_file(dataset_id, partition_id)
 
         if status.get("state", "missing") == "missing" and not status.get("run_exists", False):
             return JSONResponse(
                 content=ResponseSchema(
                     status="error",
-                    message="Partition not found for this clustering.",
+                    message="Partition not found for this dataset.",
                     error="partition_not_found",
                     query=str(request.url),
                 ).model_dump(),
@@ -1575,7 +1589,7 @@ async def get_partition_status_by_id(
                 status="success",
                 message="Partition status retrieved successfully.",
                 data={
-                    "clustering_id": clustering_id,
+                    "dataset_id": dataset_id,
                     "partition_id": partition_id,
                     "status": status.get("state", "missing"),
                     "message": status.get("message", ""),
@@ -1600,7 +1614,7 @@ async def get_partition_status_by_id(
 
 
 class PartitionStatusBatchRequest(BaseModel):
-    clustering_id: str
+    dataset_id: str
     partition_ids: List[str]
 
 
@@ -1610,16 +1624,16 @@ async def get_partition_statuses_batch(
     request: Request,
 ):
     try:
-        clustering_id = payload.clustering_id
+        dataset_id = payload.dataset_id
         partition_ids = payload.partition_ids
 
         statuses = {
-            partition_id: read_run_status_file(clustering_id, partition_id)
+            partition_id: read_run_status_file(dataset_id, partition_id)
             for partition_id in partition_ids
         }
         response = {
             partition_id: {
-                "clustering_id": clustering_id,
+                "dataset_id": dataset_id,
                 "partition_id": partition_id,
                 "status": status.get("state", "missing"),
                 "message": status.get("message", ""),
@@ -1650,19 +1664,19 @@ async def get_partition_statuses_batch(
         )
 
 
-@router.get("/kinfin/clusterings/{clustering_id}/summary", response_model=ResponseSchema)
-async def get_clustering_summary(
+@router.get("/kinfin/datasets/{dataset_id}/summary", response_model=ResponseSchema)
+async def get_dataset_summary(
     request: Request,
-    clustering_id: str,
+    dataset_id: str,
     fields: Optional[List[str]] = Query(default=None),
     sort_by: Optional[str] = Query(default=None),
     sort_order: str = Query(default="asc"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1),
 ):
-    partition_id = derive_default_partition_id(clustering_id)
+    partition_id = derive_default_partition_id(dataset_id)
     file_path = get_partition_artifact_path(
-        clustering_id=clustering_id,
+        dataset_id=dataset_id,
         partition_name=partition_id,
         artifact_type="partition",
         artifact_file="summary",
@@ -1683,9 +1697,9 @@ async def get_clustering_summary(
     return JSONResponse(
         content=ResponseSchema(
             status="success",
-            message="Clustering summary retrieved successfully.",
+            message="Dataset summary retrieved successfully.",
             data={
-                "clustering_id": clustering_id,
+                "dataset_id": dataset_id,
                 "partition_id": partition_id,
                 "summary": df_rows,
                 "current_page": page,
@@ -1697,8 +1711,8 @@ async def get_clustering_summary(
     )
 
 
-class ClusteringSummaryRequest(BaseModel):
-    clustering_id: str
+class DatasetSummaryRequest(BaseModel):
+    dataset_id: str
     partition_id: Optional[str] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
@@ -1708,15 +1722,15 @@ class ClusteringSummaryRequest(BaseModel):
     size: int = 20
 
 
-@router.post("/kinfin/clusterings/summary", response_model=ResponseSchema)
-async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Request):
-    clustering_id = payload.clustering_id
+@router.post("/kinfin/datasets/summary", response_model=ResponseSchema)
+async def post_dataset_summary(payload: DatasetSummaryRequest, request: Request):
+    dataset_id = payload.dataset_id
     partition_id = payload.partition_id if hasattr(payload, "partition_id") else None
     if not partition_id or partition_id == "default":
-        partition_id = derive_default_partition_id(clustering_id)
-    print(f"Fetching summary for clustering_id: {clustering_id}, partition_id: {partition_id}")
+        partition_id = derive_default_partition_id(dataset_id)
+    print(f"Fetching summary for dataset_id: {dataset_id}, partition_id: {partition_id}")
     file_path = get_partition_artifact_path(
-        clustering_id=clustering_id,
+        dataset_id=dataset_id,
         partition_name=partition_id,
         artifact_type="partition",
         artifact_file="summary",
@@ -1737,9 +1751,9 @@ async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Re
     return JSONResponse(
         content=ResponseSchema(
             status="success",
-            message="Clustering summary retrieved successfully.",
+            message="Dataset summary retrieved successfully.",
             data={
-                "clustering_id": clustering_id,
+                "dataset_id": dataset_id,
                 "partition_id": partition_id,
                 "summary": df_rows,
                 "current_page": payload.page,
@@ -1751,10 +1765,10 @@ async def post_clustering_summary(payload: ClusteringSummaryRequest, request: Re
     )
 
 
-@router.get("/kinfin/clusterings/{clustering_id}/tally", response_model=ResponseSchema)
-async def get_clustering_tally(
+@router.get("/kinfin/datasets/{dataset_id}/tally", response_model=ResponseSchema)
+async def get_dataset_tally(
     request: Request,
-    clustering_id: str,
+    dataset_id: str,
     tally_field: str = Query(default="EC"),
     sort_by: Optional[str] = Query(default=None),
     sort_order: str = Query(default="asc"),
@@ -1773,7 +1787,7 @@ async def get_clustering_tally(
         )
 
     file_path = get_common_artifact_path(
-        clustering_id=clustering_id,
+        dataset_id=dataset_id,
         artifact_type="tally",
         artifact_file=f"orthogroups.{tally_field}.tally",
         kind="table",
@@ -1793,9 +1807,9 @@ async def get_clustering_tally(
     return JSONResponse(
         content=ResponseSchema(
             status="success",
-            message="Clustering tally retrieved successfully.",
+            message="Dataset tally retrieved successfully.",
             data={
-                "clustering_id": clustering_id,
+                "dataset_id": dataset_id,
                 "tally": df_rows,
                 "current_page": page,
                 "total_pages": total_pages,
@@ -1806,8 +1820,8 @@ async def get_clustering_tally(
     )
 
 
-class ClusteringTableRequest(BaseModel):
-    clustering_id: str
+class DatasetTableRequest(BaseModel):
+    dataset_id: str
     table_name: str = "summary"
     partition_id: Optional[str] = None
     subset: Optional[List[str]] = None
@@ -1819,12 +1833,12 @@ class ClusteringTableRequest(BaseModel):
     size: int = 20
 
 
-@router.post("/kinfin/clusterings/table", response_model=ResponseSchema)
-async def post_clustering_table(payload: ClusteringTableRequest, request: Request):
-    clustering_id = payload.clustering_id
+@router.post("/kinfin/datasets/table", response_model=ResponseSchema)
+async def post_dataset_table(payload: DatasetTableRequest, request: Request):
+    dataset_id = payload.dataset_id
     partition_id = payload.partition_id if hasattr(payload, "partition_id") else None
     if not partition_id or partition_id == "default":
-        partition_id = derive_default_partition_id(clustering_id)
+        partition_id = derive_default_partition_id(dataset_id)
     table_name = payload.table_name if hasattr(payload, "table_name") else "summary"
     if table_name == "partition":
         if not payload.subset or not isinstance(payload.subset, list) or len(payload.subset) != 2:
@@ -1838,9 +1852,9 @@ async def post_clustering_table(payload: ClusteringTableRequest, request: Reques
                 status_code=400,
             )
         table_name = f"{'_vs_'.join(payload.subset)}.partition"
-    print(f"Fetching table for clustering_id: {clustering_id}, partition_id: {partition_id}")
+    print(f"Fetching table for dataset_id: {dataset_id}, partition_id: {partition_id}")
     file_path = get_partition_artifact_path(
-        clustering_id=clustering_id,
+        dataset_id=dataset_id,
         partition_name=partition_id,
         artifact_type="partition",
         artifact_file=table_name,
@@ -1861,9 +1875,9 @@ async def post_clustering_table(payload: ClusteringTableRequest, request: Reques
     return JSONResponse(
         content=ResponseSchema(
             status="success",
-            message="Clustering table retrieved successfully.",
+            message="Dataset table retrieved successfully.",
             data={
-                "clustering_id": clustering_id,
+                "dataset_id": dataset_id,
                 "partition_id": partition_id,
                 "table": df_rows,
                 "current_page": payload.page,
