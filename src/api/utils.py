@@ -635,6 +635,10 @@ def get_partition_artifact_dir(
         raise ValueError(
             f"Partition '{partition_name}' for dataset '{dataset_id}' is not ready. Current state: {normalized_state}"
         )
+    if artifact_dir := status.get("artifact_dir"):
+        if os.path.isabs(artifact_dir):
+            return artifact_dir
+        return os.path.join(get_dataset_artifact_root(dataset_id), artifact_dir)
     if output_name := status.get("output_name"):
         return os.path.join(artifact_dir, output_name)
     else:
@@ -674,9 +678,10 @@ def get_partition_artifact_path(
         dataset_id, partition_name=partition_name, artifact_type=artifact_type
     )
     if partition_name:
-        if output_name := read_run_status_file(dataset_id, partition_name).get(
-            "output_name"
-        ):
+        status = read_run_status_file(dataset_id, partition_name)
+        if artifact_file_prefix := status.get("artifact_file_prefix"):
+            artifact_file = f"{artifact_file_prefix}.{artifact_file}"
+        elif output_name := status.get("output_name"):
             artifact_file = f"{output_name}.{artifact_file}"
     suffix_order = preferred_suffix_order(kind=kind)
     for suffix in suffix_order:
@@ -779,7 +784,19 @@ def read_run_status_file(dataset_id: str, partition_name: str | None = None) -> 
     print(f"Reading run status from: {status_path}")
 
     if os.path.exists(status_path):
-        return read_status(status_path)
+        try:
+            return read_status(status_path)
+        except json.JSONDecodeError as e:
+            return {
+                "schema_version": 1,
+                "run_name": partition_name or "default",
+                "state": "error",
+                "message": "Run status file is not valid JSON.",
+                "error": {
+                    "code": "invalid_status_file",
+                    "message": str(e),
+                },
+            }
     resolved_partition_name = partition_name or "default"
     return {
         "schema_version": 1,
