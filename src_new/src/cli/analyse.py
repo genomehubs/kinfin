@@ -11,6 +11,25 @@ import core.tree
 logger = logging.getLogger(__name__)
 
 
+def setup(args):
+    # create basic DIRs
+    core.utils.mkdir(
+        name=args.d,
+        subdirs="init",
+        do_replace=True,
+    )
+    # init log after
+    core.log.init_logger(args)
+    if args.v:
+        for k, v in vars(args).items():
+            logger.debug(f"[args] {f'{k}={v}'}")
+    # testament
+    core.utils.testament(
+        cleanup,
+        keep_dir=args.N,
+    )
+
+
 def cleanup(keep_dir=False, verbose=False):
     logger.info("deleting temporary files ...")
     if not keep_dir:
@@ -27,22 +46,8 @@ def cleanup(keep_dir=False, verbose=False):
 
 def run(args):
     t_0 = time.monotonic()
-    # [ToDo] put everything 'setup' into one function
-    # create basic DIRs (before core.log.init_logger!)
-    core.utils.mkdir(
-        name=args.d,
-        subdirs="init",
-        do_replace=True,
-    )
-    core.log.init_logger(args)
-    if args.v:
-        for k, v in vars(args).items():
-            logger.debug(f"[args] {f'{k}={v}'}")
-    # testament
-    core.utils.testament(
-        cleanup,
-        keep_dir=args.N,
-    )
+    # setup
+    setup(args)
     # get config
     df_config = core.analysis.process_config(
         config_fn=args.c,
