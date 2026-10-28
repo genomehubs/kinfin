@@ -89,10 +89,13 @@ def poolcontext(*args, **kwargs):
 def get_parse_tasks(
     directory=None,
     func=None,
-    sample_ids=[],
-    extensions=[],
-    params={},
+    sample_ids=None,
+    extensions=None,
+    params=None,
 ):
+    sample_ids = sample_ids or []
+    extensions = extensions or []
+    params = params or {}
     _SAMPLE_IDS = set(sample_ids)
     tasks = []
     for extension in extensions:
@@ -135,7 +138,7 @@ def do_parse_fasta(task):
                 ),
                 index=False,
             )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error(f"problem reading {task.fn} - {exc}")
     return None
 
@@ -143,8 +146,9 @@ def do_parse_fasta(task):
 def get_ids(
     sequence_ids_fn=None,
     species_ids_fn=None,
-    sample_ids=[],
+    sample_ids=None,
 ):
+    sample_ids = sample_ids or []
     logger.info("parsing SpeciesIDs file")
     sample_ids = set(sample_ids)
     try:
@@ -167,7 +171,7 @@ def get_ids(
                 f"none of the following IDs was found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids))}"
             )
             sys.exit(1)
-        elif not len(sample_ids) == len(sample_ids_found):
+        elif len(sample_ids) != len(sample_ids_found):
             logger.error(
                 f"the following IDs were not found in the file '{species_ids_fn}': {', '.join(sorted(sample_ids - set(sample_ids_found.values())))}"
             )
@@ -340,7 +344,7 @@ def process_orthogroups(
                 index=False,
             )
             sys.exit(1)
-    if not sample_ids_source == "parse":
+    if sample_ids_source != "parse":
         logger.info(
             "inferring Sample IDs for orthogroups (this might take a moment)..."
         )
@@ -697,8 +701,14 @@ def comparison_function(task):
     df_counts = core.utils.get_counts_df(
         nan=True,
     )
-    df_counts_TG1 = df_counts.loc[:, TG_1]
-    df_counts_TG2 = df_counts.loc[:, TG_2]
+    try:
+        df_counts_TG1 = df_counts.loc[:, TG_1]
+    except AttributeError:
+        logger.warning(f"could not retrieve counts for taxon group {TG_1}")
+    try:
+        df_counts_TG2 = df_counts.loc[:, TG_2]
+    except AttributeError:
+        logger.warning(f"could not retrieve counts for taxon group {TG_1}")
     df_partition_list = []
     df_partition_list.append(df_counts.ge(1).sum(axis=1).rename("SC"))  # 0
     df_partition_list.append(df_counts_TG1.ge(1).sum(axis=1).rename("SC_TG1"))  # 1
@@ -1008,8 +1018,9 @@ def get_taxids(
         update_taxonomy=update_taxonomy,
         index="name",
     )
-    # remove duplicated names!
-    df_taxonomy = df_taxonomy[~df_taxonomy.index.duplicated(keep=False)]
+    df_taxonomy = df_taxonomy[
+        ~df_taxonomy.index.duplicated(keep=False)
+    ]  # remove duplicated names!
 
     def infer_taxonomy(value):
         taxid_dict = core.taxonomy.get_taxid(
@@ -1032,7 +1043,7 @@ def get_taxids(
             f"no TaxIDs could be assigned. Make sure sample IDs are in NCBI Taxonomy ({definitions.TAXONOMY_USER_URL})"
         )
         return False
-    elif len(df_config_missing.index) > 0:
+    if len(df_config_missing.index) > 0:
         logger.warning(
             f"{core.utils.format_number(len(df_config_missing.index))} TaxIDs could not be assigned. Reasons may include changes in taxonomy (by NCBI), typos (by you), or edge cases such as complex and/or duplicated entries. Please consult NCBI Taxonomy ({definitions.TAXONOMY_USER_URL}) to manually curate your config file!"
         )
@@ -1044,8 +1055,6 @@ def get_taxids(
             ),
             index=False,
         )
-    else:
-        pass
     core.utils.dump(
         df_config,
         fn=core.utils.format_fn(
@@ -1093,11 +1102,9 @@ def get_taxonomy(
 
 def process_config(
     config_fn,
-    taxonomic_ranks=[
-        "genus",
-        "species",
-    ],
+    taxonomic_ranks=None,
 ):
+    taxonomic_ranks = taxonomic_ranks or ["genus", "species"]
     df_config = core.utils.load(config_fn).convert_dtypes()
     if df_config.empty:
         logger.error("config is empty")
@@ -1177,12 +1184,10 @@ def get_combinations(taxon_groups, key):
                 (
                     tuple(sorted(TNs_1)),
                     tuple(sorted(TNs_2)),
-                    tuple(
-                        [
-                            key,
-                            label_1,
-                            label_2,
-                        ]
+                    (
+                        key,
+                        label_1,
+                        label_2,
                     ),
                 )
             )
@@ -1195,12 +1200,10 @@ def get_combinations(taxon_groups, key):
             (
                 tuple(sorted(TNs)),
                 tuple(sorted(TNs_remainder)),
-                tuple(
-                    [
-                        key,
-                        TNs_label,
-                        definitions.REMAINDER_LABEL,
-                    ]
+                (
+                    key,
+                    TNs_label,
+                    definitions.REMAINDER_LABEL,
                 ),
             )
         )
