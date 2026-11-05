@@ -1,0 +1,131 @@
+name: Tally Per-User AI Declarations
+
+on:
+    pull_request:
+        types: [closed]
+        branches:
+            - main
+
+jobs:
+    tally-user-metrics:
+        if: github.event.pull_request.merged == true
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.x"
+
+            - name: Update User Statistics and JSON Ledger
+              env:
+                  PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+                  PR_BODY: ${{ github.event.pull_request.body }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  PR_URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  import re
+                  import os
+                  import json
+                  import sys
+                  from datetime import datetime
+
+                  username = os.getenv("PR_AUTHOR").lower()
+                  author_tag = f"@{os.getenv('PR_AUTHOR')}"
+                  body = os.getenv("PR_BODY", "")
+                  pr_num = os.getenv("PR_NUMBER")
+                  pr_url = os.getenv("PR_URL")
+
+                  # 1. Parse metadata tag from PR description
+                  metadata_match = re.search(r"<!-- AI-METADATA: autonomy=(\w+)(?: phases=[\w,]+)?(?: tools=([\w\s,]+))? -->", body)
+
+                  if metadata_match:
+                      autonomy = metadata_match.group(1).lower()
+                      tools_list = [t.strip() for t in metadata_match.group(2).split(",")] if metadata_match.group(2) else []
+                      tool_str = ", ".join(tools_list) if tools_list else "Unknown AI"
+                  else:
+                      autonomy = "none"
+                      tools_list = []
+                      tool_str = "None"
+
+                  # ----------------------------------------------------
+                  # PART A: UPDATE MACHINE-READABLE INDIVIDUAL LEDGER
+                  # ----------------------------------------------------
+                  declarations_dir = ".ai-declarations"
+                  os.makedirs(declarations_dir, exist_ok=True)
+                  json_path = f"{declarations_dir}/{username}.json"
+
+                  # Load existing profile history or initialize a new structural blueprint
+                  if os.path.exists(json_path):
+                      with open(json_path, "r") as jf:
+                          user_data = json.load(jf)
+                  else:
+                      user_data = {
+                          "username": username,
+                          "totals": {"none": 0, "autocomplete": 0, "co-piloted": 0, "agentic": 0},
+                          "history": []
+                      }
+
+                  # Update running JSON aggregate count
+                  user_data["totals"][autonomy] = user_data["totals"].get(autonomy, 0) + 1
+
+                  # Append transactional timeline event entry
+                  user_data["history"].append({
+                      "pr_number": int(pr_num),
+                      "pr_url": pr_url,
+                      "date": datetime.utcnow().strftime("%Y-%m-%d"),
+                      "declared_autonomy": autonomy,
+                      "tools_used": tools_list
+                  })
+
+                  # Write out clean formatted JSON file
+                  with open(json_path, "w") as jf:
+                      json.dump(user_data, jf, indent=2)
+
+                  # ----------------------------------------------------
+                  # PART B: UPDATE PUBLIC VISIBILITY VISUAL TABLE IN README
+                  # ----------------------------------------------------
+                  readme_path = "README.md"
+                  if not os.path.exists(readme_path):
+                      print("README.md missing, skipping Markdown row updating workflow phase.")
+                      sys.exit(0)
+
+                  with open(readme_path, "r") as f:
+                      readme_text = f.read()
+
+                  block_match = re.search(r"(<!-- AI_PER_USER_METRICS_START -->.*?)(<!-- AI_PER_USER_METRICS_END -->)", readme_text, flags=re.DOTALL)
+                  if not block_match:
+                      print("Table anchors missing in README.md.")
+                      sys.exit(0)
+
+                  block_content = block_match.group(1)
+                  end_tag = block_match.group(2)
+
+                  row_pattern = rf"\|\s*{re.escape(author_tag)}\s*\|.*?\n"
+                  row_match = re.search(row_pattern, block_content)
+
+                  # Generate the row variables directly from the fresh ground-truth JSON layer
+                  t = user_data["totals"]
+                  new_row = f"| {author_tag} | {t.get('none', 0)} | {t.get('autocomplete', 0)} | {t.get('co-piloted', 0)} | {t.get('agentic', 0)} | {tool_str} |\n"
+
+                  if row_match:
+                      updated_block = block_content.replace(row_match.group(0), new_row)
+                  else:
+                      updated_block = block_content + new_row
+
+                  final_readme = readme_text.replace(block_match.group(0), updated_block + end_tag)
+
+                  with open(readme_path, "w") as f:
+                      f.write(final_readme)
+
+            - name: Commit and Push Changes
+              run: |
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@://github.com"
+                  git add README.md .ai-declarations/
+                  git diff-index --quiet HEAD || git commit -m "docs: update contributor AI usage and ledger json data [skip ci]"
+                  git push origin main

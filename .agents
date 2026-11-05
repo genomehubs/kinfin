@@ -1,0 +1,18 @@
+# AI Code Governance Protocol
+
+You are operating in a repository that tracks AI usage transparency.
+
+Before completing your coding task, you MUST check if a `.ai-state.json` file exists in the repository root.
+
+1. If it does not exist, create it.
+2. Update the fields based on your current task:
+   - `autonomy_level`: Set to "autocomplete", "co-piloted", or "agentic".
+   - `phases`: Add all that apply from ["planning", "core_logic", "testing"].
+   - `tools`: Append your agent name (e.g., ["Claude Code", "Cursor"]).
+
+Example structure:
+{
+"autonomy_level": "agentic",
+"phases": ["core_logic", "testing"],
+"tools": ["Aider"]
+}
