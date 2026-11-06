@@ -305,7 +305,7 @@ def resolve_requested_columns(
     columns = canonicalise_column_names(table_name, requested_columns)
     if isinstance(columns, str):
         columns = [columns]
-    # Ensure always visible columns are included
+    # Ensure always visible columns are included in the final list of columns
     for col in always_visible_columns:
         if col not in columns:
             columns.append(col)
