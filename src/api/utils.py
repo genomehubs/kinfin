@@ -110,6 +110,7 @@ def sort_and_paginate_result(
     page: int = 1,
     size: int = 20,
 ) -> tuple:
+    # Sort the result based on the specified sort keys and order
     if sort_by:
         sort_keys = sort_by.split(",")
         items = list(result.items())
