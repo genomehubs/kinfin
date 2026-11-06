@@ -56,7 +56,7 @@ This repository tracks AI usage per user for transparency. Tracking began in Nov
 | :-------- | :--------: | :----------: | :--------: | :-----: | :--------------- |
 | @drl | 65 | 0 | 0 | 0 | None |
 | @heisdinesh | 0 | 0 | 0 | 0 | None |
-| @rjchallis | 75 | 40 | 10 | 5 | None |
+| @rjchallis | 76 | 40 | 10 | 5 | None |
 
 <!-- AI_PER_USER_METRICS_END -->
 
