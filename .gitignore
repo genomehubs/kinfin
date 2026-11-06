@@ -14,7 +14,7 @@ venv
 result
 .DS_Store
 .env
-data
+data/*
 
 # Logs
 logs
@@ -42,3 +42,5 @@ dist-ssr
 *.sw?
 
 *storybook.log
+
+.ai-state.json
