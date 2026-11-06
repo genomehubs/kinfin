@@ -30,24 +30,44 @@ record_ai_declaration() {
         echo "Warning: .ai-state.json detected but 'gh' CLI is not found or authenticated."
         return 0
     fi
+    # Hooks run non-interactively, so gh must not prompt for a repository
+    export GH_PROMPT_DISABLED=1
 
     BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null) || return 0
 
-    if ! PR_BODY=$(gh pr view "$BRANCH" --json body -q .body 2>/dev/null); then
+    # The PR may live in a different repo than origin (fork workflow), so try each GitHub remote
+    REPO=""
+    for remote in origin $(git remote); do
+        URL=$(git remote get-url "$remote" 2>/dev/null) || continue
+        case "$URL" in *github.com*) ;; *) continue ;; esac
+        CANDIDATE=$(printf '%s' "$URL" | sed -E 's#^(ssh://git@|git@|https?://)github\.com[:/]##; s#\.git$##')
+        if gh pr view "$BRANCH" -R "$CANDIDATE" --json number >/dev/null 2>&1; then
+            REPO="$CANDIDATE"
+            break
+        fi
+    done
+    # Fall back to the gh default repository when no GitHub remote has the PR
+    if [ -z "$REPO" ] && gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+        REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
+    fi
+    if [ -z "$REPO" ]; then
         echo "AI declaration not recorded: no pull request for '$BRANCH' yet. Open the PR and push again."
         return 0
     fi
+    PR_NUMBER=$(gh pr view "$BRANCH" -R "$REPO" --json number -q .number 2>/dev/null)
 
     AUTONOMY=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('autonomy_level', 'none'))")
     PHASES=$(python3 -c "import json; print(','.join(json.load(open('$STATE_FILE')).get('phases', [])))")
     TOOLS=$(python3 -c "import json; print(','.join(json.load(open('$STATE_FILE')).get('tools', [])))")
 
+    echo "AI declaration detected ($AUTONOMY). Updating pull request metadata..."
+    # Read the body just before writing so edits made since the lookup are kept
+    PR_BODY=$(gh pr view "$PR_NUMBER" -R "$REPO" --json body -q .body 2>/dev/null) || return 0
     # Replace any tag added by an earlier push so only the latest declaration remains
     PR_BODY=$(printf '%s' "$PR_BODY" | sed '/<!-- AI-METADATA:/d')
     NEW_BODY=$(printf '%s\n\n<!-- AI-METADATA: autonomy=%s phases=%s tools=%s -->' "$PR_BODY" "$AUTONOMY" "$PHASES" "$TOOLS")
-
-    echo "AI declaration detected ($AUTONOMY). Updating pull request metadata..."
-    gh pr edit "$BRANCH" --body "$NEW_BODY" >/dev/null 2>&1 || echo "Warning: failed to update the pull request body."
+    # gh pr edit fails on gh 2.62 (deprecated Projects classic query), so use the REST API
+    gh api -X PATCH "repos/$REPO/pulls/$PR_NUMBER" -f body="$NEW_BODY" >/dev/null 2>&1 || echo "Warning: failed to update the pull request body."
 }
 
 record_ai_declaration

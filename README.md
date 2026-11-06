@@ -52,17 +52,19 @@ This repository tracks AI usage per user for transparency. Tracking began in Nov
 
 ### Contributor Development Breakdown
 
-| Developer | Pure Human | Autocomplete | Co-Piloted | Agentic | Last Active Tool |
-| :-------- | :--------: | :----------: | :--------: | :-----: | :--------------- |
-| @drl | 65 | 0 | 0 | 0 | None |
-| @heisdinesh | 0 | 0 | 0 | 0 | None |
-| @rjchallis | 76 | 40 | 10 | 5 | None |
+| Developer   | Pure Human | Autocomplete | Co-Piloted | Agentic | Last Active Tool |
+| :---------- | :--------: | :----------: | :--------: | :-----: | :--------------- |
+| @drl        |     65     |      0       |     0      |    0    | None             |
+| @heisdinesh |     0      |      0       |     0      |    0    | None             |
+| @rjchallis  |     76     |      40      |     10     |    5    | None             |
 
 <!-- AI_PER_USER_METRICS_END -->
 
-### Declaring AI usage in a pull request
+<details>
 
-1. Run the setup script once per clone. It installs a pre-push hook that reads the declaration file:
+<summary>How to declare AI usage</summary>
+
+1. Run the setup script once per clone, and again whenever `scripts/setup-ai-logs.sh` changes. It installs a pre-push hook that reads the declaration file. The hook is copied into `.git/hooks`, so script updates take effect only after re-running it:
 
 ```
 bash scripts/setup-ai-logs.sh
@@ -99,3 +101,5 @@ If `.ai-state.json` is absent, AI usage is assumed to be none. To declare this e
   "tools": []
 }
 ```
+
+</details>
