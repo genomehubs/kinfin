@@ -32,8 +32,10 @@ record_ai_declaration() {
     fi
 
     BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null) || return 0
+    # Resolve the repo from origin so gh does not depend on a default repo being set
+    REPO=$(git remote get-url origin 2>/dev/null | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.git$##') || return 0
 
-    if ! PR_BODY=$(gh pr view "$BRANCH" --json body -q .body 2>/dev/null); then
+    if ! PR_BODY=$(gh pr view "$BRANCH" -R "$REPO" --json body -q .body 2>/dev/null); then
         echo "AI declaration not recorded: no pull request for '$BRANCH' yet. Open the PR and push again."
         return 0
     fi
@@ -47,7 +49,9 @@ record_ai_declaration() {
     NEW_BODY=$(printf '%s\n\n<!-- AI-METADATA: autonomy=%s phases=%s tools=%s -->' "$PR_BODY" "$AUTONOMY" "$PHASES" "$TOOLS")
 
     echo "AI declaration detected ($AUTONOMY). Updating pull request metadata..."
-    gh pr edit "$BRANCH" --body "$NEW_BODY" >/dev/null 2>&1 || echo "Warning: failed to update the pull request body."
+    PR_NUMBER=$(gh pr view "$BRANCH" -R "$REPO" --json number -q .number 2>/dev/null)
+    # gh pr edit fails on gh 2.62 (deprecated Projects classic query), so use the REST API
+    gh api -X PATCH "repos/$REPO/pulls/$PR_NUMBER" -f body="$NEW_BODY" >/dev/null 2>&1 || echo "Warning: failed to update the pull request body."
 }
 
 record_ai_declaration
