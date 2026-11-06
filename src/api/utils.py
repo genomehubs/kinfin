@@ -13,7 +13,7 @@ import yaml
 def read_status(status_file):
     status_info = {}
     with open(status_file, "r") as file:
-        # read json from file
+        # read json from the status file
         status_info = json.load(file)
 
     return status_info
