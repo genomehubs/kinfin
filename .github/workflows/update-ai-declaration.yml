@@ -3,8 +3,10 @@ name: Tally Per-User AI Declarations
 on:
     pull_request_target:
         types: [closed]
-        branches:
-            - main
+
+concurrency:
+    group: tally-${{ github.event.pull_request.base.ref }}
+    cancel-in-progress: false
 
 jobs:
     tally-user-metrics:
@@ -17,7 +19,7 @@ jobs:
               uses: actions/checkout@v4
               with:
                   # Base branch only; PR head code must never run under pull_request_target.
-                  ref: main
+                  ref: ${{ github.event.pull_request.base.ref }}
 
             - name: Set up Python
               uses: actions/setup-python@v5
@@ -33,9 +35,16 @@ jobs:
               run: python scripts/tally_ai_declaration.py
 
             - name: Commit and Push Changes
+              env:
+                  BASE_REF: ${{ github.event.pull_request.base.ref }}
               run: |
                   git config --global user.name "github-actions[bot]"
                   git config --global user.email "github-actions[bot]@://github.com"
                   git add README.md .ai-declarations/
-                  git diff-index --quiet HEAD || git commit -m "docs: update contributor AI usage and ledger json data [skip ci]"
-                  git push origin main
+                  if git diff-index --quiet HEAD; then
+                      echo "No changes to commit."
+                      exit 0
+                  fi
+                  git commit -m "docs: update contributor AI usage and ledger json data [skip ci]"
+                  git pull --rebase origin "$BASE_REF"
+                  git push origin "HEAD:$BASE_REF"

@@ -81,6 +81,10 @@ The file is git-ignored and is not committed. Update its fields for each PR:
 - `phases`: any of `planning`, `core_logic`, `testing` that apply.
 - `tools`: names of the AI tools used, e.g. `Claude Code`, `Cursor`.
 
+Pull requests opened in the GitHub web UI do not run the hook. Edit the `AI-METADATA` line that the pull request template adds to the description instead. The merge workflow reads that line; if it is missing, the pull request is recorded as `none`.
+
+The hook only records a declaration on a push made after the pull request is open. If you declare AI usage before opening the pull request, push again once it exists. Each push replaces the previous declaration with the current `.ai-state.json`, so the last push before merge is the one recorded.
+
 ### No AI usage
 
 If `.ai-state.json` is absent, AI usage is assumed to be none. To declare this explicitly, use:

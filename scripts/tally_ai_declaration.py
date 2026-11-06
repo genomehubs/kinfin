@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 DECLARATIONS_DIR = Path(".ai-declarations")
+PR_RECORDS_DIR = DECLARATIONS_DIR / "prs"
 README_PATH = Path("README.md")
 AUTONOMY_LEVELS = ("none", "autocomplete", "co-piloted", "agentic")
 LOGIN_PATTERN = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38})")
@@ -28,6 +29,7 @@ def parse_declaration(body):
     """Return (autonomy, phases, tools) from the PR body metadata tag."""
     match = METADATA_PATTERN.search(body)
     if not match:
+        print("No AI-METADATA tag found in PR body; recording as none.")
         return "none", [], []
     autonomy = match.group(1).lower()
     if autonomy not in AUTONOMY_LEVELS:
@@ -38,7 +40,9 @@ def parse_declaration(body):
     return autonomy, phases, tools
 
 
-def load_ledger(path, login):
+def load_baseline(login):
+    """Hand-maintained baseline; the tally never rewrites it."""
+    path = DECLARATIONS_DIR / f"{login}.json"
     if path.exists():
         return json.loads(path.read_text())
     return {
@@ -48,15 +52,26 @@ def load_ledger(path, login):
     }
 
 
-def record_pr(ledger, entry):
-    """Add a merged PR to the ledger unless it is already recorded."""
-    if any(past.get("pr_number") == entry["pr_number"] for past in ledger["history"]):
-        print(f"PR #{entry['pr_number']} is already recorded; skipping.")
-        return False
-    autonomy = entry["declared_autonomy"]
-    ledger["totals"][autonomy] = ledger["totals"].get(autonomy, 0) + 1
-    ledger["history"].append(entry)
-    return True
+def load_pr_records():
+    records = {}
+    for path in sorted(PR_RECORDS_DIR.glob("*.json")):
+        entry = json.loads(path.read_text())
+        records.setdefault(entry["username"], []).append(entry)
+    return records
+
+
+def build_ledger(login, baseline, pr_entries):
+    """Merge a baseline ledger with the per-PR records for one user."""
+    ledger = {
+        "username": login,
+        "totals": dict(baseline["totals"]),
+        "history": list(baseline["history"]),
+    }
+    for entry in sorted(pr_entries, key=lambda item: item["pr_number"]):
+        autonomy = entry["declared_autonomy"]
+        ledger["totals"][autonomy] = ledger["totals"].get(autonomy, 0) + 1
+        ledger["history"].append(entry)
+    return ledger
 
 
 def last_tool(ledger):
@@ -80,9 +95,11 @@ def render_table(ledgers):
 
 
 def load_all_ledgers():
+    records = load_pr_records()
+    logins = {path.stem for path in DECLARATIONS_DIR.glob("*.json")} | set(records)
     return [
-        (path.stem, json.loads(path.read_text()))
-        for path in sorted(DECLARATIONS_DIR.glob("*.json"))
+        (login, build_ledger(login, load_baseline(login), records.get(login, [])))
+        for login in sorted(logins)
     ]
 
 
@@ -106,19 +123,22 @@ def main():
         sys.exit(f"Refusing unexpected GitHub login '{login}'.")
 
     autonomy, phases, tools = parse_declaration(os.environ.get("PR_BODY", ""))
-    DECLARATIONS_DIR.mkdir(exist_ok=True)
-    path = DECLARATIONS_DIR / f"{login}.json"
-    ledger = load_ledger(path, login)
-    entry = {
-        "pr_number": int(os.environ["PR_NUMBER"]),
-        "pr_url": os.environ["PR_URL"],
-        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "declared_autonomy": autonomy,
-        "phases": phases,
-        "tools_used": tools,
-    }
-    if record_pr(ledger, entry):
-        path.write_text(json.dumps(ledger, indent=2) + "\n")
+    pr_number = int(os.environ["PR_NUMBER"])
+    PR_RECORDS_DIR.mkdir(parents=True, exist_ok=True)
+    path = PR_RECORDS_DIR / f"{login}-{pr_number}.json"
+    if path.exists():
+        print(f"PR #{pr_number} is already recorded; skipping.")
+    else:
+        entry = {
+            "username": login,
+            "pr_number": pr_number,
+            "pr_url": os.environ["PR_URL"],
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "declared_autonomy": autonomy,
+            "phases": phases,
+            "tools_used": tools,
+        }
+        path.write_text(json.dumps(entry, indent=2) + "\n")
 
     update_readme(render_table(load_all_ledgers()))
 
