@@ -6,6 +6,7 @@
     "co-piloted": 0,
     "agentic": 0
   },
+  "baseline_commits": 65,
   "history": [
     {
       "pr_number": 0,

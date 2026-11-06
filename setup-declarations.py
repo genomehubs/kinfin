@@ -1,57 +1,88 @@
+"""Create starter AI declaration ledgers from Git history. Run once by a maintainer."""
+
 import json
-import os
+import re
 import subprocess
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
 
-# 1. Ensure the declarations directory exists
-os.makedirs(".ai-declarations", exist_ok=True)
+DECLARATIONS_DIR = Path(".ai-declarations")
+AUTONOMY_LEVELS = ("none", "autocomplete", "co-piloted", "agentic")
+LOGIN_PATTERN = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38})")
+NOREPLY_PATTERN = re.compile(r"(?:\d+\+)?([^@]+)@users\.noreply\.github\.com")
+# Lowercase Git author names whose GitHub login differs; extend when a new identity appears.
+LOGIN_OVERRIDES = {
+    "dominik r laetsch": "drl",
+    "dom laetsch": "drl",
+    "richard challis": "rjchallis",
+    "dinesh a": "heisdinesh",
+    "rohan barsagade": "rohan-b-84",
+}
 
-# 2. Get a list of all contributors and their total commit counts from Git history
-cmd = "git log --format='%ae|%an' | sort | uniq -c"
-result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-print("🚀 Generating machine-readable starter files...")
+def login_for(email, name):
+    """Map a commit identity to a GitHub login, using all identities for one person."""
+    key = name.strip().lower()
+    if key in LOGIN_OVERRIDES:
+        return LOGIN_OVERRIDES[key]
+    noreply = NOREPLY_PATTERN.fullmatch(email.strip().lower())
+    if noreply:
+        return noreply.group(1)
+    return key.replace(" ", "-")
 
-for line in result.stdout.strip().split("\n"):
-    if not line:
-        continue
 
-    # Parse out commit counts and user details
-    parts = line.strip().split(maxsplit=1)
-    commit_count = int(parts[0])
-    email_name = parts[1].split("|")
+def main():
+    DECLARATIONS_DIR.mkdir(exist_ok=True)
+    log = subprocess.run(
+        ["git", "log", "--format=%ae%x00%an"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
 
-    # Clean up the username to match GitHub login styles (lowercase, no spaces)
-    username = email_name[1].lower().replace(" ", "-")
+    commit_counts = Counter()
+    for line in log.splitlines():
+        email, _, name = line.partition("\x00")
+        commit_counts[login_for(email, name)] += 1
 
-    # Skip standard CI bots
-    if "github-actions" in username or "dependabot" in username:
-        continue
+    print("Generating starter ledgers in .ai-declarations/ (commits per login):")
+    for login, count in commit_counts.most_common():
+        if "[bot]" in login or "github-actions" in login:
+            continue
+        if not LOGIN_PATTERN.fullmatch(login):
+            print(f"Skipping '{login}': not a valid GitHub login.")
+            continue
 
-    json_path = f".ai-declarations/{username}.json"
+        path = (DECLARATIONS_DIR / f"{login}.json").resolve()
+        if path.parent != DECLARATIONS_DIR.resolve():
+            print(f"Skipping '{login}': path escapes {DECLARATIONS_DIR}.")
+            continue
+        if path.exists():
+            print(f"Skipping {login}: ledger already exists.")
+            continue
 
-    # Only create a starter file if it doesn't already exist
-    if not os.path.exists(json_path):
-        starter_data = {
-            "username": username,
-            "totals": {
-                "none": commit_count,  # Assume all historical commits were human-authored baseline
-                "autocomplete": 0,
-                "co-piloted": 0,
-                "agentic": 0,
-            },
+        print(f"{count:>5}  {login}")
+        ledger = {
+            "username": login,
+            "totals": {level: 0 for level in AUTONOMY_LEVELS},
+            # Historical commits, assumed human-authored; not part of PR totals.
+            "baseline_commits": count,
             "history": [
                 {
                     "pr_number": 0,
                     "pr_url": "N/A",
-                    "date": "2026-11-05",
+                    "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     "declared_autonomy": "none",
                     "tools_used": [],
                     "note": "Historical repository import baseline",
                 }
             ],
         }
+        path.write_text(json.dumps(ledger, indent=2) + "\n")
 
-        with open(json_path, "w") as jf:
-            json.dump(starter_data, jf, indent=2)
+    print("Done! Starter files created in .ai-declarations/")
 
-print("✅ Done! Starter files created in .ai-declarations/")
+
+if __name__ == "__main__":
+    main()

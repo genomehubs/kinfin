@@ -1,11 +1,12 @@
 {
   "username": "heisdinesh",
   "totals": {
-    "none": 178,
+    "none": 0,
     "autocomplete": 0,
     "co-piloted": 0,
     "agentic": 0
   },
+  "baseline_commits": 178,
   "history": [
     {
       "pr_number": 0,
