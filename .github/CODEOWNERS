@@ -1,0 +1,4 @@
+# Changes to the declaration pipeline need maintainer review.
+
+.github/workflows/update-ai-declaration.yml @rjchallis @drl
+scripts/tally_ai_declaration.py @rjchallis @drl
