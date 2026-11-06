@@ -62,7 +62,7 @@ This repository tracks AI usage per user for transparency. Tracking began in Nov
 
 ### Declaring AI usage in a pull request
 
-1. Run the setup script once per clone. It installs a pre-push hook that reads the declaration file:
+1. Run the setup script once per clone, and again whenever `scripts/setup-ai-logs.sh` changes. It installs a pre-push hook that reads the declaration file. The hook is copied into `.git/hooks`, so script updates take effect only after re-running it:
 
 ```
 bash scripts/setup-ai-logs.sh
