@@ -109,9 +109,9 @@ def run(args):
             output_fmt=args.F,
         )
 
-    if args.I:  # [ANNOTATION]
+    if args.I or args.i:  # [ANNOTATION]
         core.analysis.analyse_interpro(
-            directory=args.I,
+            directory=args.I or args.i,
             sample_ids=list(df_config.sample_id),
             output_fmt=args.F,
             processes=args.p,
