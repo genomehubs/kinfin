@@ -55,7 +55,7 @@ This repository tracks AI usage per user for transparency. Tracking began in Nov
 | Developer | Pure Human | Autocomplete | Co-Piloted | Agentic | Last Active Tool |
 | :-------- | :--------: | :----------: | :--------: | :-----: | :--------------- |
 | @drl | 65 | 0 | 0 | 0 | None |
-| @heisdinesh | 0 | 0 | 0 | 0 | None |
+| @heisdinesh | 1 | 0 | 0 | 0 | None |
 | @rjchallis | 76 | 40 | 10 | 6 | Copilot |
 
 <!-- AI_PER_USER_METRICS_END -->
