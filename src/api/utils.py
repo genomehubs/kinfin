@@ -263,7 +263,7 @@ def get_default_visible_columns(table_name: str) -> list[str]:
     ]
 
 
-def get_always_visible_columns(table_name: str) -> list[str]:
+def get_always_visible_columns(table_name: str) -> list[str] | None:
     """
     Get the always visible columns for a specific table.
 
@@ -299,13 +299,13 @@ def resolve_requested_columns(
     if requested_columns is None or requested_columns in ["default", ["default"]]:
         return get_default_visible_columns(table_name) + always_visible_columns
     if not requested_columns or requested_columns == [""]:
-        return always_visible_columns or None
+        return always_visible_columns
     if requested_columns in ["all", ["all"]]:
         return list(load_column_registry(table_name).get("columns", {}).keys())
     columns = canonicalise_column_names(table_name, requested_columns)
     if isinstance(columns, str):
         columns = [columns]
-    # Ensure always visible columns are included
+    # Ensure always visible columns are included in the final list of columns to return
     for col in always_visible_columns:
         if col not in columns:
             columns.append(col)
@@ -514,12 +514,8 @@ def get_dataset_artifact_root(dataset_id: str) -> str:
     Returns:
     - str: The path to the artifact root directory for the specified dataset.
     """
-    if not (
-        root_dir := DATASETS.get(dataset_id, {}).get("artifact_root")
-    ):
-        raise ValueError(
-            f"No artifact root found for dataset '{dataset_id}'."
-        )
+    if not (root_dir := DATASETS.get(dataset_id, {}).get("artifact_root")):
+        raise ValueError(f"No artifact root found for dataset '{dataset_id}'.")
     if root_dir.startswith("~"):
         root_dir = os.path.expanduser(root_dir)
     if not os.path.isabs(root_dir):
@@ -598,9 +594,7 @@ def get_dataset_artifact_dir(
     """
     root_dir = get_dataset_artifact_root(dataset_id)
     if artifact_path := (
-        DATASETS.get(dataset_id, {})
-        .get("artifacts", {})
-        .get(artifact_type, "")
+        DATASETS.get(dataset_id, {}).get("artifacts", {}).get(artifact_type, "")
     ):
         return os.path.join(root_dir, artifact_path)
     else:
@@ -1006,8 +1000,7 @@ def validate_partition_dict(
     - str: An error message if the dictionary is invalid; an empty string if valid.
     """
     valid_members = [
-        name.lower()
-        for name in DATASETS.get(cluster_id, {}).get("valid_members", [])
+        name.lower() for name in DATASETS.get(cluster_id, {}).get("valid_members", [])
     ]
     seen_ids = set()
     for _, values in partition_dict.items():

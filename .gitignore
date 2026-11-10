@@ -46,3 +46,4 @@ src_new/src/core/network_stuff.py
 
 .venv
 src_new
+.ai-state.json

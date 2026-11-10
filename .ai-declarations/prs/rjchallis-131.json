@@ -1,0 +1,13 @@
+{
+  "username": "rjchallis",
+  "pr_number": 131,
+  "pr_url": "https://github.com/genomehubs/kinfin/pull/131",
+  "date": "2026-11-06",
+  "declared_autonomy": "agentic",
+  "phases": [
+    "core_logic"
+  ],
+  "tools_used": [
+    "Copilot"
+  ]
+}
