@@ -117,7 +117,9 @@ def resolve_table_output_columns(
 
     validate_table_fields(table_name, requested, key_map=key_map)
     columns = requested.copy()
-    for column in translate_keymap_fields(get_always_visible_columns(table_name), key_map):
+    for column in translate_keymap_fields(
+        get_always_visible_columns(table_name), key_map
+    ):
         if column not in columns:
             columns.append(column)
     return dedupe_columns(columns)
@@ -169,7 +171,9 @@ def select_table_columns(
     if selected_columns is None:
         return df
 
-    missing_columns = [column for column in selected_columns if column not in df.columns]
+    missing_columns = [
+        column for column in selected_columns if column not in df.columns
+    ]
     if missing_columns:
         raise ValueError(
             f"Column(s) {missing_columns} not found in table '{table_name}'."

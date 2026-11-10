@@ -35,6 +35,7 @@ from api.utils import (
     get_common_artifact_path,
     get_partition_artifact_path,
     normalise_field_list,
+    parse_key_map_query,
     partition_selection_to_id,
     read_json_file,
     read_run_status_file,
@@ -43,6 +44,7 @@ from api.utils import (
     sort_and_paginate_result,
     validate_key_map,
     validate_partition_dict,
+    validate_partition_labels,
 )
 from core.utils import check_file
 
@@ -1510,27 +1512,27 @@ class PartitionStatusPayload(BaseModel):
     details: Dict[str, Any] = {}
 
 
-def parse_key_map_query(key_map: Optional[str]) -> Optional[Dict[str, int | str]]:
-    if not key_map:
-        return None
-    try:
-        parsed = json.loads(key_map)
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=400, detail="key_map must be valid JSON") from e
-    if not isinstance(parsed, dict):
-        raise HTTPException(status_code=400, detail="key_map must be a JSON object")
-    try:
-        return validate_key_map(parsed)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
 @router.post("/kinfin/partitions/resolve", response_model=ResponseSchema)
 async def resolve_partition_set(payload: PartitionResolveRequest, request: Request):
     try:
         dataset_id = payload.dataset_id
         partition_set = payload.partition_set
         validate = payload.validate_partition_set
+
+        # Labels are always checked (even with validation disabled) because the
+        # resulting key_map is used to translate table headers and values.
+        try:
+            validate_partition_labels(partition_set.keys())
+        except ValueError as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Invalid partition set",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
 
         if validate:
             is_valid, error_message = validate_partition_dict(dataset_id, partition_set)
@@ -1694,7 +1696,10 @@ async def get_dataset_summary(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1),
 ):
-    parsed_key_map = parse_key_map_query(key_map)
+    try:
+        parsed_key_map = parse_key_map_query(key_map)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     partition_id = derive_default_partition_id(dataset_id)
     file_path = get_partition_artifact_path(
         dataset_id=dataset_id,

@@ -72,7 +72,21 @@ curl -X POST $API_URL/kinfin/partitions/status -d '{
 When requesting partition tables generated with canonical partition labels, pass the
 `key_map` returned by `/kinfin/partitions/resolve` so the API can translate
 headers and label values back to the user supplied labels before applying
-selection, filters and sorting:
+selection, filters and sorting.
+
+Partition labels (the keys of `partition_set` and of `key_map`) are validated
+by both `/kinfin/partitions/resolve` and the table endpoints. A label must:
+
+- be a non-empty string of at most 128 characters with no leading/trailing
+  whitespace or control characters
+- not contain `_` or `,` (these separate tokens in column names such as
+  `SC_n16` and separate requested fields)
+- not match, case-insensitively, any table column name or alias, any
+  `_`-separated part of one (e.g. `OC`, `tag`, `singleton`, `count`), or the
+  keywords `all`, `default` and `remainder`
+
+`key_map` values must be the unique non-negative integer IDs returned by
+`/kinfin/partitions/resolve`.
 
 ```bash
 curl -X POST $API_URL/kinfin/datasets/table -d '{
