@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from api.fileparsers import (
     parse_attribute_summary_file,
@@ -43,6 +43,7 @@ from api.utils import (
     initialising_status_is_active,
     normalise_field_list,
     normalise_run_state,
+    parse_key_map_query,
     partition_claim_is_active,
     partition_selection_to_id,
     read_json_file,
@@ -54,7 +55,9 @@ from api.utils import (
     run_dataset_init_command,
     sort_and_paginate_result,
     utc_timestamp,
+    validate_key_map,
     validate_partition_dict,
+    validate_partition_labels,
     validate_partition_set_shape,
     write_partition_status_file,
     write_status_if_current_run,
@@ -1532,6 +1535,21 @@ async def resolve_partition_set(payload: PartitionResolveRequest, request: Reque
         partition_set = payload.partition_set
         validate = payload.validate_partition_set
 
+        # Labels are always checked (even with validation disabled) because the
+        # resulting key_map is used to translate table headers and values.
+        try:
+            validate_partition_labels(partition_set.keys())
+        except ValueError as e:
+            return JSONResponse(
+                content=ResponseSchema(
+                    status="error",
+                    message="Invalid partition set",
+                    error=str(e),
+                    query=str(request.url),
+                ).model_dump(),
+                status_code=400,
+            )
+
         if validate:
             is_valid, error_message = validate_partition_dict(dataset_id, partition_set)
             if not is_valid:
@@ -2000,11 +2018,19 @@ async def get_dataset_summary(
     request: Request,
     dataset_id: str,
     fields: Optional[List[str]] = Query(default=None),
+    key_map: Optional[str] = Query(
+        default=None,
+        description="JSON key map returned by /kinfin/partitions/resolve",
+    ),
     sort_by: Optional[str] = Query(default=None),
     sort_order: str = Query(default="asc"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1),
 ):
+    try:
+        parsed_key_map = parse_key_map_query(key_map)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     partition_id = derive_default_partition_id(dataset_id)
     file_path = get_partition_artifact_path(
         dataset_id=dataset_id,
@@ -2023,6 +2049,7 @@ async def get_dataset_summary(
         sort_order=sort_order,
         page=page,
         size=size,
+        key_map=parsed_key_map,
     )
 
     return JSONResponse(
@@ -2045,12 +2072,18 @@ async def get_dataset_summary(
 class DatasetSummaryRequest(BaseModel):
     dataset_id: str
     partition_id: Optional[str] = None
+    key_map: Optional[Dict[str, int | str]] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
     sort_by: Optional[str] = None
     sort_order: str = "asc"
     page: int = 1
     size: int = 20
+
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
 
 
 @router.post("/kinfin/datasets/summary", response_model=ResponseSchema)
@@ -2077,6 +2110,7 @@ async def post_dataset_summary(payload: DatasetSummaryRequest, request: Request)
         sort_order=payload.sort_order,
         page=payload.page,
         size=payload.size,
+        key_map=payload.key_map,
     )
 
     return JSONResponse(
@@ -2155,6 +2189,7 @@ class DatasetTableRequest(BaseModel):
     dataset_id: str
     table_name: str = "summary"
     partition_id: Optional[str] = None
+    key_map: Optional[Dict[str, int | str]] = None
     subset: Optional[List[str]] = None
     fields: List[str] = Field(default_factory=list)
     filters: List[dict[str, Any]] = Field(default_factory=list)
@@ -2162,6 +2197,11 @@ class DatasetTableRequest(BaseModel):
     sort_order: str = "asc"
     page: int = 1
     size: int = 20
+
+    @field_validator("key_map")
+    @classmethod
+    def validate_key_map_field(cls, value):
+        return validate_key_map(value)
 
 
 @router.post("/kinfin/datasets/table", response_model=ResponseSchema)
@@ -2201,6 +2241,7 @@ async def post_dataset_table(payload: DatasetTableRequest, request: Request):
         sort_order=payload.sort_order,
         page=payload.page,
         size=payload.size,
+        key_map=payload.key_map,
     )
 
     return JSONResponse(

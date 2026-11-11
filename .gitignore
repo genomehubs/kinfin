@@ -10,6 +10,7 @@ build/
 dist/
 
 venv
+.venv
 .test_data
 result
 .DS_Store
