@@ -3,12 +3,18 @@ import glob
 import json
 import os
 import re
+import shlex
+import sys
+import uuid
 from collections import defaultdict
+from datetime import datetime
 from hashlib import sha256
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 import yaml
+
+from core.utils import check_file
 
 MAX_KEY_MAP_ENTRIES = 128
 MAX_KEY_MAP_LABEL_LENGTH = 128
@@ -980,6 +986,10 @@ def get_partition_artifact_dir(
         raise ValueError(
             f"Partition '{partition_name}' for dataset '{dataset_id}' is not ready. Current state: {normalized_state}"
         )
+    if artifact_dir := status.get("artifact_dir"):
+        if os.path.isabs(artifact_dir):
+            return artifact_dir
+        return os.path.join(get_dataset_artifact_root(dataset_id), artifact_dir)
     if output_name := status.get("output_name"):
         return os.path.join(artifact_dir, output_name)
     else:
@@ -1019,9 +1029,10 @@ def get_partition_artifact_path(
         dataset_id, partition_name=partition_name, artifact_type=artifact_type
     )
     if partition_name:
-        if output_name := read_run_status_file(dataset_id, partition_name).get(
-            "output_name"
-        ):
+        status = read_run_status_file(dataset_id, partition_name)
+        if artifact_file_prefix := status.get("artifact_file_prefix"):
+            artifact_file = f"{artifact_file_prefix}.{artifact_file}"
+        elif output_name := status.get("output_name"):
             artifact_file = f"{output_name}.{artifact_file}"
     suffix_order = preferred_suffix_order(kind=kind)
     for suffix in suffix_order:
@@ -1124,7 +1135,19 @@ def read_run_status_file(dataset_id: str, partition_name: str | None = None) -> 
     print(f"Reading run status from: {status_path}")
 
     if os.path.exists(status_path):
-        return read_status(status_path)
+        try:
+            return read_status(status_path)
+        except json.JSONDecodeError as e:
+            return {
+                "schema_version": 1,
+                "run_name": partition_name or "default",
+                "state": "error",
+                "message": "Run status file is not valid JSON.",
+                "error": {
+                    "code": "invalid_status_file",
+                    "message": str(e),
+                },
+            }
     resolved_partition_name = partition_name or "default"
     return {
         "schema_version": 1,
@@ -1397,3 +1420,436 @@ def partition_selection_to_id(
     raw = json.dumps(canonical_dict, sort_keys=True)
     hashed = sha256(raw.encode()).hexdigest()[:16]
     return str(hashed), key_mapping
+
+
+# --- Dataset default-partition initialisation helpers ---
+
+
+def utc_timestamp() -> str:
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def parse_utc_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def init_timeout_seconds() -> int:
+    return int(os.getenv("KINFIN_INIT_TIMEOUT_SECONDS", "86400"))
+
+
+def init_stale_seconds() -> int:
+    return int(os.getenv("KINFIN_INIT_STALE_SECONDS", str(init_timeout_seconds() + 300)))
+
+
+def status_age_seconds(status: dict) -> float | None:
+    timestamp = parse_utc_timestamp(status.get("updated_at") or status.get("started_at"))
+    if not timestamp:
+        return None
+    return (datetime.utcnow() - timestamp).total_seconds()
+
+
+def is_process_running(pid: int | None) -> bool:
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def write_partition_status_file(status_path: str, status: dict):
+    os.makedirs(os.path.dirname(status_path), exist_ok=True)
+    tmp_path = f"{status_path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    with open(tmp_path, "w") as file:
+        json.dump(status, file, indent=2)
+        file.write("\n")
+    os.replace(tmp_path, status_path)
+
+
+def partition_lock_path(status_path: str) -> str:
+    return f"{status_path}.lock"
+
+
+def read_partition_lock(lock_path: str) -> dict:
+    try:
+        with open(lock_path, "r") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def acquire_partition_claim(status_path: str) -> str | None:
+    os.makedirs(os.path.dirname(status_path), exist_ok=True)
+    run_id = uuid.uuid4().hex
+    lock_path = partition_lock_path(status_path)
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return None
+    with os.fdopen(fd, "w") as file:
+        json.dump(
+            {
+                "run_id": run_id,
+                "created_at": utc_timestamp(),
+                "owner_pid": os.getpid(),
+            },
+            file,
+        )
+        file.write("\n")
+    return run_id
+
+
+def release_partition_claim(status_path: str, run_id: str):
+    lock_path = partition_lock_path(status_path)
+    lock = read_partition_lock(lock_path)
+    if lock.get("run_id") == run_id:
+        try:
+            os.unlink(lock_path)
+        except FileNotFoundError:
+            pass
+
+
+def partition_claim_is_active(status_path: str) -> bool:
+    lock_path = partition_lock_path(status_path)
+    if not os.path.exists(lock_path):
+        return False
+    lock = read_partition_lock(lock_path)
+    created_at = parse_utc_timestamp(lock.get("created_at"))
+    if created_at:
+        age = (datetime.utcnow() - created_at).total_seconds()
+        if age <= init_stale_seconds():
+            return True
+    try:
+        os.unlink(lock_path)
+    except FileNotFoundError:
+        pass
+    return False
+
+
+def initialising_status_is_active(status: dict) -> bool:
+    if normalise_run_state(status.get("state", "missing")) != "initialising":
+        return False
+    if is_process_running(status.get("worker_pid")):
+        return True
+    age = status_age_seconds(status)
+    return age is not None and age <= init_stale_seconds()
+
+
+def write_status_if_current_run(status_path: str, run_id: str, status: dict) -> bool:
+    current_status = {}
+    if os.path.exists(status_path):
+        try:
+            with open(status_path, "r") as file:
+                current_status = json.load(file)
+        except json.JSONDecodeError:
+            current_status = {}
+    if current_status.get("run_id") != run_id:
+        return False
+    write_partition_status_file(status_path, status)
+    return True
+
+
+def resolve_dataset_path(
+    dataset_info: dict, *keys: str, default_filename: str | None = None
+):
+    files = dataset_info.get("files", {})
+    value = None
+    for key in keys:
+        value = files.get(key) or dataset_info.get(key)
+        if value:
+            break
+    if not value and default_filename:
+        value = default_filename
+    if not value:
+        return None
+    if value.startswith("~"):
+        value = os.path.expanduser(value)
+    if os.path.isabs(value):
+        return value
+    if dataset_path := dataset_info.get("path"):
+        workdir = os.getenv("KINFIN_WORKDIR", "")
+        return os.path.join(workdir, dataset_path, value)
+    return value
+
+
+def default_partition_config_rows(
+    partition_set: dict[str, list[str]]
+) -> list[dict[str, str]]:
+    return [
+        {"sample_id": member, "default_partition": label}
+        for label, members in partition_set.items()
+        for member in members
+    ]
+
+
+def validate_partition_set_shape(
+    partition_set: dict[str, list[str]]
+) -> tuple[bool, str]:
+    seen_ids = set()
+    for values in partition_set.values():
+        if not isinstance(values, list) or not values:
+            return False, "Values must be a non-empty list."
+        for value in values:
+            if not isinstance(value, str) or not value:
+                return False, "Values must be non-empty strings."
+            lc_value = value.lower()
+            if lc_value in seen_ids:
+                return False, f"Duplicate value '{value}' found."
+            seen_ids.add(lc_value)
+    return True, ""
+
+
+def build_dataset_init_command(
+    dataset_id: str,
+    dataset_info: dict,
+    partition_id: str,
+    config_path: str,
+    output_dir: str,
+    status_path: str,
+) -> list[str]:
+    command_template = os.getenv("KINFIN_INIT_COMMAND")
+    if command_template:
+        return [
+            part.format(
+                dataset_id=dataset_id,
+                partition_id=partition_id,
+                config_path=config_path,
+                output_dir=output_dir,
+                status_path=status_path,
+            )
+            for part in shlex.split(command_template)
+        ]
+
+    orthogroups_file = resolve_dataset_path(
+        dataset_info,
+        "orthogroups_file",
+        "orthogroups",
+        "cluster_file",
+        default_filename="Orthogroups.txt",
+    )
+    if not orthogroups_file:
+        raise ValueError("No orthogroups file configured for dataset.")
+    check_file(orthogroups_file, install_kinfin=True)
+
+    command = [
+        os.getenv("KINFIN_INIT_PYTHON", sys.executable),
+        os.getenv("KINFIN_INIT_SCRIPT", "src_new/src/main.py"),
+        "analysis",
+        "-g",
+        orthogroups_file,
+        "-c",
+        config_path,
+        "-d",
+        output_dir,
+    ]
+
+    fasta_dir = resolve_dataset_path(dataset_info, "fasta_dir", "fastas")
+    sequence_ids_file = resolve_dataset_path(
+        dataset_info,
+        "sequence_ids_file",
+        "sequence_ids",
+        default_filename="kinfin.SequenceIDs.txt",
+    )
+    species_ids_file = resolve_dataset_path(
+        dataset_info,
+        "species_ids_file",
+        "species_ids",
+        default_filename="kinfin.SpeciesIDs.txt",
+    )
+    if fasta_dir and os.path.isdir(fasta_dir):
+        command.extend(["-f", fasta_dir])
+    elif (
+        sequence_ids_file
+        and species_ids_file
+        and os.path.exists(sequence_ids_file)
+        and os.path.exists(species_ids_file)
+    ):
+        command.extend(["-s", sequence_ids_file, "-S", species_ids_file])
+    else:
+        command.append("-P")
+
+    optional_file_args = [
+        ("tree_file", "tree", "-t", "kinfin.tree.nwk"),
+        ("interpro_file", "interpro", "-i", None),
+        ("table_file", "table", "-a", None),
+    ]
+    for primary_key, secondary_key, flag, default_filename in optional_file_args:
+        path = resolve_dataset_path(
+            dataset_info,
+            primary_key,
+            secondary_key,
+            default_filename=default_filename,
+        )
+        if path and os.path.exists(path):
+            command.extend([flag, path])
+
+    interpro_dir = resolve_dataset_path(dataset_info, "interpro_dir")
+    if interpro_dir and os.path.isdir(interpro_dir):
+        command.extend(["-I", interpro_dir])
+
+    cli_options = dataset_info.get("init_cli_options", {})
+    if output_format := cli_options.get("output_format"):
+        command.extend(["-F", output_format])
+    if processes := cli_options.get("processes"):
+        command.extend(["-p", str(processes)])
+    if plot_format := cli_options.get("plot_format"):
+        command.extend(["-l", plot_format])
+    if cli_options.get("no_plots"):
+        command.append("-L")
+    command.extend(cli_options.get("extra_args", []))
+    return command
+
+
+async def run_dataset_init_command(
+    command: list[str],
+    status_path: str,
+    dataset_id: str,
+    partition_id: str,
+    run_id: str,
+    output_name: str,
+    artifact_dir: str,
+    artifact_file_prefix: str,
+    started_at: str,
+):
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        status = read_run_status_file(dataset_id, partition_id)
+        status.update(
+            {
+                "worker_pid": process.pid,
+                "updated_at": utc_timestamp(),
+            }
+        )
+        write_status_if_current_run(status_path, run_id, status)
+
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=init_timeout_seconds()
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            stdout, stderr = await process.communicate()
+            finished_at = utc_timestamp()
+            write_status_if_current_run(
+                status_path,
+                run_id,
+                {
+                    "schema_version": 1,
+                    "run_name": "default",
+                    "dataset_id": dataset_id,
+                    "partition_id": partition_id,
+                    "run_id": run_id,
+                    "state": "error",
+                    "message": "Default partition analysis timed out.",
+                    "started_at": started_at,
+                    "updated_at": finished_at,
+                    "finished_at": finished_at,
+                    "error": {
+                        "code": "timeout",
+                        "message": (
+                            "CLI exceeded "
+                            f"KINFIN_INIT_TIMEOUT_SECONDS={init_timeout_seconds()}."
+                        ),
+                    },
+                    "output_name": output_name,
+                    "artifact_dir": artifact_dir,
+                    "artifact_file_prefix": artifact_file_prefix,
+                },
+            )
+            release_partition_claim(status_path, run_id)
+            return
+        stdout = stdout.decode().strip()
+        stderr = stderr.decode().strip()
+        finished_at = utc_timestamp()
+
+        if process.returncode == 0:
+            write_status_if_current_run(
+                status_path,
+                run_id,
+                {
+                    "schema_version": 1,
+                    "run_name": "default",
+                    "dataset_id": dataset_id,
+                    "partition_id": partition_id,
+                    "run_id": run_id,
+                    "state": "ready",
+                    "message": "Default partition analysis completed successfully.",
+                    "started_at": started_at,
+                    "updated_at": finished_at,
+                    "finished_at": finished_at,
+                    "error": None,
+                    "output_name": output_name,
+                    "artifact_dir": artifact_dir,
+                    "artifact_file_prefix": artifact_file_prefix,
+                },
+            )
+            release_partition_claim(status_path, run_id)
+            return
+
+        write_status_if_current_run(
+            status_path,
+            run_id,
+            {
+                "schema_version": 1,
+                "run_name": "default",
+                "dataset_id": dataset_id,
+                "partition_id": partition_id,
+                "run_id": run_id,
+                "state": "error",
+                "message": "Default partition analysis failed.",
+                "started_at": started_at,
+                "updated_at": finished_at,
+                "finished_at": finished_at,
+                "error": {
+                    "code": "cli_failed",
+                    "message": (
+                        extract_error_message(stderr) if stderr else "CLI failed."
+                    ),
+                    "exit_code": process.returncode,
+                    "stderr": stderr,
+                    "stdout": stdout,
+                },
+                "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
+            },
+        )
+        release_partition_claim(status_path, run_id)
+    except Exception as e:
+        failed_at = utc_timestamp()
+        write_status_if_current_run(
+            status_path,
+            run_id,
+            {
+                "schema_version": 1,
+                "run_name": "default",
+                "dataset_id": dataset_id,
+                "partition_id": partition_id,
+                "run_id": run_id,
+                "state": "error",
+                "message": "Default partition analysis failed to start.",
+                "started_at": started_at,
+                "updated_at": failed_at,
+                "finished_at": failed_at,
+                "error": {
+                    "code": "start_failed",
+                    "message": str(e),
+                },
+                "output_name": output_name,
+                "artifact_dir": artifact_dir,
+                "artifact_file_prefix": artifact_file_prefix,
+            },
+        )
+        release_partition_claim(status_path, run_id)

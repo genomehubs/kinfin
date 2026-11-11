@@ -106,6 +106,17 @@ def get_parse_tasks(
 ):
     _SAMPLE_IDS = set(sample_ids)
     tasks = []
+    if directory and pathlib.Path(directory).is_file():
+        sample_id = pathlib.Path(directory).stem.split(".")[0]
+        if sample_id in _SAMPLE_IDS:
+            return [
+                ParseTask(
+                    type=type,
+                    sample_id=sample_id,
+                    fn=directory,
+                    params=params,
+                )
+            ]
     for extension in extensions:
         for fn in glob.glob(f"{directory}/*{extension}"):
             sample_id = pathlib.Path(fn).stem.split(".")[0]
