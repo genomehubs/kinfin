@@ -239,13 +239,12 @@ def process_file(args):
     values = df.iloc[:, args.c]
     _min = float(values.min() - args.x)
     _max = float(values.max())
-    if args.b or args.B:
-        breaks = sorted(
-            set(
-                (args.b if args.b else [value * _max for value in args.B])
-                + [_min, _max]
-            )
-        )
+    if args.B:
+        breaks = sorted(set([value * _max for value in args.B] + [_min, _max]))
+        intervals = pd.IntervalIndex.from_breaks(breaks)
+    elif args.b:
+        breaks = sorted(set(args.b + [_min, max(_max, args.b[-1])]))
+        print(f"{breaks=}")
         intervals = pd.IntervalIndex.from_breaks(breaks)
     else:
         intervals = args.e or args.E
