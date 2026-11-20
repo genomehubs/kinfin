@@ -12,15 +12,33 @@ import core.utils
 logger = logging.getLogger(__name__)
 
 
+def write_apomorphy_tree(tree, df_summary):
+    OG_ATs = ["synapomorphy", "autapomorphy"]
+    for node in tree.traverse("levelorder"):
+        node.add_props(**{OG_AT: 0 for OG_AT in OG_ATs})
+    for _, node_id, OG_AT, OT, OG_NT, OC in df_summary.itertuples():
+        tree[node_id].add_prop(OG_AT, tree[node_id].get_prop(OG_AT) + OC)
+    tree.write(
+        outfile=core.utils.format_fn(
+            fn=("tree.with_node_counts.nwk"),
+            prefix=core.utils.get_dir("TREE"),
+        ),
+        props=OG_ATs,
+        parser=1,
+    )
+
+
 def get_tree(
     fn,
-    sample_ids=[],
-    outgroup=[],
+    sample_ids=None,
+    outgroup=None,
 ):
     """
     # [done]
     - technically only checks for outgroups. A tree with additional tips should work.
     """
+    outgroup = outgroup or []
+    sample_ids = sample_ids or []
     if fn is None:
         logger.info("no tree provided")
         tree = None
@@ -87,8 +105,8 @@ def get_tree(
 
 def process_tree(
     tree_fn="",
-    outgroup=[],
-    sample_ids=[],
+    outgroup=None,
+    sample_ids=None,
     output_fmt="tsv",
 ):
     """
@@ -100,6 +118,8 @@ def process_tree(
     - EC: ElementCount
     """
     t_0 = time.monotonic()
+    outgroup = outgroup or []
+    sample_ids = sample_ids or []
     logger.info(f"processing tree in {tree_fn}")
     tree = get_tree(
         fn=tree_fn,
@@ -140,6 +160,7 @@ def process_tree(
         result_type="expand",
     )
     df_nodes.columns = ["node_id", "OG_AT", "OT", "OG_NP", "EC"]
+    # ...
     OG_AT = df_nodes["OG_AT"].value_counts()
     logger.info(
         f"{core.utils.format_number(OG_AT.get('synapomorphy', 0))} synapomorphic orthogroups"
@@ -163,6 +184,7 @@ def process_tree(
         ),
         index=False,
     )
+
     df_nodes["OG_NT"] = "partial"
     df_nodes["OG_NT"] = df_nodes["OG_NT"].mask(df_nodes["OG_NP"] == 1, "complete")
     df_summary = df_nodes.groupby(
@@ -174,6 +196,10 @@ def process_tree(
         ],
         as_index=False,
     ).agg(OC=("orthogroup_id", "count"))
+    write_apomorphy_tree(
+        tree,
+        df_summary,
+    )
     core.utils.dump(
         core.utils.downcast(
             df_summary,

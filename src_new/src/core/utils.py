@@ -81,7 +81,7 @@ def download(url, dest_fn):
             for data in response.iter_content(1024):
                 p.update(len(data))
                 fh.write(data)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
     return True
 
@@ -198,7 +198,8 @@ def format_number(number):
     return f"{number:,.12g}"
 
 
-def downcast(df, categorical=[], info=False):
+def downcast(df, categorical=None, info=False):
+    categorical = categorical or []
     ints = []
     floats = []
     if info:
@@ -227,7 +228,8 @@ def downcast(df, categorical=[], info=False):
     return df
 
 
-def mkdir(name, subdirs=[], do_replace=False):
+def mkdir(name, subdirs=None, do_replace=False):
+    subdirs = subdirs or []
     try:
         output_dir = pathlib.Path(name)
         if do_replace and output_dir.exists():
@@ -419,6 +421,6 @@ def dump(data, fn, fmt="", index=True):
         else:
             logger.error(f"unknown format {fmt=}")
             raise NotImplementedError
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error(f"dumping {fn=} failed - {exc}\n{traceback.format_exc()}")
     return fn

@@ -4,19 +4,21 @@ import logging.config
 import os
 import pathlib
 
-import core.utils
 from definitions import LOG_CONFIG
+
+import core.utils
 
 FORMAT = "[%(asctime)s] [%(levelname)-7s] [%(name)-14s] [%(funcName)s] %(message)s"
 
 
 def init_logger(
-    args={},
+    args=None,
     default_config=LOG_CONFIG,
     default_level=logging.INFO,
     env_key="LOG_CFG",
     append=False,
 ):
+    args = args or {}
     if not args:
         logging.basicConfig(level=default_level, format=FORMAT)
         logger = logging.getLogger(__name__)

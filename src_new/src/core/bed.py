@@ -72,7 +72,7 @@ def do_parse_earlgrey_task(task):
             ),
             index=False,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error(f"problem reading {task.fn} - {exc}")
 
 
@@ -95,15 +95,13 @@ def do_parse_repeatmasker_task(task):
         "ID",
         "last",
     ]
-    HEADER_VALID = set(
-        [
+    HEADER_VALID = {
             "div",
             "qstart",
             "qend",
             "repeat",
             "family",
-        ]
-    )
+        }
     rows = []
     if task.fn is not None:
         with open(task.fn) as fh:

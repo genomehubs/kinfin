@@ -149,7 +149,7 @@ def volcano(x, y, fn):
         which="minor",
         color="lightgrey",
     )
-    axs["bottom"].set_ylim(1.5, 10 ** (math.log(y.min(), 10) - 0.5))
+    axs["bottom"].set_ylim(1.5, 10 ** (math.log10(y.min()) - 0.5))
     axs["bottom"].set_xlim(-x.abs().max() - 1, x.abs().max() + 1)
     axs["bottom"].set_yscale("log")
     axs["bottom"].set_ylabel(y_label)
@@ -207,7 +207,7 @@ def lines(
             ax.set_xlim([-0.05, 1.05])
         if y.endswith("n"):
             ax.set_ylim([-0.05, 1.05])
-        handles_1, labels_1 = plt.gca().get_legend_handles_labels()
+        handles_1, _labels_1 = plt.gca().get_legend_handles_labels()
         handles_1 = (
             [handle_1 for handle_1 in handles_1 if handle_1._linestyle == "-"]
             or [handle_1 for handle_1 in handles_1 if handle_1._linestyle == "--"]
@@ -305,10 +305,10 @@ def tally_plot(
         alpha=0.5,
     )
     ax["top"].set_xscale("log", base=10)
-    top_xmin = 10 ** (math.log(df_EC["EC"].min(), 10) - 0.5)
-    top_xmax = 10 ** (math.log(df_EC["EC"].max(), 10) + 0.5)
-    top_ymin = 10 ** (math.log(df_EC["count"].min(), 10) - 0.5)
-    top_ymax = 10 ** (math.log(df_EC["count"].max(), 10) + 0.5)
+    top_xmin = 10 ** (math.log10(df_EC["EC"].min()) - 0.5)
+    top_xmax = 10 ** (math.log10(df_EC["EC"].max()) + 0.5)
+    top_ymin = 10 ** (math.log10(df_EC["count"].min()) - 0.5)
+    top_ymax = 10 ** (math.log10(df_EC["count"].max()) + 0.5)
     ax["top"].set_ylim(top_ymin, top_ymax)
     ax["top"].set_xlim(top_xmin, top_xmax)
     ax["top"].set_yscale("log", base=10)
@@ -319,10 +319,10 @@ def tally_plot(
     ax["bottom"].set_yscale("log", base=10)
     ax["bottom"].set_ylabel("Orthogroup Count (OC)")
     ax["bottom"].set_xlabel("Sample Count (SC)")
-    bottom_xmin = 10 ** (math.log(df_SC["SC"].min(), 10) - 0.5)
-    bottom_xmax = 10 ** (math.log(df_SC["SC"].max(), 10) + 0.5)
-    bottom_ymin = 10 ** (math.log(df_SC["count"].min(), 10) - 0.5)
-    bottom_ymax = 10 ** (math.log(df_SC["count"].max(), 10) + 0.5)
+    bottom_xmin = 10 ** (math.log10(df_SC["SC"].min()) - 0.5)
+    bottom_xmax = 10 ** (math.log10(df_SC["SC"].max()) + 0.5)
+    bottom_ymin = 10 ** (math.log10(df_SC["count"].min()) - 0.5)
+    bottom_ymax = 10 ** (math.log10(df_SC["count"].max()) + 0.5)
     ax["bottom"].set_ylim(bottom_ymin, bottom_ymax)
     ax["bottom"].set_xlim(bottom_xmin, bottom_xmax)
     ax["bottom"].grid(visible=True, which="major", axis="both")

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import collections
 import datetime
 import hashlib
@@ -6,12 +5,12 @@ import logging
 import sys
 import tarfile
 
+import definitions
 import pandas as pd
 import prettytable
 import requests
 
 import core.utils
-import definitions
 
 # [CONSTANTS]
 
@@ -31,9 +30,10 @@ logger = logging.getLogger(__name__)
 def is_taxdump_current(taxdump_fn=TAXDUMP_FN, taxdump_new=True):
     taxdump_url = TAXDUMP_URL_NEW if taxdump_new else TAXDUMP_URL
     try:
-        md5_local = hashlib.md5(open(taxdump_fn, "rb").read()).hexdigest()
-        md5_remote = requests.get(taxdump_url + ".md5").text.split()[0]
-        return md5_local == md5_remote
+        with open(taxdump_fn, "rb") as taxdump_fh:
+            md5_local = hashlib.md5(taxdump_fh.read()).hexdigest()
+            md5_remote = requests.get(taxdump_url + ".md5").text.split()[0]
+            return md5_local == md5_remote
     except FileNotFoundError:
         return False
 
@@ -85,9 +85,9 @@ def get_ncbi_taxdump_name_data(tar):
 
 def create_taxonomy_df(taxdump_fn=TAXDUMP_FN):
     logger.info(f"parsing NCBI TaxDump from '{taxdump_fn}'")
-    tar = tarfile.open(taxdump_fn, "r")
-    node_data = get_ncbi_taxdump_node_data(tar)
-    name_data = get_ncbi_taxdump_name_data(tar)
+    with tarfile.open(taxdump_fn, "r") as taxdump_fh:
+        node_data = get_ncbi_taxdump_node_data(taxdump_fh)
+        name_data = get_ncbi_taxdump_name_data(taxdump_fh)
     if len(node_data) == len(name_data):
         taxonomy_rows = []
         for node, name in name_data.items():
@@ -99,9 +99,9 @@ def create_taxonomy_df(taxdump_fn=TAXDUMP_FN):
         )
         taxonomy_df.attrs["version"] = TAXONOMY_VERSION
         taxonomy_df.attrs["records"] = len(taxonomy_df.index)
-        taxonomy_df.attrs["created"] = datetime.datetime.now().strftime(
-            "%Y/%m/%d %H:%M:%s"
-        )
+        taxonomy_df.attrs["created"] = datetime.datetime.now(
+            tz=datetime.datetime.now().astimezone().tzinfo
+        ).strftime("%Y/%m/%d %H:%M:%s")
         core.utils.dump(taxonomy_df, TAXONOMY_FN)
         return True
     else:
@@ -193,7 +193,7 @@ def tally_ranks(self):
             lineage = self.get_lineage(taxid)
             # if "phylum" not in lineage:
             #     print(lineage)
-            for rank in lineage.keys():
+            for rank in lineage:
                 counter[rank] += 1
     table = prettytable.PrettyTable()
     table.field_names = [

@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 
 def get_parse_interpro_tasks(
     directory=None,
-    sample_ids=[],
+    sample_ids=None,
 ):
+    sample_ids = sample_ids or []
     tasks = core.analysis.get_parse_tasks(
         directory=directory,
         func=do_parse_interpro,
@@ -53,7 +54,7 @@ def get_interpro_df_empty(sample_id):
             ),
             how="right",
         )
-        .assign(**{"signature_id": np.nan, "analysis": np.nan})
+        .assign(signature_id=np.nan, analysis=np.nan)
         .reset_index()
     ).drop(columns=[sample_id])
 
@@ -115,7 +116,7 @@ def do_parse_interpro(task):
                         "analysis",
                     ]
                 ].reset_index()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error(f"{exc}\n{traceback.format_exc()}")
         sys.exit(1)
     get_signature_summary(
@@ -143,7 +144,12 @@ def do_parse_interpro(task):
     )
 
 
-def get_signature_summary(df, analyses=[], sample_id=None):
+def get_signature_summary(
+    df,
+    analyses=None,
+    sample_id=None,
+):
+    analyses = analyses or []
     df_counts = core.utils.get_counts_df(
         columns=[sample_id],
     )
@@ -168,11 +174,12 @@ def get_signature_summary(df, analyses=[], sample_id=None):
 
 def parse_interpro(
     directory=None,
-    sample_ids=[],
+    sample_ids=None,
     output_fmt="tsv",
     processes=1,
 ):
     t_0 = time.monotonic()
+    sample_ids = sample_ids or []
     tasks = get_parse_interpro_tasks(
         directory=directory,
         sample_ids=sample_ids,
@@ -189,10 +196,12 @@ def parse_interpro(
 
 
 def analyse_interpro(
-    sample_ids=[],
+    sample_ids=None,
     output_fmt="tsv",
     processes=1,
 ):
+
+    sample_ids = sample_ids or []
 
     def get_EC_SC():
         df_counts = core.utils.get_counts_df()
@@ -279,7 +288,7 @@ def analyse_interpro(
         }
     )
     core.utils.dump(
-        df_annotation,
+        df_annotation,  # doing .reset_index() will throw warning
         fn=core.utils.format_fn(
             f"{definitions.ANNOTATION_FN}",
             prefix=core.utils.get_dir("ANNOTATION"),
@@ -295,9 +304,10 @@ def analyse_interpro(
 
 
 def analyse_signatures(
-    sample_ids=[],
+    sample_ids=None,
     output_fmt="tsv",
 ):
+    sample_ids = sample_ids or []
     df_signatures = None
     logger.info("collecting InterPro signatures ...")
     with tqdm.tqdm(
@@ -498,10 +508,11 @@ def analyse_domain_entropy(df_annotation, output_fmt="tsv"):
 
 def process_interpro(
     directory=None,
-    sample_ids=[],
+    sample_ids=None,
     output_fmt="tsv",
     processes=1,
 ):
+    sample_ids = sample_ids or []
     t_0 = time.monotonic()
     logger.info(f"processing interpro data in {directory}")
     parse_interpro(

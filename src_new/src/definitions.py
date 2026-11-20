@@ -54,7 +54,7 @@ ENTROPY_FN = "orthogroups.interpro.entropy"
 
 SUPPORTED_FASTA_EXTENSIONS = [".faa", ".fa", ".fas"]
 SUPPORTED_INTERPRO_EXTENSIONS = [".tsv"]
-SUPPORTED_BED_EXTENSIONS = [".bed", ".bed.gz", ".bed.binned.gz"]
+SUPPORTED_BED_EXTENSIONS = [".bed", ".bed.gz", ".bed.binned.gz", "bed.binned.bed.gz"]
 CONFIG_MIN_SAMPLE_IDS = 2  # at least one group in comparisons needs to be of length 2
 
 PROGRESS_NCOLS = 0
